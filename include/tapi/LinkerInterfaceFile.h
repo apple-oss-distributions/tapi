@@ -15,9 +15,9 @@
 #ifndef TAPI_LINKER_INTERFACE_FILE_H
 #define TAPI_LINKER_INTERFACE_FILE_H
 
-#include <tapi/Defines.h>
 #include <memory>
 #include <string>
+#include <tapi/Defines.h>
 #include <vector>
 
 ///
@@ -27,8 +27,8 @@
 /// @{
 ///
 
-typedef int cpu_type_t;
-typedef int cpu_subtype_t;
+using cpu_type_t = int;
+using cpu_subtype_t = int;
 
 TAPI_NAMESPACE_V1_BEGIN
 
@@ -59,6 +59,11 @@ enum class Platform : unsigned {
   /// \brief tvOS
   /// \since 1.0
   tvOS = 4,
+
+  /// \brief bridgeOS
+  /// \since 1.2
+  bridgeOS = 5,
+
 };
 
 ///
@@ -103,6 +108,10 @@ enum class FileType : unsigned {
   /// \brief Text-based stub file (.tbd) version 2.0
   /// \since 1.0
   TBD_V2 = 2,
+
+  /// \brief Text-based stub file (.tbd) version 3.0
+  /// \since 1.3
+  TBD_V3 = 3,
 };
 
 ///
@@ -119,6 +128,36 @@ enum class CpuSubTypeMatching : unsigned {
   /// \since 1.0
   Exact = 1,
 };
+
+///
+/// \brief Defines flags that control the parsing of text-based stub files.
+/// \since 1.1
+///
+enum ParsingFlags : unsigned {
+  /// \brief Default flags.
+  /// \since 1.1
+  None = 0,
+
+  /// \brief Only accept a slice if the sub type matches. ABI fall-back mode is
+  ///        the default.
+  /// \since 1.1
+  ExactCpuSubType = 1U << 0,
+
+  /// \brief Disallow weak imported symbols. This adds weak imported symbols to
+  ///        the ignore exports list.
+  /// \since 1.1
+  DisallowWeakImports = 1U << 1,
+};
+
+inline ParsingFlags operator|(ParsingFlags lhs, ParsingFlags rhs) noexcept {
+  return static_cast<ParsingFlags>(static_cast<unsigned>(lhs) |
+                                   static_cast<unsigned>(rhs));
+}
+
+inline ParsingFlags operator|=(ParsingFlags &lhs, ParsingFlags rhs) noexcept {
+  lhs = lhs | rhs;
+  return lhs;
+}
 
 ///
 /// \brief TAPI File APIs
@@ -182,7 +221,7 @@ public:
   /// cpu type, cpu sub-type, matching requirement, and minimum deployment
   /// version.
   ///
-  /// \param[in] path full path to the file.
+  /// \param[in] path path to the file (for error message only).
   /// \param[in] data raw pointer to start of buffer.
   /// \param[in] size size of the buffer in bytes.
   /// \param[in] cpuType The cpu type / architecture to check the file for.
@@ -190,16 +229,63 @@ public:
   ///            file for.
   /// \param[in] matchingMode Specified the cpu subtype matching mode.
   /// \param[in] minOSVersion The minimum OS version / deployment target.
-  /// \param[in] path path to the file (for error message only).
   /// \param[out] errorMessage holds an error message when the return value is a
   ///             nullptr.
   /// \return nullptr on error
   /// \since 1.0
+  /// \deprecated 1.1
   ///
   static LinkerInterfaceFile *
   create(const std::string &path, const uint8_t *data, size_t size,
          cpu_type_t cpuType, cpu_subtype_t cpuSubType,
          CpuSubTypeMatching matchingMode, PackedVersion32 minOSVersion,
+         std::string &errorMessage) noexcept;
+
+  ///
+  /// \brief Create a LinkerInterfaceFile from the provided buffer.
+  ///
+  /// Parses the content of the provided buffer with the given constrains for
+  /// cpu type, cpu sub-type, flags, and minimum deployment version.
+  ///
+  /// \param[in] path path to the file (for error message only).
+  /// \param[in] data raw pointer to start of buffer.
+  /// \param[in] size size of the buffer in bytes.
+  /// \param[in] cpuType The cpu type / architecture to check the file for.
+  /// \param[in] cpuSubType The cpu sub type / sub architecture to check the
+  ///            file for.
+  /// \param[in] flags Flags that control the parsing behavior.
+  /// \param[in] minOSVersion The minimum OS version / deployment target.
+  /// \param[out] errorMessage holds an error message when the return value is a
+  ///             nullptr.
+  /// \return nullptr on error
+  /// \since 1.1
+  /// \deprecated 1.3
+  ///
+  static LinkerInterfaceFile *
+  create(const std::string &path, const uint8_t *data, size_t size,
+         cpu_type_t cpuType, cpu_subtype_t cpuSubType, ParsingFlags flags,
+         PackedVersion32 minOSVersion, std::string &errorMessage) noexcept;
+
+  ///
+  /// \brief Create a LinkerInterfaceFile from a file.
+  ///
+  /// Parses the content of the file with the given constrains for cpu type,
+  /// cpu sub-type, flags, and minimum deployment version.
+  ///
+  /// \param[in] path path to the file.
+  /// \param[in] cpuType The cpu type / architecture to check the file for.
+  /// \param[in] cpuSubType The cpu sub type / sub architecture to check the
+  ///            file for.
+  /// \param[in] flags Flags that control the parsing behavior.
+  /// \param[in] minOSVersion The minimum OS version / deployment target.
+  /// \param[out] errorMessage holds an error message when the return value is a
+  ///             nullptr.
+  /// \return nullptr on error
+  /// \since 1.3
+  ///
+  static LinkerInterfaceFile *
+  create(const std::string &path, cpu_type_t cpuType, cpu_subtype_t cpuSubType,
+         ParsingFlags flags, PackedVersion32 minOSVersion,
          std::string &errorMessage) noexcept;
 
   ///
@@ -246,8 +332,8 @@ public:
   PackedVersion32 getCompatibilityVersion() const noexcept;
 
   ///
-  /// \brief Query the Swift version.
-  /// \return Returns the Swift version as unsigned integer.
+  /// \brief Query the Swift ABI version.
+  /// \return Returns the Swift ABI version as unsigned integer.
   /// \since 1.0
   ///
   unsigned getSwiftVersion() const noexcept;
@@ -318,24 +404,54 @@ public:
 
   ///
   /// \brief Obtain a list of all symbols to be ignored.
-  /// \return Returns a list of to all symbols that should be ignored.
+  /// \return Returns a list of all symbols that should be ignored.
   /// \since 1.0
   ///
   const std::vector<std::string> &ignoreExports() const noexcept;
 
   ///
   /// \brief Obtain a list of all exported symbols.
-  /// \return Returns a list of to all exported symbols.
+  /// \return Returns a list of all exported symbols.
   /// \since 1.0
   ///
   const std::vector<Symbol> &exports() const noexcept;
 
   ///
   /// \brief Obtain a list of all undefined symbols.
-  /// \return Returns a list of to all undefined symbols.
+  /// \return Returns a list of all undefined symbols.
   /// \since 1.0
   ///
   const std::vector<Symbol> &undefineds() const noexcept;
+
+  ///
+  /// \brief Obtain a list of all inlined frameworks.
+  /// \return Returns a list of install names of all inlined frameworks.
+  /// \since 1.3
+  ///
+  const std::vector<std::string> &inlinedFrameworkNames() const noexcept;
+
+  ///
+  /// \brief Create a LinkerInterfaceFile from the specified inlined framework.
+  ///
+  /// Creates a LinkerInterfaceFile with the given constrains for cpu type,
+  /// cpu sub-type, flags, and minimum deployment version.
+  ///
+  /// \param[in] installName install name of the inlined framework.
+  /// \param[in] cpuType The cpu type / architecture to check the file for.
+  /// \param[in] cpuSubType The cpu sub type / sub architecture to check the
+  ///            file for.
+  /// \param[in] flags Flags that control the parsing behavior.
+  /// \param[in] minOSVersion The minimum OS version / deployment target.
+  /// \param[out] errorMessage holds an error message when the return value is a
+  ///             nullptr.
+  /// \return nullptr on error
+  /// \since 1.3
+  ///
+  LinkerInterfaceFile *
+  getInlinedFramework(const std::string &installName, cpu_type_t cpuType,
+                      cpu_subtype_t cpuSubType, ParsingFlags flags,
+                      PackedVersion32 minOSVersion,
+                      std::string &errorMessage) const noexcept;
 
   ///
   /// \brief Destructor.

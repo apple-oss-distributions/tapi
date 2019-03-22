@@ -13,19 +13,37 @@
 //===----------------------------------------------------------------------===//
 
 #include "tapi/Core/TextStub_v1.h"
+#include "tapi/Core/ArchitectureSupport.h"
 #include "tapi/Core/InterfaceFile.h"
 #include "tapi/Core/Registry.h"
 #include "tapi/Core/YAML.h"
 #include "tapi/Core/YAMLReaderWriter.h"
+#include "tapi/LinkerInterfaceFile.h"
+#include "llvm/ADT/StringRef.h"
+#include "llvm/Support/Allocator.h"
+#include "llvm/Support/YAMLTraits.h"
 #include <set>
 
 using namespace llvm;
 using namespace llvm::yaml;
 using namespace TAPI_INTERNAL;
-using namespace TAPI_INTERNAL::stub::v1;
-using TAPI_INTERNAL::SymbolFlags;
 
-LLVM_YAML_IS_FLOW_SEQUENCE_VECTOR(StringRef)
+namespace {
+
+struct ExportSection {
+  std::vector<Architecture> archs;
+  std::vector<FlowStringRef> allowableClients;
+  std::vector<FlowStringRef> reexportedLibraries;
+  std::vector<FlowStringRef> symbols;
+  std::vector<FlowStringRef> classes;
+  std::vector<FlowStringRef> ivars;
+  std::vector<FlowStringRef> weakDefSymbols;
+  std::vector<FlowStringRef> tlvSymbols;
+};
+
+} // end anonymous namespace.
+
+LLVM_YAML_IS_FLOW_SEQUENCE_VECTOR(Architecture)
 LLVM_YAML_IS_SEQUENCE_VECTOR(ExportSection)
 
 namespace llvm {
@@ -46,14 +64,14 @@ template <> struct MappingTraits<ExportSection> {
 
 template <> struct MappingTraits<const InterfaceFile *> {
   struct NormalizedTBD1 {
-    NormalizedTBD1(IO &io) {}
+    explicit NormalizedTBD1(IO &io) {}
     NormalizedTBD1(IO &io, const InterfaceFile *&file) {
       archs = file->getArchitectures();
       platform = file->getPlatform();
       installName = file->getInstallName();
       currentVersion = file->getCurrentVersion();
       compatibilityVersion = file->getCompatibilityVersion();
-      swiftVersion = file->getSwiftVersion();
+      swiftVersion = file->getSwiftABIVersion();
       objcConstraint = file->getObjCConstraint();
 
       std::set<ArchitectureSet> archSet;
@@ -63,19 +81,10 @@ template <> struct MappingTraits<const InterfaceFile *> {
       for (const auto &library : file->reexportedLibraries())
         archSet.insert(library.getArchitectures());
 
-      std::map<const TAPI_INTERNAL::Symbol *, ArchitectureSet> symbolToArchSet;
-      for (const auto &it : file->exports()) {
-        auto &symbol = it.second;
-        if (symbol.isUnavailable())
-          continue;
-
-        ArchitectureSet archs;
-        for (auto availMap : symbol._availability) {
-          if (availMap.second._unavailable)
-            continue;
-          archs.set(availMap.first);
-        }
-        symbolToArchSet[&symbol] = archs;
+      std::map<const Symbol *, ArchitectureSet> symbolToArchSet;
+      for (const auto *symbol : file->exports()) {
+        auto archs = symbol->getArchitectures();
+        symbolToArchSet[symbol] = archs;
         archSet.insert(archs);
       }
 
@@ -96,8 +105,8 @@ template <> struct MappingTraits<const InterfaceFile *> {
             continue;
 
           const auto *symbol = symArch.first;
-          switch (symbol->getType()) {
-          case SymbolType::Symbol:
+          switch (symbol->getKind()) {
+          case SymbolKind::GlobalSymbol:
             if (symbol->isWeakDefined())
               section.weakDefSymbols.emplace_back(symbol->getName());
             else if (symbol->isThreadLocalValue())
@@ -105,19 +114,25 @@ template <> struct MappingTraits<const InterfaceFile *> {
             else
               section.symbols.emplace_back(symbol->getName());
             break;
-          case SymbolType::ObjCClass:
-            section.classes.emplace_back(symbol->getName());
+          case SymbolKind::ObjectiveCClass:
+            section.classes.emplace_back(
+                copyString("_" + symbol->getName().str()));
             break;
-          case SymbolType::ObjCInstanceVariable:
-            section.ivars.emplace_back(symbol->getName());
+          case SymbolKind::ObjectiveCClassEHType:
+            section.symbols.emplace_back(
+                copyString("_OBJC_EHTYPE_$_" + symbol->getName().str()));
+            break;
+          case SymbolKind::ObjectiveCInstanceVariable:
+            section.ivars.emplace_back(
+                copyString("_" + symbol->getName().str()));
             break;
           }
         }
-        sort(section.symbols);
-        sort(section.classes);
-        sort(section.ivars);
-        sort(section.weakDefSymbols);
-        sort(section.tlvSymbols);
+        TAPI_INTERNAL::sort(section.symbols);
+        TAPI_INTERNAL::sort(section.classes);
+        TAPI_INTERNAL::sort(section.ivars);
+        TAPI_INTERNAL::sort(section.weakDefSymbols);
+        TAPI_INTERNAL::sort(section.tlvSymbols);
         exports.emplace_back(std::move(section));
       }
     }
@@ -127,14 +142,14 @@ template <> struct MappingTraits<const InterfaceFile *> {
       assert(ctx);
 
       auto *file = new InterfaceFile;
-      file->setPath(ctx->_path);
+      file->setPath(ctx->path);
       file->setFileType(TAPI_INTERNAL::FileType::TBD_V1);
-      file->setPlatform(platform);
       file->setArchitectures(archs);
+      file->setPlatform(mapToSim(platform, file->getArchitectures().hasX86()));
       file->setInstallName(installName);
       file->setCurrentVersion(currentVersion);
       file->setCompatibilityVersion(compatibilityVersion);
-      file->setSwiftVersion(swiftVersion);
+      file->setSwiftABIVersion(swiftVersion);
       file->setTwoLevelNamespace();
       file->setApplicationExtensionSafe();
       file->setObjCConstraint(objcConstraint);
@@ -144,27 +159,43 @@ template <> struct MappingTraits<const InterfaceFile *> {
           file->addAllowableClient(client, section.archs);
         for (const auto &lib : section.reexportedLibraries)
           file->addReexportedLibrary(lib, section.archs);
-        for (auto &sym : section.symbols)
-          file->addExportedSymbol(sym.str(), SymbolType::Symbol,
-                                  SymbolFlags::None, section.archs);
+
+        // Skip symbols if requested.
+        if (ctx->readFlags < ReadFlags::Symbols)
+          continue;
+
+        for (auto &sym : section.symbols) {
+          if (sym.value.startswith("_OBJC_EHTYPE_$_"))
+            file->addSymbolImpl(SymbolKind::ObjectiveCClassEHType,
+                                sym.value.drop_front(15), section.archs,
+                                SymbolFlags::None, /*copyStrings=*/false);
+          else
+            file->addSymbolImpl(SymbolKind::GlobalSymbol, sym, section.archs,
+                                SymbolFlags::None,
+                                /*copyStrings=*/false);
+        }
         for (auto &sym : section.classes)
-          file->addExportedSymbol(sym.str(), SymbolType::ObjCClass,
-                                  SymbolFlags::None, section.archs);
+          file->addSymbolImpl(SymbolKind::ObjectiveCClass,
+                              sym.value.drop_front(), section.archs,
+                              SymbolFlags::None, /*copyStrings=*/false);
         for (auto &sym : section.ivars)
-          file->addExportedSymbol(sym.str(), SymbolType::ObjCInstanceVariable,
-                                  SymbolFlags::None, section.archs);
+          file->addSymbolImpl(SymbolKind::ObjectiveCInstanceVariable,
+                              sym.value.drop_front(), section.archs,
+                              SymbolFlags::None, /*copyStrings=*/false);
         for (auto &sym : section.weakDefSymbols)
-          file->addExportedSymbol(sym.str(), SymbolType::Symbol,
-                                  SymbolFlags::WeakDefined, section.archs);
+          file->addSymbolImpl(SymbolKind::GlobalSymbol, sym, section.archs,
+                              SymbolFlags::WeakDefined,
+                              /*copyStrings=*/false);
         for (auto &sym : section.tlvSymbols)
-          file->addExportedSymbol(sym.str(), SymbolType::Symbol,
-                                  SymbolFlags::ThreadLocalValue, section.archs);
+          file->addSymbolImpl(SymbolKind::GlobalSymbol, sym, section.archs,
+                              SymbolFlags::ThreadLocalValue,
+                              /*copyStrings=*/false);
       }
 
       return file;
     }
 
-    ArchitectureSet archs;
+    std::vector<Architecture> archs;
     Platform platform;
     StringRef installName;
     PackedVersion currentVersion;
@@ -172,6 +203,16 @@ template <> struct MappingTraits<const InterfaceFile *> {
     SwiftVersion swiftVersion;
     ObjCConstraint objcConstraint;
     std::vector<ExportSection> exports;
+
+    llvm::BumpPtrAllocator allocator;
+    StringRef copyString(StringRef string) {
+      if (string.empty())
+        return {};
+
+      void *ptr = allocator.Allocate(string.size(), 1);
+      memcpy(ptr, string.data(), string.size());
+      return {reinterpret_cast<const char *>(ptr), string.size()};
+    }
   };
 
   static void mappingTBD1(IO &io, const InterfaceFile *&file) {
@@ -193,20 +234,18 @@ template <> struct MappingTraits<const InterfaceFile *> {
     io.mapOptional("exports", keys->exports);
   }
 };
-}
-} // end namespace llvm::yaml.
+
+} // end namespace yaml.
+} // end namespace llvm.
 
 TAPI_NAMESPACE_INTERNAL_BEGIN
 
 namespace stub {
 namespace v1 {
 
-bool TextBasedStubDocumentHandler::canRead(llvm::MemoryBufferRef memBufferRef,
-                                           FileType types) const {
+bool YAMLDocumentHandler::canRead(MemoryBufferRef memBufferRef,
+                                  FileType types) const {
   if (!(types & FileType::TBD_V1))
-    return false;
-
-  if (!memBufferRef.getBufferIdentifier().endswith(".tbd"))
     return false;
 
   auto str = memBufferRef.getBuffer().trim();
@@ -217,20 +256,16 @@ bool TextBasedStubDocumentHandler::canRead(llvm::MemoryBufferRef memBufferRef,
   return true;
 }
 
-FileType TextBasedStubDocumentHandler::getFileType(
-    llvm::MemoryBufferRef memBufferRef) const {
+FileType YAMLDocumentHandler::getFileType(MemoryBufferRef memBufferRef) const {
   if (canRead(memBufferRef))
     return FileType::TBD_V1;
 
   return FileType::Invalid;
 }
 
-bool TextBasedStubDocumentHandler::canWrite(const File *file) const {
+bool YAMLDocumentHandler::canWrite(const File *file) const {
   auto *interface = dyn_cast<InterfaceFile>(file);
   if (interface == nullptr)
-    return false;
-
-  if (!StringRef(interface->getPath()).endswith(".tbd"))
     return false;
 
   if (interface->getFileType() != FileType::TBD_V1)
@@ -239,8 +274,7 @@ bool TextBasedStubDocumentHandler::canWrite(const File *file) const {
   return true;
 }
 
-bool TextBasedStubDocumentHandler::handleDocument(IO &io,
-                                                  const File *&file) const {
+bool YAMLDocumentHandler::handleDocument(IO &io, const File *&file) const {
   if (io.outputting() && file->getFileType() != FileType::TBD_V1)
     return false;
 
@@ -248,13 +282,17 @@ bool TextBasedStubDocumentHandler::handleDocument(IO &io,
       !io.mapTag("tag:yaml.org,2002:map"))
     return false;
 
+  auto *ctx = reinterpret_cast<YAMLContext *>(io.getContext());
+  ctx->fileType = FileType::TBD_V1;
+
   const auto *interface = dyn_cast_or_null<InterfaceFile>(file);
   MappingTraits<const InterfaceFile *>::mappingTBD1(io, interface);
   file = interface;
 
   return true;
 }
-}
-} // end namespace stub::v1.
+
+} // end namespace v1.
+} // end namespace stub.
 
 TAPI_NAMESPACE_INTERNAL_END

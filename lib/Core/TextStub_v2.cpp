@@ -13,21 +13,62 @@
 //===----------------------------------------------------------------------===//
 
 #include "tapi/Core/TextStub_v2.h"
+#include "tapi/Core/ArchitectureSupport.h"
 #include "tapi/Core/InterfaceFile.h"
 #include "tapi/Core/Registry.h"
 #include "tapi/Core/YAML.h"
 #include "tapi/Core/YAMLReaderWriter.h"
+#include "tapi/LinkerInterfaceFile.h"
+#include "llvm/ADT/StringRef.h"
+#include "llvm/Support/Allocator.h"
+#include "llvm/Support/YAMLTraits.h"
 #include <set>
 
 using namespace llvm;
 using namespace llvm::yaml;
 using namespace TAPI_INTERNAL;
-using namespace TAPI_INTERNAL::stub::v2;
-using TAPI_INTERNAL::SymbolFlags;
 
-using UUID = std::pair<Arch, std::string>;
-LLVM_YAML_IS_FLOW_SEQUENCE_VECTOR(StringRef)
-LLVM_YAML_IS_FLOW_SEQUENCE_VECTOR(UUID)
+namespace {
+
+struct ExportSection {
+  std::vector<Architecture> archs;
+  std::vector<FlowStringRef> allowableClients;
+  std::vector<FlowStringRef> reexportedLibraries;
+  std::vector<FlowStringRef> symbols;
+  std::vector<FlowStringRef> classes;
+  std::vector<FlowStringRef> ivars;
+  std::vector<FlowStringRef> weakDefSymbols;
+  std::vector<FlowStringRef> tlvSymbols;
+};
+
+struct UndefinedSection {
+  std::vector<Architecture> archs;
+  std::vector<FlowStringRef> symbols;
+  std::vector<FlowStringRef> classes;
+  std::vector<FlowStringRef> ivars;
+  std::vector<FlowStringRef> weakRefSymbols;
+};
+
+enum Flags : unsigned {
+  None                         = 0U,
+  FlatNamespace                = 1U << 0,
+  NotApplicationExtensionSafe  = 1U << 1,
+  InstallAPI                   = 1U << 2,
+};
+
+inline Flags operator|(const Flags a, const Flags b) {
+  return static_cast<Flags>(static_cast<unsigned>(a) |
+                            static_cast<unsigned>(b));
+}
+
+inline Flags operator|=(Flags &a, const Flags b) {
+  a = static_cast<Flags>(static_cast<unsigned>(a) | static_cast<unsigned>(b));
+  return a;
+}
+
+} // end anonymous namespace.
+
+LLVM_YAML_IS_FLOW_SEQUENCE_VECTOR(Architecture)
 LLVM_YAML_IS_SEQUENCE_VECTOR(ExportSection)
 LLVM_YAML_IS_SEQUENCE_VECTOR(UndefinedSection)
 
@@ -62,33 +103,13 @@ template <> struct ScalarBitSetTraits<Flags> {
     io.bitSetCase(flags, "flat_namespace", Flags::FlatNamespace);
     io.bitSetCase(flags, "not_app_extension_safe",
                   Flags::NotApplicationExtensionSafe);
+    io.bitSetCase(flags, "installapi", Flags::InstallAPI);
   }
-};
-
-template <> struct ScalarTraits<UUID> {
-  static void output(const UUID &value, void *, raw_ostream &os) {
-    os << getArchName(value.first) << ": " << value.second;
-  }
-
-  static StringRef input(StringRef scalar, void *, UUID &value) {
-    auto split = scalar.split(':');
-    auto arch = split.first.trim();
-    auto uuid = split.second.trim();
-    if (uuid.empty())
-      return "invalid uuid string pair";
-    value.first = getArchType(arch);
-    if (value.first == Arch::unknown)
-      return "unknown architecture";
-    value.second = uuid;
-    return StringRef();
-  }
-
-  static bool mustQuote(StringRef) { return true; }
 };
 
 template <> struct MappingTraits<const InterfaceFile *> {
   struct NormalizedTBD2 {
-    NormalizedTBD2(IO &io) {}
+    explicit NormalizedTBD2(IO &io) {}
     NormalizedTBD2(IO &io, const InterfaceFile *&file) {
       archs = file->getArchitectures();
       uuids = file->uuids();
@@ -96,7 +117,7 @@ template <> struct MappingTraits<const InterfaceFile *> {
       installName = file->getInstallName();
       currentVersion = file->getCurrentVersion();
       compatibilityVersion = file->getCompatibilityVersion();
-      swiftVersion = file->getSwiftVersion();
+      swiftVersion = file->getSwiftABIVersion();
       objcConstraint = file->getObjCConstraint();
 
       flags = Flags::None;
@@ -105,6 +126,9 @@ template <> struct MappingTraits<const InterfaceFile *> {
 
       if (!file->isTwoLevelNamespace())
         flags |= Flags::FlatNamespace;
+
+      if (file->isInstallAPI())
+        flags |= Flags::InstallAPI;
 
       parentUmbrella = file->getParentUmbrella();
 
@@ -115,19 +139,10 @@ template <> struct MappingTraits<const InterfaceFile *> {
       for (const auto &library : file->reexportedLibraries())
         archSet.insert(library.getArchitectures());
 
-      std::map<const TAPI_INTERNAL::Symbol *, ArchitectureSet> symbolToArchSet;
-      for (const auto &it : file->exports()) {
-        auto &symbol = it.second;
-        if (symbol.isUnavailable())
-          continue;
-
-        ArchitectureSet archs;
-        for (auto availMap : symbol._availability) {
-          if (availMap.second._unavailable)
-            continue;
-          archs.set(availMap.first);
-        }
-        symbolToArchSet[&symbol] = archs;
+      std::map<const Symbol *, ArchitectureSet> symbolToArchSet;
+      for (const auto *symbol : file->exports()) {
+        auto archs = symbol->getArchitectures();
+        symbolToArchSet[symbol] = archs;
         archSet.insert(archs);
       }
 
@@ -148,8 +163,8 @@ template <> struct MappingTraits<const InterfaceFile *> {
             continue;
 
           const auto *symbol = symArch.first;
-          switch (symbol->getType()) {
-          case SymbolType::Symbol:
+          switch (symbol->getKind()) {
+          case SymbolKind::GlobalSymbol:
             if (symbol->isWeakDefined())
               section.weakDefSymbols.emplace_back(symbol->getName());
             else if (symbol->isThreadLocalValue())
@@ -157,35 +172,34 @@ template <> struct MappingTraits<const InterfaceFile *> {
             else
               section.symbols.emplace_back(symbol->getName());
             break;
-          case SymbolType::ObjCClass:
-            section.classes.emplace_back(symbol->getName());
+          case SymbolKind::ObjectiveCClass:
+            section.classes.emplace_back(
+                copyString("_" + symbol->getName().str()));
             break;
-          case SymbolType::ObjCInstanceVariable:
-            section.ivars.emplace_back(symbol->getName());
+          case SymbolKind::ObjectiveCClassEHType:
+            section.symbols.emplace_back(
+                copyString("_OBJC_EHTYPE_$_" + symbol->getName().str()));
+            break;
+          case SymbolKind::ObjectiveCInstanceVariable:
+            section.ivars.emplace_back(
+                copyString("_" + symbol->getName().str()));
             break;
           }
         }
-        sort(section.symbols);
-        sort(section.classes);
-        sort(section.ivars);
-        sort(section.weakDefSymbols);
-        sort(section.tlvSymbols);
+        TAPI_INTERNAL::sort(section.symbols);
+        TAPI_INTERNAL::sort(section.classes);
+        TAPI_INTERNAL::sort(section.ivars);
+        TAPI_INTERNAL::sort(section.weakDefSymbols);
+        TAPI_INTERNAL::sort(section.tlvSymbols);
         exports.emplace_back(std::move(section));
       }
 
       archSet.clear();
       symbolToArchSet.clear();
 
-      for (const auto &it : file->undefineds()) {
-        auto &symbol = it.second;
-
-        ArchitectureSet archs;
-        for (auto availMap : symbol._availability) {
-          if (availMap.second._unavailable)
-            continue;
-          archs.set(availMap.first);
-        }
-        symbolToArchSet[&symbol] = archs;
+      for (const auto *symbol : file->undefineds()) {
+        auto archs = symbol->getArchitectures();
+        symbolToArchSet[symbol] = archs;
         archSet.insert(archs);
       }
 
@@ -198,25 +212,31 @@ template <> struct MappingTraits<const InterfaceFile *> {
             continue;
 
           const auto *symbol = symArch.first;
-          switch (symbol->getType()) {
-          case SymbolType::Symbol:
+          switch (symbol->getKind()) {
+          case SymbolKind::GlobalSymbol:
             if (symbol->isWeakReferenced())
               section.weakRefSymbols.emplace_back(symbol->getName());
             else
               section.symbols.emplace_back(symbol->getName());
             break;
-          case SymbolType::ObjCClass:
-            section.classes.emplace_back(symbol->getName());
+          case SymbolKind::ObjectiveCClass:
+            section.classes.emplace_back(
+                copyString("_" + symbol->getName().str()));
             break;
-          case SymbolType::ObjCInstanceVariable:
-            section.ivars.emplace_back(symbol->getName());
+          case SymbolKind::ObjectiveCClassEHType:
+            section.symbols.emplace_back(
+                copyString("_OBJC_EHTYPE_$_" + symbol->getName().str()));
+            break;
+          case SymbolKind::ObjectiveCInstanceVariable:
+            section.ivars.emplace_back(
+                copyString("_" + symbol->getName().str()));
             break;
           }
         }
-        sort(section.symbols);
-        sort(section.classes);
-        sort(section.ivars);
-        sort(section.weakRefSymbols);
+        TAPI_INTERNAL::sort(section.symbols);
+        TAPI_INTERNAL::sort(section.classes);
+        TAPI_INTERNAL::sort(section.ivars);
+        TAPI_INTERNAL::sort(section.weakRefSymbols);
         undefineds.emplace_back(std::move(section));
       }
     }
@@ -226,64 +246,99 @@ template <> struct MappingTraits<const InterfaceFile *> {
       assert(ctx);
 
       auto *file = new InterfaceFile;
-      file->setPath(ctx->_path);
+      file->setPath(ctx->path);
       file->setFileType(TAPI_INTERNAL::FileType::TBD_V2);
       for (auto &id : uuids)
         file->addUUID(id.first, id.second);
-      file->setPlatform(platform);
       file->setArchitectures(archs);
+      file->setPlatform(mapToSim(platform, file->getArchitectures().hasX86()));
       file->setInstallName(installName);
       file->setCurrentVersion(currentVersion);
       file->setCompatibilityVersion(compatibilityVersion);
-      file->setSwiftVersion(swiftVersion);
+      file->setSwiftABIVersion(swiftVersion);
       file->setObjCConstraint(objcConstraint);
       file->setParentUmbrella(parentUmbrella);
 
       file->setTwoLevelNamespace(!(flags & Flags::FlatNamespace));
       file->setApplicationExtensionSafe(
           !(flags & Flags::NotApplicationExtensionSafe));
+      file->setInstallAPI(flags & Flags::InstallAPI);
 
       for (const auto &section : exports) {
         for (const auto &client : section.allowableClients)
           file->addAllowableClient(client, section.archs);
         for (const auto &lib : section.reexportedLibraries)
           file->addReexportedLibrary(lib, section.archs);
-        for (auto &sym : section.symbols)
-          file->addExportedSymbol(sym.str(), SymbolType::Symbol,
-                                  SymbolFlags::None, section.archs);
+
+        // Skip symbols if requested.
+        if (ctx->readFlags < ReadFlags::Symbols)
+          continue;
+
+        for (auto &sym : section.symbols) {
+          if (sym.value.startswith("_OBJC_EHTYPE_$_"))
+            file->addSymbolImpl(SymbolKind::ObjectiveCClassEHType,
+                                sym.value.drop_front(15), section.archs,
+                                SymbolFlags::None, /*copyStrings=*/false);
+          else
+            file->addSymbolImpl(SymbolKind::GlobalSymbol, sym, section.archs,
+                                SymbolFlags::None,
+                                /*copyStrings=*/false);
+        }
         for (auto &sym : section.classes)
-          file->addExportedSymbol(sym.str(), SymbolType::ObjCClass,
-                                  SymbolFlags::None, section.archs);
+          file->addSymbolImpl(SymbolKind::ObjectiveCClass,
+                              sym.value.drop_front(), section.archs,
+                              SymbolFlags::None, /*copyStrings=*/false);
         for (auto &sym : section.ivars)
-          file->addExportedSymbol(sym.str(), SymbolType::ObjCInstanceVariable,
-                                  SymbolFlags::None, section.archs);
+          file->addSymbolImpl(SymbolKind::ObjectiveCInstanceVariable,
+                              sym.value.drop_front(), section.archs,
+                              SymbolFlags::None, /*copyStrings=*/false);
         for (auto &sym : section.weakDefSymbols)
-          file->addExportedSymbol(sym.str(), SymbolType::Symbol,
-                                  SymbolFlags::WeakDefined, section.archs);
+          file->addSymbolImpl(SymbolKind::GlobalSymbol, sym, section.archs,
+                              SymbolFlags::WeakDefined,
+                              /*copyStrings=*/false);
         for (auto &sym : section.tlvSymbols)
-          file->addExportedSymbol(sym.str(), SymbolType::Symbol,
-                                  SymbolFlags::ThreadLocalValue, section.archs);
+          file->addSymbolImpl(SymbolKind::GlobalSymbol, sym, section.archs,
+                              SymbolFlags::ThreadLocalValue,
+                              /*copyStrings=*/false);
       }
 
+      // Skip symbols if requested.
+      if (ctx->readFlags < ReadFlags::Symbols)
+        return file;
+
       for (const auto &section : undefineds) {
-        for (auto &sym : section.symbols)
-          file->addUndefinedSymbol(sym.str(), SymbolType::Symbol,
-                                   SymbolFlags::None, section.archs);
+        for (auto &sym : section.symbols) {
+          if (sym.value.startswith("_OBJC_EHTYPE_$_"))
+            file->addUndefinedSymbolImpl(SymbolKind::ObjectiveCClassEHType,
+                                         sym.value.drop_front(15),
+                                         section.archs, SymbolFlags::None,
+                                         /*copyStrings=*/false);
+          else
+            file->addUndefinedSymbolImpl(SymbolKind::GlobalSymbol, sym,
+                                         section.archs, SymbolFlags::None,
+                                         /*copyStrings=*/false);
+        }
         for (auto &sym : section.classes)
-          file->addUndefinedSymbol(sym.str(), SymbolType::ObjCClass,
-                                   SymbolFlags::None, section.archs);
+          file->addUndefinedSymbolImpl(SymbolKind::ObjectiveCClass,
+                                       sym.value.drop_front(), section.archs,
+                                       SymbolFlags::None,
+                                       /*copyStrings=*/false);
         for (auto &sym : section.ivars)
-          file->addUndefinedSymbol(sym.str(), SymbolType::ObjCInstanceVariable,
-                                   SymbolFlags::None, section.archs);
+          file->addUndefinedSymbolImpl(SymbolKind::ObjectiveCInstanceVariable,
+                                       sym.value.drop_front(), section.archs,
+                                       SymbolFlags::None,
+                                       /*copyStrings=*/false);
         for (auto &sym : section.weakRefSymbols)
-          file->addUndefinedSymbol(sym.str(), SymbolType::Symbol,
-                                   SymbolFlags::WeakReferenced, section.archs);
+          file->addUndefinedSymbolImpl(SymbolKind::GlobalSymbol, sym,
+                                       section.archs,
+                                       SymbolFlags::WeakReferenced,
+                                       /*copyStrings=*/false);
       }
 
       return file;
     }
 
-    ArchitectureSet archs;
+    std::vector<Architecture> archs;
     std::vector<UUID> uuids;
     Platform platform;
     StringRef installName;
@@ -295,6 +350,16 @@ template <> struct MappingTraits<const InterfaceFile *> {
     StringRef parentUmbrella;
     std::vector<ExportSection> exports;
     std::vector<UndefinedSection> undefineds;
+
+    llvm::BumpPtrAllocator allocator;
+    StringRef copyString(StringRef string) {
+      if (string.empty())
+        return {};
+
+      void *ptr = allocator.Allocate(string.size(), 1);
+      memcpy(ptr, string.data(), string.size());
+      return {reinterpret_cast<const char *>(ptr), string.size()};
+    }
   };
 
   static void mappingTBD2(IO &io, const InterfaceFile *&file) {
@@ -326,12 +391,9 @@ TAPI_NAMESPACE_INTERNAL_BEGIN
 namespace stub {
 namespace v2 {
 
-bool TextBasedStubDocumentHandler::canRead(llvm::MemoryBufferRef memBufferRef,
-                                           FileType types) const {
+bool YAMLDocumentHandler::canRead(MemoryBufferRef memBufferRef,
+                                  FileType types) const {
   if (!(types & FileType::TBD_V2))
-    return false;
-
-  if (!memBufferRef.getBufferIdentifier().endswith(".tbd"))
     return false;
 
   auto str = memBufferRef.getBuffer().trim();
@@ -341,20 +403,16 @@ bool TextBasedStubDocumentHandler::canRead(llvm::MemoryBufferRef memBufferRef,
   return true;
 }
 
-FileType TextBasedStubDocumentHandler::getFileType(
-    llvm::MemoryBufferRef memBufferRef) const {
+FileType YAMLDocumentHandler::getFileType(MemoryBufferRef memBufferRef) const {
   if (canRead(memBufferRef))
     return FileType::TBD_V2;
 
   return FileType::Invalid;
 }
 
-bool TextBasedStubDocumentHandler::canWrite(const File *file) const {
+bool YAMLDocumentHandler::canWrite(const File *file) const {
   auto *interface = dyn_cast<InterfaceFile>(file);
   if (interface == nullptr)
-    return false;
-
-  if (!StringRef(interface->getPath()).endswith(".tbd"))
     return false;
 
   if (interface->getFileType() != FileType::TBD_V2)
@@ -363,13 +421,15 @@ bool TextBasedStubDocumentHandler::canWrite(const File *file) const {
   return true;
 }
 
-bool TextBasedStubDocumentHandler::handleDocument(IO &io,
-                                                  const File *&file) const {
+bool YAMLDocumentHandler::handleDocument(IO &io, const File *&file) const {
   if (io.outputting() && file->getFileType() != FileType::TBD_V2)
     return false;
 
   if (!io.outputting() && !io.mapTag("!tapi-tbd-v2"))
     return false;
+
+  auto *ctx = reinterpret_cast<YAMLContext *>(io.getContext());
+  ctx->fileType = FileType::TBD_V2;
 
   const auto *interface = dyn_cast_or_null<InterfaceFile>(file);
   MappingTraits<const InterfaceFile *>::mappingTBD2(io, interface);
@@ -377,7 +437,8 @@ bool TextBasedStubDocumentHandler::handleDocument(IO &io,
 
   return true;
 }
-}
-} // end namespace stub::v1.
+
+} // end namespace v2.
+} // end namespace stub.
 
 TAPI_NAMESPACE_INTERNAL_END

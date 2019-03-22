@@ -1,2 +1,5 @@
 add_subdirectory(Config)
 add_subdirectory(Core)
+add_subdirectory(Diagnostics)
+add_subdirectory(Driver)
+add_subdirectory(Frontend)

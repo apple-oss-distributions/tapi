@@ -11,6 +11,7 @@
 /// \brief Implements the C++ linker interface file API.
 ///
 //===----------------------------------------------------------------------===//
+#include "tapi/Core/ExtendedInterfaceFile.h"
 #include "tapi/Core/InterfaceFile.h"
 #include "tapi/Core/LLVM.h"
 #include "tapi/Core/Registry.h"
@@ -21,6 +22,8 @@
 #include <tapi/LinkerInterfaceFile.h>
 #include <tapi/PackedVersion32.h>
 #include <vector>
+
+using namespace llvm;
 
 TAPI_NAMESPACE_V1_BEGIN
 
@@ -66,93 +69,106 @@ static PackedVersion32 parseVersion32(StringRef str) {
   return version;
 }
 
-class LinkerInterfaceFile::Impl {
+class LLVM_LIBRARY_VISIBILITY LinkerInterfaceFile::Impl {
 public:
-  FileType _fileType;
-  Platform _platform;
+  FileType _fileType{FileType::Unsupported};
+  Platform _platform{Platform::Unknown};
   std::string _installName;
   std::string _parentFrameworkName;
 
   PackedVersion32 _currentVersion;
   PackedVersion32 _compatibilityVersion;
-  unsigned _swiftVersion;
+  unsigned _swiftABIVersion;
   ObjCConstraint _objcConstraint;
-  bool _hasTwoLevelNamespace;
-  bool _isAppExtensionSafe;
-  bool _hasWeakDefExports;
-  bool _installPathOverride;
+  bool _hasTwoLevelNamespace{false};
+  bool _isAppExtensionSafe{false};
+  bool _hasWeakDefExports{false};
+  bool _installPathOverride{false};
 
   std::vector<std::string> _reexportedLibraries;
   std::vector<std::string> _allowableClients;
   std::vector<std::string> _ignoreExports;
+  std::vector<std::string> _inlinedFrameworkNames;
   std::vector<Symbol> _exports;
   std::vector<Symbol> _undefineds;
+  std::shared_ptr<const InterfaceFile> _interface;
+  std::vector<std::shared_ptr<const InterfaceFile>> _inlinedFrameworks;
 
-  Impl() noexcept : _fileType(FileType::Unsupported),
-                    _platform(Platform::Unknown),
-                    _hasTwoLevelNamespace(false),
-                    _isAppExtensionSafe(false),
-                    _hasWeakDefExports(false),
-                    _installPathOverride(false) {}
+  Impl() noexcept = default;
 
-  template <typename T> void addSymbol(T &&sym, PackedVersion32 minOSVersion) {
+  bool init(const std::shared_ptr<const InterfaceFile> &interface,
+            cpu_type_t cpuType, cpu_subtype_t cpuSubType, ParsingFlags flags,
+            PackedVersion32 minOSVersion, std::string &errorMessage) noexcept;
+
+  template <typename T> void addSymbol(T &&name, SymbolFlags flags) {
+    if (find(_ignoreExports, name) == _ignoreExports.end())
+      _exports.emplace_back(std::forward<T>(name), flags);
+  }
+
+  void processSymbol(StringRef name, PackedVersion32 minOSVersion,
+                     bool disallowWeakImports) {
     // $ld$ <action> $ <condition> $ <symbol-name>
-    StringRef name = sym.getName();
-    if (name.startswith("$ld$")) {
-      StringRef action, condition, symbolName;
-      std::tie(action, name) = name.drop_front(4).split('$');
-      std::tie(condition, symbolName) = name.split('$');
-      if (action.empty() || condition.empty() || symbolName.empty())
-        return;
+    if (!name.startswith("$ld$"))
+      return;
 
-      if (!condition.startswith("os"))
-        return;
+    StringRef action, condition, symbolName;
+    std::tie(action, name) = name.drop_front(4).split('$');
+    std::tie(condition, symbolName) = name.split('$');
+    if (action.empty() || condition.empty() || symbolName.empty())
+      return;
 
-      auto version = parseVersion32(condition.drop_front(2));
-      if (version != minOSVersion)
-        return;
+    if (!condition.startswith("os"))
+      return;
 
-      if (action == "hide") {
-        _ignoreExports.emplace_back(symbolName);
-        return;
-      }
+    auto version = parseVersion32(condition.drop_front(2));
+    if (version != minOSVersion)
+      return;
 
-      if (action == "add") {
-        _exports.emplace_back(symbolName, sym.getFlags());
-        return;
-      }
-
-      if (action == "install_name") {
-        _installName = symbolName;
-        _installPathOverride = true;
-        if (_installName == "/System/Library/Frameworks/"
-                            "ApplicationServices.framework/Versions/A/"
-                            "ApplicationServices") {
-          _compatibilityVersion = PackedVersion32(1, 0, 0);
-        }
-        return;
-      }
-
-      if (action == "compatibility_version") {
-        _compatibilityVersion = parseVersion32(symbolName);
-        return;
-      }
+    if (action == "hide") {
+      _ignoreExports.emplace_back(symbolName);
+      return;
     }
 
-    if (find(_ignoreExports, sym.getName()) == _ignoreExports.end())
-      _exports.emplace_back(std::forward<T>(sym));
+    if (action == "add") {
+      _exports.emplace_back(symbolName);
+      return;
+    }
+
+    if (action == "weak") {
+      if (disallowWeakImports)
+        _ignoreExports.emplace_back(symbolName);
+
+      return;
+    }
+
+    if (action == "install_name") {
+      _installName = symbolName;
+      _installPathOverride = true;
+      if (_installName == "/System/Library/Frameworks/"
+                          "ApplicationServices.framework/Versions/A/"
+                          "ApplicationServices") {
+        _compatibilityVersion = PackedVersion32(1, 0, 0);
+      }
+      return;
+    }
+
+    if (action == "compatibility_version") {
+      _compatibilityVersion = parseVersion32(symbolName);
+      return;
+    }
   }
 };
 
-static Arch getArchForCPU(cpu_type_t cpuType, cpu_subtype_t cpuSubType,
-                          bool enforceCpuSubType, ArchitectureSet archs) {
+static Architecture getArchForCPU(cpu_type_t cpuType, cpu_subtype_t cpuSubType,
+                                  bool enforceCpuSubType,
+                                  ArchitectureSet archs) {
   // First check the exact cpu type and cpu sub type.
   auto arch = getArchType(cpuType, cpuSubType);
   if (archs.has(arch))
     return arch;
 
   if (enforceCpuSubType)
-    return Arch::unknown;
+    return Architecture::unknown;
 
   // Find ABI compatible slice instead.
   return archs.getABICompatibleSlice(arch);
@@ -163,12 +179,29 @@ LinkerInterfaceFile::LinkerInterfaceFile() noexcept
 LinkerInterfaceFile::~LinkerInterfaceFile() noexcept = default;
 LinkerInterfaceFile::LinkerInterfaceFile(LinkerInterfaceFile &&) noexcept =
     default;
-LinkerInterfaceFile &LinkerInterfaceFile::
-operator=(LinkerInterfaceFile &&) noexcept = default;
+LinkerInterfaceFile &
+LinkerInterfaceFile::operator=(LinkerInterfaceFile &&) noexcept = default;
 
 std::vector<std::string>
 LinkerInterfaceFile::getSupportedFileExtensions() noexcept {
   return {".tbd"};
+}
+
+/// \brief Load and parse the provided TBD file in the buffer and return on
+///        success the interface file.
+static Expected<std::unique_ptr<const InterfaceFile>>
+loadFile(std::unique_ptr<MemoryBuffer> buffer,
+         ReadFlags readFlags = ReadFlags::Symbols) {
+  Registry registry;
+  registry.addYAMLReaders();
+  registry.addDiagnosticReader();
+
+  auto textFile = registry.readFile(std::move(buffer), readFlags);
+  if (!textFile)
+    return textFile.takeError();
+
+  return std::unique_ptr<const InterfaceFile>(
+      cast<const InterfaceFile>(textFile.get().release()));
 }
 
 bool LinkerInterfaceFile::isSupported(const std::string &path,
@@ -176,14 +209,25 @@ bool LinkerInterfaceFile::isSupported(const std::string &path,
                                       size_t size) noexcept {
   Registry registry;
   registry.addYAMLReaders();
-  auto memBuffer = llvm::MemoryBufferRef(
+  registry.addDiagnosticReader();
+  auto memBuffer = MemoryBufferRef(
       StringRef(reinterpret_cast<const char *>(data), size), path);
   return registry.canRead(memBuffer);
 }
 
 bool LinkerInterfaceFile::shouldPreferTextBasedStubFile(
     const std::string &path) noexcept {
-  return false;
+  auto errorOr = MemoryBuffer::getFile(path);
+  if (errorOr.getError())
+    return false;
+
+  auto file = loadFile(std::move(errorOr.get()), ReadFlags::Header);
+  if (!file) {
+    consumeError(file.takeError());
+    return false;
+  }
+
+  return file.get()->isInstallAPI();
 }
 
 bool LinkerInterfaceFile::areEquivalent(const std::string &tbdPath,
@@ -191,38 +235,220 @@ bool LinkerInterfaceFile::areEquivalent(const std::string &tbdPath,
   Registry registry;
   registry.addYAMLReaders();
   registry.addBinaryReaders();
+  registry.addDiagnosticReader();
 
-  auto tbdErrorOr = llvm::MemoryBuffer::getFile(tbdPath);
+  auto tbdErrorOr = MemoryBuffer::getFile(tbdPath);
   if (tbdErrorOr.getError())
     return false;
 
-  auto textFile = registry.readFile(tbdErrorOr.get()->getMemBufferRef());
-  if (textFile == nullptr)
+  auto textFile = loadFile(std::move(tbdErrorOr.get()), ReadFlags::Header);
+  if (!textFile) {
+    consumeError(textFile.takeError());
+    return false;
+  }
+
+  if (textFile.get()->uuids().empty())
     return false;
 
-  if (textFile->getErrorCode())
-    return false;
-
-  auto *tbdFile = cast<InterfaceFile>(textFile.get());
-  if (tbdFile->uuids().empty())
-    return false;
-
-  auto machoErrorOr = llvm::MemoryBuffer::getFile(dylibPath);
+  auto machoErrorOr = MemoryBuffer::getFile(dylibPath);
   if (machoErrorOr.getError())
     return false;
 
-  auto machoFile = registry.readFile(machoErrorOr.get()->getMemBufferRef());
-  if (machoFile == nullptr)
+  auto machoFile =
+      registry.readFile(std::move(machoErrorOr.get()), ReadFlags::Header);
+  if (!machoFile) {
+    consumeError(machoFile.takeError());
     return false;
+  }
 
-  if (machoFile->getErrorCode())
+  auto *dylibFile = cast<InterfaceFileBase>(machoFile.get().get());
+  for (const auto &uuid1 : textFile.get()->uuids()) {
+    // Ignore unknown architectures.
+    if (uuid1.first == Architecture::unknown)
+      continue;
+
+    auto it = find_if(dylibFile->uuids(),
+                      [&](const std::pair<Architecture, std::string> &uuid2) {
+                        return uuid1.first == uuid2.first;
+                      });
+
+    if (it == dylibFile->uuids().end())
+      continue;
+
+    if (uuid1 != *it)
+      return false;
+  }
+  return true;
+}
+
+static tapi::Platform mapPlatform(tapi::internal::Platform platform) {
+  switch (platform) {
+  case tapi::internal::Platform::unknown:
+    return Platform::Unknown;
+  case tapi::internal::Platform::macOS:
+    return Platform::OSX;
+  case tapi::internal::Platform::iOS:
+  case tapi::internal::Platform::iOSSimulator:
+    return Platform::iOS;
+  case tapi::internal::Platform::watchOS:
+  case tapi::internal::Platform::watchOSSimulator:
+    return Platform::watchOS;
+  case tapi::internal::Platform::tvOS:
+  case tapi::internal::Platform::tvOSSimulator:
+    return Platform::tvOS;
+  case tapi::internal::Platform::bridgeOS:
+    return Platform::bridgeOS;
+  }
+}
+
+bool LinkerInterfaceFile::Impl::init(
+    const std::shared_ptr<const InterfaceFile> &interface, cpu_type_t cpuType,
+    cpu_subtype_t cpuSubType, ParsingFlags flags, PackedVersion32 minOSVersion,
+    std::string &errorMessage) noexcept {
+  _interface = interface;
+  bool enforceCpuSubType = flags & ParsingFlags::ExactCpuSubType;
+  auto arch = getArchForCPU(cpuType, cpuSubType, enforceCpuSubType,
+                            interface->getArchitectures());
+  if (arch == Architecture::unknown) {
+    auto arch = getArchType(cpuType, cpuSubType);
+    auto count = interface->getArchitectures().count();
+    if (count > 1)
+      errorMessage = "missing required architecture " +
+                     getArchName(arch).str() + " in file " +
+                     interface->getPath() + " (" + std::to_string(count) +
+                     " slices)";
+    else
+      errorMessage = "missing required architecture " +
+                     getArchName(arch).str() + " in file " +
+                     interface->getPath();
     return false;
+  }
 
-  auto *dylibFile = cast<InterfaceFile>(machoFile.get());
-  if (tbdFile->uuids().size() != dylibFile->uuids().size())
-    return false;
+  // Remove the patch level.
+  minOSVersion =
+      PackedVersion32(minOSVersion.getMajor(), minOSVersion.getMinor(), 0);
 
-  return equal(tbdFile->uuids(), dylibFile->uuids());
+  _platform = mapPlatform(interface->getPlatform());
+  _installName = interface->getInstallName();
+  _currentVersion = interface->getCurrentVersion();
+  _compatibilityVersion = interface->getCompatibilityVersion();
+  _hasTwoLevelNamespace = interface->isTwoLevelNamespace();
+  _isAppExtensionSafe = interface->isApplicationExtensionSafe();
+  _objcConstraint = interface->getObjCConstraint();
+  _swiftABIVersion = interface->getSwiftABIVersion();
+  _parentFrameworkName = interface->getParentUmbrella();
+
+  switch (interface->getFileType()) {
+  default:
+    _fileType = FileType::Unsupported;
+    break;
+  case TAPI_INTERNAL::FileType::TBD_V1:
+    _fileType = FileType::TBD_V1;
+    break;
+  case TAPI_INTERNAL::FileType::TBD_V2:
+    _fileType = FileType::TBD_V2;
+    break;
+  case TAPI_INTERNAL::FileType::TBD_V3:
+    _fileType = FileType::TBD_V3;
+    break;
+  }
+
+  // Pre-scan for special linker symbols.
+  for (const auto *symbol : interface->exports()) {
+    if (symbol->getKind() != SymbolKind::GlobalSymbol)
+      continue;
+
+    if (!symbol->getArchitectures().has(arch))
+      continue;
+
+    processSymbol(symbol->getName(), minOSVersion,
+                  flags & ParsingFlags::DisallowWeakImports);
+  }
+  sort(_ignoreExports);
+  auto last = std::unique(_ignoreExports.begin(), _ignoreExports.end());
+  _ignoreExports.erase(last, _ignoreExports.end());
+
+  bool useObjC1ABI =
+      (_platform == Platform::OSX) && (arch == Architecture::i386);
+  for (const auto *symbol : interface->exports()) {
+    if (!symbol->getArchitectures().has(arch))
+      continue;
+
+    switch (symbol->getKind()) {
+    case SymbolKind::GlobalSymbol:
+      if (symbol->getName().startswith("$ld$"))
+        continue;
+      addSymbol(symbol->getName(), symbol->getFlags());
+      break;
+    case SymbolKind::ObjectiveCClass:
+      if (useObjC1ABI) {
+        addSymbol(".objc_class_name_" + symbol->getName().str(),
+                  symbol->getFlags());
+      } else {
+        addSymbol("_OBJC_CLASS_$_" + symbol->getName().str(),
+                  symbol->getFlags());
+        addSymbol("_OBJC_METACLASS_$_" + symbol->getName().str(),
+                  symbol->getFlags());
+      }
+      break;
+    case SymbolKind::ObjectiveCClassEHType:
+      addSymbol("_OBJC_EHTYPE_$_" + symbol->getName().str(),
+                symbol->getFlags());
+      break;
+    case SymbolKind::ObjectiveCInstanceVariable:
+      addSymbol("_OBJC_IVAR_$_" + symbol->getName().str(), symbol->getFlags());
+      break;
+    }
+
+    if (symbol->isWeakDefined())
+      _hasWeakDefExports = true;
+  }
+
+  for (const auto *symbol : interface->undefineds()) {
+    if (!symbol->getArchitectures().has(arch))
+      continue;
+
+    switch (symbol->getKind()) {
+    case SymbolKind::GlobalSymbol:
+      _undefineds.emplace_back(symbol->getName(), symbol->getFlags());
+      break;
+    case SymbolKind::ObjectiveCClass:
+      if (useObjC1ABI) {
+        _undefineds.emplace_back(".objc_class_name_" + symbol->getName().str(),
+                                 symbol->getFlags());
+      } else {
+        _undefineds.emplace_back("_OBJC_CLASS_$_" + symbol->getName().str(),
+                                 symbol->getFlags());
+        _undefineds.emplace_back("_OBJC_METACLASS_$_" + symbol->getName().str(),
+                                 symbol->getFlags());
+      }
+      break;
+    case SymbolKind::ObjectiveCClassEHType:
+      _undefineds.emplace_back("_OBJC_EHTYPE_$_" + symbol->getName().str(),
+                               symbol->getFlags());
+      break;
+    case SymbolKind::ObjectiveCInstanceVariable:
+      _undefineds.emplace_back("_OBJC_IVAR_$_" + symbol->getName().str(),
+                               symbol->getFlags());
+      break;
+    }
+  }
+
+  for (const auto &client : interface->allowableClients())
+    if (client.hasArchitecture(arch))
+      _allowableClients.emplace_back(client.getInstallName());
+
+  for (const auto &reexport : interface->reexportedLibraries())
+    if (reexport.hasArchitecture(arch))
+      _reexportedLibraries.emplace_back(reexport.getInstallName());
+
+  for (auto &file : interface->_documents) {
+    auto framework = std::static_pointer_cast<const InterfaceFile>(file);
+    _inlinedFrameworkNames.emplace_back(framework->getInstallName());
+    _inlinedFrameworks.emplace_back(framework);
+  }
+
+  return true;
 }
 
 LinkerInterfaceFile *LinkerInterfaceFile::create(
@@ -230,6 +456,20 @@ LinkerInterfaceFile *LinkerInterfaceFile::create(
     cpu_type_t cpuType, cpu_subtype_t cpuSubType,
     CpuSubTypeMatching matchingMode, PackedVersion32 minOSVersion,
     std::string &errorMessage) noexcept {
+
+  ParsingFlags flags = (matchingMode == CpuSubTypeMatching::Exact)
+                           ? ParsingFlags::ExactCpuSubType
+                           : ParsingFlags::None;
+
+  return create(path, data, size, cpuType, cpuSubType, flags, minOSVersion,
+                errorMessage);
+}
+
+LinkerInterfaceFile *LinkerInterfaceFile::create(
+    const std::string &path, const uint8_t *data, size_t size,
+    cpu_type_t cpuType, cpu_subtype_t cpuSubType, ParsingFlags flags,
+    PackedVersion32 minOSVersion, std::string &errorMessage) noexcept {
+
   if (path.empty() || data == nullptr || size < 8) {
     errorMessage = "invalid argument";
     return nullptr;
@@ -242,43 +482,17 @@ LinkerInterfaceFile *LinkerInterfaceFile::create(
   // We could make the copy conditional on the file size, but as we're going
   // to read it completely anyway, I doubt there's any real performance
   // benefit to balance the added complexity.
-  auto input = llvm::MemoryBuffer::getMemBufferCopy(
+  auto input = MemoryBuffer::getMemBufferCopy(
       StringRef(reinterpret_cast<const char *>(data), size), path);
 
-  Registry registry;
-  registry.addYAMLReaders();
-
-  auto textFile = registry.readFile(input->getMemBufferRef());
-  if (textFile == nullptr) {
-    errorMessage = "unsupported file type";
+  auto interfaceOrError = loadFile(std::move(input));
+  if (!interfaceOrError) {
+    errorMessage = toString(interfaceOrError.takeError());
     return nullptr;
   }
 
-  if (textFile->getErrorCode()) {
-    errorMessage = "malformed file\n" + textFile->getParsingError();
-    return nullptr;
-  }
-
-  auto interface = cast<InterfaceFile>(textFile.get());
-  bool enforceCpuSubType = matchingMode == CpuSubTypeMatching::Exact;
-  auto arch = getArchForCPU(cpuType, cpuSubType, enforceCpuSubType,
-                            interface->getArchitectures());
-  if (arch == Arch::unknown) {
-    auto arch = getArchType(cpuType, cpuSubType);
-    auto count = interface->getArchitectures().count();
-    if (count > 1)
-      errorMessage = "missing required architecture " +
-                     getArchName(arch).str() + " in file " + path + " (" +
-                     std::to_string(count) + " slices)";
-    else
-      errorMessage = "missing required architecture " +
-                     getArchName(arch).str() + " in file " + path;
-    return nullptr;
-  }
-
-  // Remove the patch level.
-  minOSVersion =
-      PackedVersion32(minOSVersion.getMajor(), minOSVersion.getMinor(), 0);
+  std::shared_ptr<const InterfaceFile> interface =
+      std::move(interfaceOrError.get());
 
   auto file = new LinkerInterfaceFile;
   if (file == nullptr) {
@@ -286,103 +500,49 @@ LinkerInterfaceFile *LinkerInterfaceFile::create(
     return nullptr;
   }
 
-  file->_pImpl->_platform = interface->getPlatform();
-  file->_pImpl->_installName = interface->getInstallName();
-  file->_pImpl->_currentVersion = interface->getCurrentVersion();
-  file->_pImpl->_compatibilityVersion = interface->getCompatibilityVersion();
-  file->_pImpl->_hasTwoLevelNamespace = interface->isTwoLevelNamespace();
-  file->_pImpl->_isAppExtensionSafe = interface->isApplicationExtensionSafe();
-  file->_pImpl->_objcConstraint = interface->getObjCConstraint();
-  file->_pImpl->_swiftVersion = interface->getSwiftVersion();
-  file->_pImpl->_parentFrameworkName = interface->getParentUmbrella();
-  if (interface->getFileType() == TAPI_INTERNAL::FileType::TBD_V1)
-    file->_pImpl->_fileType = FileType::TBD_V1;
-  else if (interface->getFileType() == TAPI_INTERNAL::FileType::TBD_V2)
-    file->_pImpl->_fileType = FileType::TBD_V2;
-  else
-    file->_pImpl->_fileType = FileType::Unsupported;
-
-  auto platform = interface->getPlatform();
-  std::vector<Symbol> exports;
-  for (auto &it : interface->exports()) {
-    auto &symbol = it.second;
-
-    if (!symbol.hasArch(arch))
-      continue;
-
-    if (symbol.isSymbol()) {
-      exports.emplace_back(symbol.getName(), symbol.getFlags());
-    } else if (symbol.isObjCClass()) {
-      if (platform == Platform::OSX && arch == Arch::i386) {
-        exports.emplace_back(".objc_class_name" + symbol.getName(),
-                             symbol.getFlags());
-      } else {
-        exports.emplace_back("_OBJC_CLASS_$" + symbol.getName(),
-                             symbol.getFlags());
-        exports.emplace_back("_OBJC_METACLASS_$" + symbol.getName(),
-                             symbol.getFlags());
-      }
-    } else if (symbol.isObjCInstanceVariable()) {
-      exports.emplace_back("_OBJC_IVAR_$" + symbol.getName(),
-                           symbol.getFlags());
-    }
-
-    if (symbol.isWeakDefined())
-      file->_pImpl->_hasWeakDefExports = true;
+  if (file->_pImpl->init(interface, cpuType, cpuSubType, flags, minOSVersion,
+                         errorMessage)) {
+    return file;
   }
 
-  for (auto &it : interface->undefineds()) {
-    auto &symbol = it.second;
+  delete file;
+  return nullptr;
+}
 
-    if (!symbol.hasArch(arch))
-      continue;
+LinkerInterfaceFile *
+LinkerInterfaceFile::create(const std::string &path, cpu_type_t cpuType,
+                            cpu_subtype_t cpuSubType, ParsingFlags flags,
+                            PackedVersion32 minOSVersion,
+                            std::string &errorMessage) noexcept {
 
-    if (symbol.isSymbol()) {
-      file->_pImpl->_undefineds.emplace_back(symbol.getName(),
-                                             symbol.getFlags());
-    } else if (symbol.isObjCClass()) {
-      if (platform == Platform::OSX && arch == Arch::i386) {
-        file->_pImpl->_undefineds.emplace_back(
-            ".objc_class_name" + symbol.getName(), symbol.getFlags());
-      } else {
-        file->_pImpl->_undefineds.emplace_back(
-            "_OBJC_CLASS_$" + symbol.getName(), symbol.getFlags());
-        file->_pImpl->_undefineds.emplace_back(
-            "_OBJC_METACLASS_$" + symbol.getName(), symbol.getFlags());
-      }
-    } else if (symbol.isObjCInstanceVariable()) {
-      file->_pImpl->_undefineds.emplace_back("_OBJC_IVAR_$" + symbol.getName(),
-                                             symbol.getFlags());
-    }
+  auto errorOr = MemoryBuffer::getFile(path);
+  if (auto ec = errorOr.getError()) {
+    errorMessage = ec.message();
+    return nullptr;
   }
 
-  for (const auto &client : interface->allowableClients())
-    if (client.hasArchitecture(arch))
-      file->_pImpl->_allowableClients.emplace_back(client.getInstallName());
+  auto interfaceOrError = loadFile(std::move(errorOr.get()));
+  if (!interfaceOrError) {
+    errorMessage = toString(interfaceOrError.takeError());
+    return nullptr;
+  }
 
-  for (const auto &reexport : interface->reexportedLibraries())
-    if (reexport.hasArchitecture(arch))
-      file->_pImpl->_reexportedLibraries.emplace_back(
-          reexport.getInstallName());
+  auto file = new LinkerInterfaceFile;
+  if (file == nullptr) {
+    errorMessage = "could not allocate memory";
+    return nullptr;
+  }
 
-  sort(file->_pImpl->_allowableClients);
-  sort(file->_pImpl->_reexportedLibraries);
-  sort(exports, [](const Symbol &lhs, const Symbol &rhs) {
-    return lhs.getName() < rhs.getName();
-  });
-  sort(file->_pImpl->_undefineds, [](const Symbol &lhs, const Symbol &rhs) {
-    return lhs.getName() < rhs.getName();
-  });
+  std::shared_ptr<const InterfaceFile> interface =
+      std::move(interfaceOrError.get());
 
-  for (auto &symbol : exports)
-    file->_pImpl->addSymbol(std::move(symbol), minOSVersion);
+  if (file->_pImpl->init(interface, cpuType, cpuSubType, flags, minOSVersion,
+                         errorMessage)) {
+    return file;
+  }
 
-  sort(file->_pImpl->_ignoreExports);
-  auto last = std::unique(file->_pImpl->_ignoreExports.begin(),
-                          file->_pImpl->_ignoreExports.end());
-  file->_pImpl->_ignoreExports.erase(last, file->_pImpl->_ignoreExports.end());
-
-  return file;
+  delete file;
+  return nullptr;
 }
 
 FileType LinkerInterfaceFile::getFileType() const noexcept {
@@ -410,7 +570,7 @@ PackedVersion32 LinkerInterfaceFile::getCompatibilityVersion() const noexcept {
 }
 
 unsigned LinkerInterfaceFile::getSwiftVersion() const noexcept {
-  return _pImpl->_swiftVersion;
+  return _pImpl->_swiftABIVersion;
 }
 
 ObjCConstraint LinkerInterfaceFile::getObjCConstraint() const noexcept {
@@ -437,7 +597,8 @@ bool LinkerInterfaceFile::hasWeakDefinedExports() const noexcept {
   return _pImpl->_hasWeakDefExports;
 }
 
-const std::string &LinkerInterfaceFile::getParentFrameworkName() const noexcept {
+const std::string &LinkerInterfaceFile::getParentFrameworkName() const
+    noexcept {
   return _pImpl->_parentFrameworkName;
 }
 
@@ -462,6 +623,41 @@ const std::vector<Symbol> &LinkerInterfaceFile::exports() const noexcept {
 
 const std::vector<Symbol> &LinkerInterfaceFile::undefineds() const noexcept {
   return _pImpl->_undefineds;
+}
+
+const std::vector<std::string> &
+LinkerInterfaceFile::inlinedFrameworkNames() const noexcept {
+  return _pImpl->_inlinedFrameworkNames;
+}
+
+LinkerInterfaceFile *LinkerInterfaceFile::getInlinedFramework(
+    const std::string &installName, cpu_type_t cpuType,
+    cpu_subtype_t cpuSubType, ParsingFlags flags, PackedVersion32 minOSVersion,
+    std::string &errorMessage) const noexcept {
+
+  auto it = std::find_if(_pImpl->_inlinedFrameworks.begin(),
+                         _pImpl->_inlinedFrameworks.end(),
+                         [&](const std::shared_ptr<const InterfaceFile> &it) {
+                           return it->getInstallName() == installName;
+                         });
+
+  if (it == _pImpl->_inlinedFrameworks.end()) {
+    errorMessage = "no such inlined framework";
+    return nullptr;
+  }
+
+  auto file = new LinkerInterfaceFile;
+  if (file == nullptr) {
+    errorMessage = "could not allocate memory";
+    return nullptr;
+  }
+
+  if (file->_pImpl->init(*it, cpuType, cpuSubType, flags, minOSVersion,
+                         errorMessage))
+    return file;
+
+  delete file;
+  return nullptr;
 }
 
 TAPI_NAMESPACE_V1_END

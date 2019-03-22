@@ -6,69 +6,69 @@
 // License. See LICENSE.TXT for details.
 //
 //===----------------------------------------------------------------------===//
+///
+/// \file
+/// \brief Implements the Symbol
+///
+//===----------------------------------------------------------------------===//
 
 #include "tapi/Core/Symbol.h"
-#include "tapi/Core/LLVM.h"
-#include "llvm/Config/config.h"
-#include "llvm/Support/raw_ostream.h"
-
-#if HAVE_CXXABI_H
-#include <cxxabi.h>
-#endif
+#include "llvm/Demangle/Demangle.h"
+#include "llvm/Support/Compiler.h"
+#include <string>
 
 using namespace llvm;
 
 TAPI_NAMESPACE_INTERNAL_BEGIN
 
-void AvailabilityInfo::print(raw_ostream &os) const {
-  os << "[" << getPlatformName(getPlatform()) << " i:" << _introduced
-     << " o:" << _obsoleted << " u:" << (bool)_unavailable << "]";
-}
-
 std::string Symbol::getPrettyName(bool demangle) const {
   if (!demangle)
-    return _name;
+    return name;
 
-#if HAVE_CXXABI_H
-  if (demangle && StringRef(_name).startswith("__Z")) {
+  if (demangle && name.startswith("__Z")) {
     int status = 0;
-    char *demangledName =
-        abi::__cxa_demangle(&_name[1], nullptr, nullptr, &status);
+    char *demangledName = llvm::itaniumDemangle(name.substr(1).str().c_str(),
+                                                nullptr, nullptr, &status);
     if (status == 0) {
       std::string result = demangledName;
       free(demangledName);
       return result;
     }
   }
-#endif
 
-  if (_name[0] == '_')
-    return _name.substr(1);
+  if (name[0] == '_')
+    return name.substr(1);
 
-  return _name;
+  return name;
 }
 
 std::string Symbol::getAnnotatedName(bool demangle) const {
-  std::string name;
-  if (_isReexport)
-    name += "(reexported) ";
+  std::string result;
   if (isWeakDefined())
-    name += "(weak-def) ";
+    result += "(weak-def) ";
   if (isWeakReferenced())
-    name += "(weak-ref) ";
+    result += "(weak-ref) ";
   if (isThreadLocalValue())
-    name += "(tlv) ";
-  if (isObjCClass())
-    name += "(ObjC Class) ";
-  else if (isObjCInstanceVariable())
-    name += "(ObjC IVar) ";
-  return name + getPrettyName(demangle);
+    result += "(tlv) ";
+  switch (kind) {
+  case SymbolKind::GlobalSymbol:
+    return result + getPrettyName(demangle);
+  case SymbolKind::ObjectiveCClass:
+    return result + "(ObjC Class) " + name.str();
+  case SymbolKind::ObjectiveCClassEHType:
+    return result + "(ObjC Class EH) " + name.str();
+  case SymbolKind::ObjectiveCInstanceVariable:
+    return result + "(ObjC IVar) " + name.str();
+  }
 }
 
-void Symbol::print(raw_ostream &os) const {
-  os << getAnnotatedName();
-  for (const auto &avail : _availability)
-    os << " " << getArchName(avail.first) << ":" << avail.second;
+void Symbol::print(raw_ostream &os) const { os << getAnnotatedName(); }
+
+#if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
+/// \brief Print APISymbol in human readable format.
+LLVM_DUMP_METHOD void Symbol::dump(raw_ostream &os) const {
+  os << getAnnotatedName(true);
 }
+#endif
 
 TAPI_NAMESPACE_INTERNAL_END

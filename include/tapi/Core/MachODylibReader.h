@@ -15,20 +15,26 @@
 #ifndef TAPI_CORE_MACHO_DYLIB_READER_H
 #define TAPI_CORE_MACHO_DYLIB_READER_H
 
+#include "tapi/Core/ArchitectureSet.h"
+#include "tapi/Core/File.h"
 #include "tapi/Core/LLVM.h"
 #include "tapi/Core/Registry.h"
 #include "tapi/Defines.h"
+#include "llvm/BinaryFormat/Magic.h"
+#include "llvm/Support/Error.h"
+#include "llvm/Support/MemoryBuffer.h"
 
 TAPI_NAMESPACE_INTERNAL_BEGIN
 
 class MachODylibReader final : public Reader {
 public:
-  bool canRead(file_magic magic, llvm::MemoryBufferRef bufferRef,
+  bool canRead(file_magic magic, MemoryBufferRef bufferRef,
                FileType types) const override;
-  FileType getFileType(file_magic magic,
-                       llvm::MemoryBufferRef bufferRef) const override;
-  std::unique_ptr<File>
-  readFile(llvm::MemoryBufferRef memBuffer) const override;
+  Expected<FileType> getFileType(file_magic magic,
+                                 MemoryBufferRef bufferRef) const override;
+  Expected<std::unique_ptr<File>>
+  readFile(std::unique_ptr<MemoryBuffer> memBuffer, ReadFlags readFlags,
+           ArchitectureSet arches) const override;
 };
 
 TAPI_NAMESPACE_INTERNAL_END

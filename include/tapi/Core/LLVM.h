@@ -26,32 +26,51 @@ template <typename T, unsigned N> class SmallPtrSet;
 template <unsigned InternalLen> class SmallString;
 template <typename T, unsigned N> class SmallVector;
 template <typename T> class SmallVectorImpl;
+template <typename T> class ArrayRef;
 class raw_ostream;
 class StringRef;
 class Twine;
+class MemoryBuffer;
+class MemoryBufferRef;
 
 } // end namespace llvm.
+
+namespace clang {
+
+class DirectoryEntry;
+class FileEntry;
+class DiagnosticBuilder;
+
+} // end namespace clang.
 
 namespace tapi {
 
 // Casting operators.
-using llvm::isa;
 using llvm::cast;
+using llvm::cast_or_null;
 using llvm::dyn_cast;
 using llvm::dyn_cast_or_null;
-using llvm::cast_or_null;
+using llvm::isa;
 
 // ADT's.
+using llvm::ArrayRef;
 using llvm::ErrorOr;
 using llvm::IntrusiveRefCntPtr;
+using llvm::MemoryBuffer;
+using llvm::MemoryBufferRef;
+using llvm::raw_ostream;
 using llvm::SmallPtrSet;
 using llvm::SmallString;
 using llvm::SmallVector;
 using llvm::SmallVectorImpl;
-using llvm::raw_ostream;
 using llvm::StringRef;
 using llvm::Twine;
 
+// FileManager
+using clang::DirectoryEntry;
+using clang::FileEntry;
+
+using clang::DiagnosticBuilder;
 } // end namespace tapi.
 
 #endif // TAPI_CORE_LLVM_H

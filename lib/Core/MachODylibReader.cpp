@@ -13,32 +13,52 @@
 //===----------------------------------------------------------------------===//
 
 #include "tapi/Core/MachODylibReader.h"
-#include "tapi/Core/ArchitectureSupport.h"
-#include "tapi/Core/InterfaceFile.h"
+#include "tapi/Core/ExtendedInterfaceFile.h"
+#include "tapi/Core/LLVM.h"
+#include "tapi/Core/XPI.h"
+#include "llvm/ADT/StringRef.h"
+#include "llvm/BinaryFormat/Magic.h"
+#include "llvm/Object/MachO.h"
 #include "llvm/Object/MachOUniversal.h"
-#include "llvm/Support/Endian.h"
+#include <tuple>
 
 using namespace llvm;
 using namespace llvm::object;
 
+// Define missing platform enums.
+namespace llvm {
+namespace MachO {
+// clang-format off
+  enum MissingPlatformType {
+    PLATFORM_IOSSIMULATOR     = 7,
+    PLATFORM_TVOSSIMULATOR    = 8,
+    PLATFORM_WATCHOSSIMULATOR = 9,
+  };
+// clang-format on
+} // end namespace MachO.
+} // end namespace llvm.
+
 TAPI_NAMESPACE_INTERNAL_BEGIN
 
-FileType MachODylibReader::getFileType(file_magic magic,
-                                       MemoryBufferRef bufferRef) const {
+Expected<FileType>
+MachODylibReader::getFileType(file_magic magic,
+                              MemoryBufferRef bufferRef) const {
   switch (magic) {
   default:
     return FileType::Invalid;
-  case sys::fs::file_magic::macho_dynamically_linked_shared_lib:
+  case file_magic::macho_bundle:
+    return FileType::MachO_Bundle;
+  case file_magic::macho_dynamically_linked_shared_lib:
     return FileType::MachO_DynamicLibrary;
-  case sys::fs::file_magic::macho_dynamically_linked_shared_lib_stub:
+  case file_magic::macho_dynamically_linked_shared_lib_stub:
     return FileType::MachO_DynamicLibrary_Stub;
-  case sys::fs::file_magic::macho_universal_binary:
+  case file_magic::macho_universal_binary:
     break;
   }
 
   auto binaryOrErr = createBinary(bufferRef);
-  if (binaryOrErr.getError())
-    return FileType::Invalid;
+  if (!binaryOrErr)
+    return binaryOrErr.takeError();
 
   Binary &bin = *binaryOrErr.get();
   assert(isa<MachOUniversalBinary>(&bin) && "Unexpected MachO binary");
@@ -47,15 +67,24 @@ FileType MachODylibReader::getFileType(file_magic magic,
   FileType fileType = FileType::Invalid;
   // Check if any of the architecture slices are a MachO dylib.
   for (auto OI = UB->begin_objects(), OE = UB->end_objects(); OI != OE; ++OI) {
+    // This can fail if the object is an archive.
     auto objOrErr = OI->getAsObjectFile();
-    // Ignore archives.
-    if (objOrErr.getError())
+    // Skip the archive and comsume the error.
+    if (!objOrErr) {
+      consumeError(objOrErr.takeError());
       continue;
+    }
 
     auto &obj = *objOrErr.get();
     switch (obj.getHeader().filetype) {
     default:
       continue;
+    case MachO::MH_BUNDLE:
+      if (fileType == FileType::Invalid)
+        fileType = FileType::MachO_Bundle;
+      else if (fileType != FileType::MachO_Bundle)
+        return FileType::Invalid;
+      break;
     case MachO::MH_DYLIB:
       if (fileType == FileType::Invalid)
         fileType = FileType::MachO_DynamicLibrary;
@@ -77,41 +106,75 @@ FileType MachODylibReader::getFileType(file_magic magic,
 bool MachODylibReader::canRead(file_magic magic, MemoryBufferRef bufferRef,
                                FileType types) const {
   if (!(types & FileType::MachO_DynamicLibrary) &&
-      !(types & FileType::MachO_DynamicLibrary_Stub))
+      !(types & FileType::MachO_DynamicLibrary_Stub) &&
+      !(types & FileType::MachO_Bundle))
     return false;
-  return getFileType(magic, bufferRef) != FileType::Invalid;
+
+  auto fileType = getFileType(magic, bufferRef);
+  if (!fileType) {
+    consumeError(fileType.takeError());
+    return false;
+  }
+
+  return types & fileType.get();
 }
 
-static std::tuple<StringRef, SymbolType> parseSymbol(StringRef symbolName) {
+static std::tuple<StringRef, XPIKind> parseSymbol(StringRef symbolName) {
   StringRef name;
-  SymbolType type;
-  if (symbolName.startswith(".objc_class_name")) {
-    name = symbolName.drop_front(16);
-    type = SymbolType::ObjCClass;
-  } else if (symbolName.startswith("_OBJC_CLASS_$")) {
-    name = symbolName.drop_front(13);
-    type = SymbolType::ObjCClass;
-  } else if (symbolName.startswith("_OBJC_METACLASS_$")) {
+  XPIKind kind;
+  if (symbolName.startswith(".objc_class_name_")) {
     name = symbolName.drop_front(17);
-    type = SymbolType::ObjCClass;
-  } else if (symbolName.startswith("_OBJC_IVAR_$")) {
-    name = symbolName.drop_front(12);
-    type = SymbolType::ObjCInstanceVariable;
+    kind = XPIKind::ObjectiveCClass;
+  } else if (symbolName.startswith("_OBJC_CLASS_$_")) {
+    name = symbolName.drop_front(14);
+    kind = XPIKind::ObjectiveCClass;
+  } else if (symbolName.startswith("_OBJC_METACLASS_$_")) {
+    name = symbolName.drop_front(18);
+    kind = XPIKind::ObjectiveCClass;
+  } else if (symbolName.startswith("_OBJC_EHTYPE_$_")) {
+    name = symbolName.drop_front(15);
+    kind = XPIKind::ObjectiveCClassEHType;
+  } else if (symbolName.startswith("_OBJC_IVAR_$_")) {
+    name = symbolName.drop_front(13);
+    kind = XPIKind::ObjectiveCInstanceVariable;
   } else {
     name = symbolName;
-    type = SymbolType::Symbol;
+    kind = XPIKind::GlobalSymbol;
   }
-  return std::make_tuple(name, type);
+  return std::make_tuple(name, kind);
 }
 
-void load(MachOObjectFile *object, InterfaceFile *file) {
+static Error readMachOHeaderData(MachOObjectFile *object,
+                                 ExtendedInterfaceFile *file) {
   auto H = object->getHeader();
   auto arch = getArchType(H.cputype, H.cpusubtype);
+  if (arch == Architecture::unknown)
+    return make_error<StringError>(
+        "unknown/unsupported architecture",
+        std::make_error_code(std::errc::not_supported));
   file->setArch(arch);
-  auto fileType = H.filetype == MachO::MH_DYLIB
-                      ? FileType::MachO_DynamicLibrary
-                      : FileType::MachO_DynamicLibrary_Stub;
+  FileType fileType = FileType::Invalid;
+  switch (H.filetype) {
+  default:
+    llvm_unreachable("unsupported binary type");
+  case MachO::MH_DYLIB:
+    fileType = FileType::MachO_DynamicLibrary;
+    break;
+  case MachO::MH_DYLIB_STUB:
+    fileType = FileType::MachO_DynamicLibrary_Stub;
+    break;
+  case MachO::MH_BUNDLE:
+    fileType = FileType::MachO_Bundle;
+    break;
+  }
+
   file->setFileType(fileType);
+
+  if (H.flags & MachO::MH_TWOLEVEL)
+    file->setTwoLevelNamespace();
+
+  if (H.flags & MachO::MH_APP_EXTENSION_SAFE)
+    file->setApplicationExtensionSafe();
 
   for (const auto &LCI : object->load_commands()) {
     switch (LCI.C.cmd) {
@@ -143,27 +206,64 @@ void load(MachOObjectFile *object, InterfaceFile *file) {
       break;
     }
     case MachO::LC_VERSION_MIN_MACOSX:
-      file->setPlatform(Platform::OSX);
+      file->setPlatform(Platform::macOS);
       break;
     case MachO::LC_VERSION_MIN_IPHONEOS:
-      file->setPlatform(Platform::iOS);
+      if (arch == Architecture::i386 || arch == Architecture::x86_64)
+        file->setPlatform(Platform::iOSSimulator);
+      else
+        file->setPlatform(Platform::iOS);
       break;
     case MachO::LC_VERSION_MIN_WATCHOS:
-      file->setPlatform(Platform::watchOS);
+      if (arch == Architecture::i386 || arch == Architecture::x86_64)
+        file->setPlatform(Platform::watchOSSimulator);
+      else
+        file->setPlatform(Platform::watchOS);
       break;
     case MachO::LC_VERSION_MIN_TVOS:
-      file->setPlatform(Platform::tvOS);
+      if (arch == Architecture::i386 || arch == Architecture::x86_64)
+        file->setPlatform(Platform::tvOSSimulator);
+      else
+        file->setPlatform(Platform::tvOS);
       break;
+    case MachO::LC_BUILD_VERSION: {
+      auto BVC = object->getBuildVersionLoadCommand(LCI);
+      switch (BVC.platform) {
+      default:
+        return make_error<StringError>(
+            "unknown/unsupported platform",
+            std::make_error_code(std::errc::not_supported));
+      case MachO::PLATFORM_MACOS:
+        file->setPlatform(Platform::macOS);
+        break;
+      case MachO::PLATFORM_IOS:
+        file->setPlatform(Platform::iOS);
+        break;
+      case MachO::PLATFORM_TVOS:
+        file->setPlatform(Platform::tvOS);
+        break;
+      case MachO::PLATFORM_WATCHOS:
+        file->setPlatform(Platform::watchOS);
+        break;
+      case MachO::PLATFORM_BRIDGEOS:
+        file->setPlatform(Platform::bridgeOS);
+        break;
+      case MachO::PLATFORM_IOSSIMULATOR:
+        file->setPlatform(Platform::iOSSimulator);
+        break;
+      case MachO::PLATFORM_TVOSSIMULATOR:
+        file->setPlatform(Platform::tvOSSimulator);
+        break;
+      case MachO::PLATFORM_WATCHOSSIMULATOR:
+        file->setPlatform(Platform::watchOSSimulator);
+        break;
+      }
+      break;
+    }
     default:
       break;
     }
   }
-
-  if (H.flags & MachO::MH_TWOLEVEL)
-    file->setTwoLevelNamespace();
-
-  if (H.flags & MachO::MH_APP_EXTENSION_SAFE)
-    file->setApplicationExtensionSafe();
 
   for (auto &section : object->sections()) {
     StringRef sectionName;
@@ -192,14 +292,24 @@ void load(MachOObjectFile *object, InterfaceFile *file) {
       else
         file->setObjCConstraint(ObjCConstraint::Retain_Release);
 
-      file->setSwiftVersion(((flags >> 8) & 0xFF));
+      file->setSwiftABIVersion(((flags >> 8) & 0xFF));
     }
   }
 
-  for (const auto &symbol : object->exports()) {
+  return Error::success();
+}
+
+static Error readExportedSymbols(MachOObjectFile *object,
+                                 ExtendedInterfaceFile *file) {
+  auto H = object->getHeader();
+  auto arch = getArchType(H.cputype, H.cpusubtype);
+  assert(arch != Architecture::unknown && "unknown architecture slice");
+
+  Error error = Error::success();
+  for (const auto &symbol : object->exports(error)) {
     StringRef name;
-    SymbolType type;
-    std::tie(name, type) = parseSymbol(symbol.name());
+    XPIKind kind;
+    std::tie(name, kind) = parseSymbol(symbol.name());
     SymbolFlags flags = SymbolFlags::None;
     switch (symbol.flags() & MachO::EXPORT_SYMBOL_FLAGS_KIND_MASK) {
     case MachO::EXPORT_SYMBOL_FLAGS_KIND_REGULAR:
@@ -210,12 +320,17 @@ void load(MachOObjectFile *object, InterfaceFile *file) {
       flags = SymbolFlags::ThreadLocalValue;
       break;
     }
-    file->addExportedSymbol(name.str(), type, flags, arch);
+    file->addSymbol(kind, name, arch, flags);
   }
 
-  // Only record undef symbols for flat namespace dylibs.
-  if (file->isTwoLevelNamespace())
-    return;
+  return error;
+}
+
+static Error readUndefinedSymbols(MachOObjectFile *object,
+                                  ExtendedInterfaceFile *file) {
+  auto H = object->getHeader();
+  auto arch = getArchType(H.cputype, H.cpusubtype);
+  assert(arch != Architecture::unknown && "unknown architecture slice");
 
   for (const auto &symbol : object->symbols()) {
     auto symbolFlags = symbol.getFlags();
@@ -228,30 +343,65 @@ void load(MachOObjectFile *object, InterfaceFile *file) {
                      ? SymbolFlags::WeakReferenced
                      : SymbolFlags::None;
     auto symbolName = symbol.getName();
-    if (symbolName.getError())
-      continue;
+    if (!symbolName)
+      return symbolName.takeError();
 
     StringRef name;
-    SymbolType type;
-    std::tie(name, type) = parseSymbol(symbolName.get());
-    file->addUndefinedSymbol(name.str(), type, flags, arch);
+    XPIKind kind;
+    std::tie(name, kind) = parseSymbol(symbolName.get());
+    file->addUndefinedSymbol(kind, name, arch, flags);
   }
+
+  return Error::success();
 }
 
-std::unique_ptr<File>
-MachODylibReader::readFile(MemoryBufferRef memBuffer) const {
-  auto file = std::unique_ptr<InterfaceFile>(new InterfaceFile);
-  file->setPath(memBuffer.getBufferIdentifier());
-
-  auto binaryOrErr = createBinary(memBuffer);
-  if (auto ec = binaryOrErr.getError()) {
-    file->setErrorCode(ec);
-    return std::move(file);
+static Error load(MachOObjectFile *object, ExtendedInterfaceFile *file,
+                  ReadFlags readFlags) {
+  if (readFlags >= ReadFlags::Header) {
+    auto error = readMachOHeaderData(object, file);
+    if (error)
+      return error;
   }
+
+  if (readFlags >= ReadFlags::Symbols) {
+    auto error = readExportedSymbols(object, file);
+    if (error)
+      return error;
+  }
+
+  // Only record undef symbols for flat namespace dylibs.
+  if (file->isTwoLevelNamespace())
+    return Error::success();
+
+  if (readFlags >= ReadFlags::Symbols)
+    return readUndefinedSymbols(object, file);
+
+  return Error::success();
+}
+
+Expected<std::unique_ptr<File>>
+MachODylibReader::readFile(std::unique_ptr<MemoryBuffer> memBuffer,
+                           ReadFlags readFlags, ArchitectureSet arches) const {
+  auto file = std::unique_ptr<ExtendedInterfaceFile>(new ExtendedInterfaceFile);
+  file->setPath(memBuffer->getBufferIdentifier());
+  file->setMemoryBuffer(std::move(memBuffer));
+
+  auto binaryOrErr = createBinary(file->getMemBufferRef());
+  if (!binaryOrErr)
+    return binaryOrErr.takeError();
 
   Binary &binary = *binaryOrErr.get();
   if (auto *object = dyn_cast<MachOObjectFile>(&binary)) {
-    load(object, file.get());
+    auto arch = getArchType(object->getHeader().cputype,
+                            object->getHeader().cpusubtype);
+    if (!arches.has(arch))
+      return make_error<StringError>(
+          "Requested architectures don't exist",
+          std::make_error_code(std::errc::not_supported));
+
+    auto error = load(object, file.get(), readFlags);
+    if (error)
+      return std::move(error);
     return std::move(file);
   }
 
@@ -259,23 +409,46 @@ MachODylibReader::readFile(MemoryBufferRef memBuffer) const {
   assert(isa<MachOUniversalBinary>(&binary) &&
          "Expected a MachO universal binary.");
   auto *UB = cast<MachOUniversalBinary>(&binary);
+
+  bool foundArch = false;
   for (auto OI = UB->begin_objects(), OE = UB->end_objects(); OI != OE; ++OI) {
+    // Skip the architecture that is not requested.
+    auto arch = getArchType(OI->getCPUType(), OI->getCPUSubType());
+    if (!arches.has(arch))
+      continue;
+
+    // Skip unknown architectures.
+    if (arch == Architecture::unknown)
+      continue;
+
+    foundArch = true;
+    // This can fail if the object is an archive.
     auto objOrErr = OI->getAsObjectFile();
 
-    // Ignore archives.
-    if (objOrErr.getError())
+    // Skip the archive and comsume the error.
+    if (!objOrErr) {
+      consumeError(objOrErr.takeError());
       continue;
+    }
 
     auto &object = *objOrErr.get();
     switch (object.getHeader().filetype) {
     default:
       break;
+    case MachO::MH_BUNDLE:
     case MachO::MH_DYLIB:
     case MachO::MH_DYLIB_STUB:
-      load(&object, file.get());
+      auto error = load(&object, file.get(), readFlags);
+      if (error)
+        return std::move(error);
       break;
     }
   }
+
+  if (!foundArch)
+    return make_error<StringError>(
+        "Requested architectures don't exist",
+        std::make_error_code(std::errc::not_supported));
 
   return std::move(file);
 }

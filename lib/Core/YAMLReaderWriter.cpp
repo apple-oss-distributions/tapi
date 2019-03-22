@@ -13,8 +13,11 @@
 //===----------------------------------------------------------------------===//
 
 #include "tapi/Core/YAMLReaderWriter.h"
-#include "tapi/Core/InterfaceFile.h"
 #include "tapi/Core/Registry.h"
+#include "llvm/ADT/SmallString.h"
+#include "llvm/Support/SourceMgr.h"
+#include "llvm/Support/YAMLTraits.h"
+#include "llvm/Support/raw_ostream.h"
 
 using namespace llvm;
 using namespace llvm::yaml;
@@ -39,11 +42,11 @@ template <> struct MappingTraits<const File *> {
   static void mapping(IO &io, const File *&file) {
     auto ctx = reinterpret_cast<YAMLContext *>(io.getContext());
     assert(ctx != nullptr);
-    ctx->_base.handleDocument(io, file);
+    ctx->base.handleDocument(io, file);
   }
 };
-}
-} // end namespace llvm::yaml.
+} // namespace yaml
+} // namespace llvm
 
 TAPI_NAMESPACE_INTERNAL_BEGIN
 
@@ -52,17 +55,16 @@ static void DiagHandler(const SMDiagnostic &diag, void *context) {
   SmallString<1024> message;
   raw_svector_ostream s(message);
 
-  SMDiagnostic newdiag(*diag.getSourceMgr(), diag.getLoc(), file->_path,
+  SMDiagnostic newdiag(*diag.getSourceMgr(), diag.getLoc(), file->path,
                        diag.getLineNo(), diag.getColumnNo(), diag.getKind(),
                        diag.getMessage(), diag.getLineContents(),
                        diag.getRanges(), diag.getFixIts());
 
   newdiag.print(nullptr, s);
-  file->_errorMessage = message.str();
+  file->errorMessage = message.str();
 }
 
-bool TextBasedStubBase::canRead(MemoryBufferRef memBufferRef,
-                                FileType types) const {
+bool YAMLBase::canRead(MemoryBufferRef memBufferRef, FileType types) const {
   for (const auto &handler : _documentHandlers) {
     if (handler->canRead(memBufferRef, types))
       return true;
@@ -70,7 +72,7 @@ bool TextBasedStubBase::canRead(MemoryBufferRef memBufferRef,
   return false;
 }
 
-bool TextBasedStubBase::canWrite(const File *file) const {
+bool YAMLBase::canWrite(const File *file) const {
   for (const auto &handler : _documentHandlers) {
     if (handler->canWrite(file))
       return true;
@@ -78,7 +80,7 @@ bool TextBasedStubBase::canWrite(const File *file) const {
   return false;
 }
 
-FileType TextBasedStubBase::getFileType(MemoryBufferRef bufferRef) const {
+FileType YAMLBase::getFileType(MemoryBufferRef bufferRef) const {
   for (const auto &handler : _documentHandlers) {
     auto fileType = handler->getFileType(bufferRef);
     if (fileType != FileType::Invalid)
@@ -87,7 +89,7 @@ FileType TextBasedStubBase::getFileType(MemoryBufferRef bufferRef) const {
   return FileType::Invalid;
 }
 
-bool TextBasedStubBase::handleDocument(IO &io, const File *&file) const {
+bool YAMLBase::handleDocument(IO &io, const File *&file) const {
   for (const auto &handler : _documentHandlers) {
     if (handler->handleDocument(io, file))
       return true;
@@ -95,61 +97,69 @@ bool TextBasedStubBase::handleDocument(IO &io, const File *&file) const {
   return false;
 }
 
-bool TextBasedStubReader::canRead(file_magic magic,
-                                  MemoryBufferRef memBufferRef,
-                                  FileType types) const {
-  return TextBasedStubBase::canRead(memBufferRef, types);
+bool YAMLReader::canRead(file_magic magic, MemoryBufferRef memBufferRef,
+                         FileType types) const {
+  return YAMLBase::canRead(memBufferRef, types);
 }
 
-FileType TextBasedStubReader::getFileType(file_magic magic,
-                                          MemoryBufferRef memBufferRef) const {
-  return TextBasedStubBase::getFileType(memBufferRef);
+Expected<FileType> YAMLReader::getFileType(file_magic magic,
+                                           MemoryBufferRef memBufferRef) const {
+  return YAMLBase::getFileType(memBufferRef);
 }
 
-std::unique_ptr<File>
-TextBasedStubReader::readFile(MemoryBufferRef memBuffer) const {
+Expected<std::unique_ptr<File>>
+YAMLReader::readFile(std::unique_ptr<MemoryBuffer> memBuffer,
+                     ReadFlags readFlags, ArchitectureSet arches) const {
   // Create YAML Input Reader.
   YAMLContext ctx(*this);
-  ctx._path = memBuffer.getBufferIdentifier();
-  llvm::yaml::Input yin(memBuffer.getBuffer(), &ctx, DiagHandler, &ctx);
+  ctx.path = memBuffer->getBufferIdentifier();
+  ctx.readFlags = readFlags;
+  llvm::yaml::Input yin(memBuffer->getBuffer(), &ctx, DiagHandler, &ctx);
 
   // Fill vector with File objects created by parsing yaml.
   std::vector<const File *> files;
   yin >> files;
-  if (files.size() != 1)
-    return nullptr;
+
+  if (yin.error())
+    return make_error<StringError>("malformed file\n" + ctx.errorMessage,
+                                   yin.error());
+
+  if (files.empty())
+    return errorCodeToError(std::make_error_code(std::errc::not_supported));
 
   auto *file = const_cast<File *>(files.front());
-  if (yin.error()) {
-    file->setErrorCode(yin.error());
-    file->setParsingError(ctx._errorMessage);
+  file->setMemoryBuffer(std::move(memBuffer));
+
+  for (auto it = std::next(files.begin()); it != files.end(); ++it) {
+    auto *document = const_cast<File *>(*it);
+    file->addDocument(std::unique_ptr<File>(document));
   }
+
   return std::unique_ptr<File>(file);
 }
 
-bool TextBasedStubWriter::canWrite(const File *file) const {
-  return TextBasedStubBase::canWrite(file);
+bool YAMLWriter::canWrite(const File *file) const {
+  return YAMLBase::canWrite(file);
 }
 
-std::error_code TextBasedStubWriter::writeFile(const File *file) const {
+Error YAMLWriter::writeFile(raw_ostream &os, const File *file) const {
   if (file == nullptr)
-    return std::make_error_code(std::errc::invalid_argument);
-
-  // Create YAML Output Writer.
-  std::error_code ec;
-
-  raw_fd_ostream out(file->getPath(), ec, sys::fs::F_Text);
-  if (ec)
-    return ec;
+    return errorCodeToError(std::make_error_code(std::errc::invalid_argument));
 
   YAMLContext ctx(*this);
-  ctx._path = file->getPath();
-  llvm::yaml::Output yout(out, &ctx, /*WrapColumn=*/80);
+  ctx.path = file->getPath();
+  llvm::yaml::Output yout(os, &ctx, /*WrapColumn=*/80);
+
+  std::vector<const File *> files;
+  files.emplace_back(file);
+
+  for (auto &it : file->_documents)
+    files.emplace_back(it.get());
 
   // Stream out yaml.
-  yout << file;
+  yout << files;
 
-  return ec;
+  return Error::success();
 }
 
 TAPI_NAMESPACE_INTERNAL_END

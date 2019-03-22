@@ -15,47 +15,63 @@
 #ifndef TAPI_CORE_REGISTRY_H
 #define TAPI_CORE_REGISTRY_H
 
+#include "tapi/Core/ArchitectureSet.h"
 #include "tapi/Core/File.h"
+#include "tapi/Core/LLVM.h"
 #include "tapi/Defines.h"
-#include "llvm/Support/FileSystem.h"
+#include "llvm/BinaryFormat/Magic.h"
+#include "llvm/Support/Error.h"
 #include "llvm/Support/MemoryBuffer.h"
 
-using llvm::sys::fs::file_magic;
-using llvm::MemoryBufferRef;
+using llvm::Error;
+using llvm::Expected;
+using llvm::file_magic;
 
 TAPI_NAMESPACE_INTERNAL_BEGIN
 
 class Registry;
 
+enum class ReadFlags {
+  Header,
+  Symbols,
+  All,
+};
+
 /// Abstract Reader class - all readers need to inherit from this class and
 /// implement the interface.
 class Reader {
 public:
-  virtual ~Reader() {}
+  virtual ~Reader() = default;
   virtual bool canRead(file_magic fileType, MemoryBufferRef bufferRef,
                        FileType types = FileType::All) const = 0;
-  virtual FileType getFileType(file_magic magic,
-                               MemoryBufferRef bufferRef) const = 0;
-  virtual std::unique_ptr<File> readFile(MemoryBufferRef memBuffer) const = 0;
+  virtual Expected<FileType> getFileType(file_magic magic,
+                                         MemoryBufferRef bufferRef) const = 0;
+  virtual Expected<std::unique_ptr<File>>
+  readFile(std::unique_ptr<MemoryBuffer> memBuffer, ReadFlags readFlags,
+           ArchitectureSet arches) const = 0;
 };
 
 /// Abstract Writer class - all writers need to inherit from this class and
 /// implement the interface.
 class Writer {
 public:
-  virtual ~Writer() {}
+  virtual ~Writer() = default;
   virtual bool canWrite(const File *file) const = 0;
-  virtual std::error_code writeFile(const File *file) const = 0;
+  virtual Error writeFile(raw_ostream &os, const File *file) const = 0;
 };
 
 class Registry {
 public:
   bool canRead(MemoryBufferRef memBuffer, FileType types = FileType::All) const;
-  FileType getFileType(MemoryBufferRef memBuffer) const;
+  Expected<FileType> getFileType(MemoryBufferRef memBuffer) const;
   bool canWrite(const File *file) const;
 
-  std::unique_ptr<File> readFile(MemoryBufferRef memBuffer) const;
-  std::error_code writeFile(const File *file) const;
+  Expected<std::unique_ptr<File>>
+  readFile(std::unique_ptr<MemoryBuffer> memBuffer,
+           ReadFlags readFlags = ReadFlags::All,
+           ArchitectureSet arches = ArchitectureSet::All()) const;
+  Error writeFile(const File *file, const std::string &path) const;
+  Error writeFile(raw_ostream &os, const File *file) const;
 
   void add(std::unique_ptr<Reader> reader) {
     _readers.emplace_back(std::move(reader));
@@ -68,6 +84,8 @@ public:
   void addBinaryReaders();
   void addYAMLReaders();
   void addYAMLWriters();
+  void addDiagnosticReader();
+  void addReexportWriters();
 
 private:
   std::vector<std::unique_ptr<Reader>> _readers;

@@ -15,7 +15,7 @@
 #ifndef TAPI_CORE_STL_EXTRAS_H
 #define TAPI_CORE_STL_EXTRAS_H
 
-#include <tapi/Defines.h>
+#include "tapi/Defines.h"
 #include <algorithm>
 
 TAPI_NAMESPACE_INTERNAL_BEGIN

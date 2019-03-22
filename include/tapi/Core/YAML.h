@@ -15,98 +15,84 @@
 #ifndef TAPI_CORE_YAML_H
 #define TAPI_CORE_YAML_H
 
+#include "tapi/Core/Architecture.h"
+#include "tapi/Core/ArchitectureSet.h"
+#include "tapi/Core/ArchitectureSupport.h"
+#include "tapi/Core/AvailabilityInfo.h"
+#include "tapi/Core/Platform.h"
+#include "tapi/Core/YAMLReaderWriter.h"
+#include "clang/Frontend/FrontendOptions.h"
+#include "llvm/ADT/StringSwitch.h"
 #include "llvm/Support/YAMLTraits.h"
 
+using UUID = std::pair<TAPI_INTERNAL::Architecture, std::string>;
+
+LLVM_YAML_STRONG_TYPEDEF(llvm::StringRef, FlowStringRef)
 LLVM_YAML_STRONG_TYPEDEF(uint8_t, SwiftVersion)
+LLVM_YAML_IS_FLOW_SEQUENCE_VECTOR(UUID)
+LLVM_YAML_IS_FLOW_SEQUENCE_VECTOR(FlowStringRef)
 
 namespace llvm {
 namespace yaml {
 
-using namespace tapi;
-using namespace tapi::internal;
+template <> struct ScalarTraits<FlowStringRef> {
+  static void output(const FlowStringRef &value, void *ctx, raw_ostream &os);
+  static StringRef input(StringRef value, void *ctx, FlowStringRef &out);
+  static QuotingType mustQuote(StringRef name);
+};
 
+using tapi::ObjCConstraint;
 template <> struct ScalarEnumerationTraits<ObjCConstraint> {
-  static void enumeration(IO &io, ObjCConstraint &constraint) {
-    io.enumCase(constraint, "none", ObjCConstraint::None);
-    io.enumCase(constraint, "retain_release", ObjCConstraint::Retain_Release);
-    io.enumCase(constraint, "retain_release_for_simulator",
-                ObjCConstraint::Retain_Release_For_Simulator);
-    io.enumCase(constraint, "retain_release_or_gc",
-                ObjCConstraint::Retain_Release_Or_GC);
-    io.enumCase(constraint, "gc", ObjCConstraint::GC);
-  }
+  static void enumeration(IO &io, ObjCConstraint &constraint);
 };
 
+using TAPI_INTERNAL::Platform;
 template <> struct ScalarEnumerationTraits<Platform> {
-  static void enumeration(IO &io, Platform &platform) {
-    io.enumCase(platform, "unknown", Platform::Unknown);
-    io.enumCase(platform, "macosx", Platform::OSX);
-    io.enumCase(platform, "ios", Platform::iOS);
-    io.enumCase(platform, "watchos", Platform::watchOS);
-    io.enumCase(platform, "tvos", Platform::tvOS);
-  }
+  static void enumeration(IO &io, Platform &platform);
 };
 
+using TAPI_INTERNAL::Architecture;
+using TAPI_INTERNAL::ArchitectureSet;
 template <> struct ScalarBitSetTraits<ArchitectureSet> {
-  static void bitset(IO &io, ArchitectureSet &archs) {
-    io.bitSetCase(archs, "armv7", Arch::armv7);
-    io.bitSetCase(archs, "armv7s", Arch::armv7s);
-    io.bitSetCase(archs, "armv7k", Arch::armv7k);
-    io.bitSetCase(archs, "arm64", Arch::arm64);
-    io.bitSetCase(archs, "i386", Arch::i386);
-    io.bitSetCase(archs, "x86_64", Arch::x86_64);
-    io.bitSetCase(archs, "x86_64h", Arch::x86_64h);
-  }
+  static void bitset(IO &io, ArchitectureSet &archs);
 };
 
+using TAPI_INTERNAL::getArchType;
+template <> struct ScalarTraits<Architecture> {
+  static void output(const Architecture &value, void *, raw_ostream &os);
+  static StringRef input(StringRef scalar, void *, Architecture &value);
+  static QuotingType mustQuote(StringRef);
+};
+
+using TAPI_INTERNAL::PackedVersion;
 template <> struct ScalarTraits<PackedVersion> {
-  static void output(const PackedVersion &value, void *, raw_ostream &os) {
-    os << value;
-  }
-
-  static StringRef input(StringRef scalar, void *, PackedVersion &value) {
-    if (!value.parse32(scalar))
-      return "invalid packed version string.";
-    return StringRef();
-  }
-
-  static bool mustQuote(StringRef) { return false; }
+  static void output(const PackedVersion &value, void *, raw_ostream &os);
+  static StringRef input(StringRef scalar, void *, PackedVersion &value);
+  static QuotingType mustQuote(StringRef);
 };
 
 template <> struct ScalarTraits<SwiftVersion> {
-  static void output(const SwiftVersion &value, void *, raw_ostream &os) {
-    switch (value) {
-    case 1:
-      os << "1.0";
-      break;
-    case 2:
-      os << "1.1";
-      break;
-    case 3:
-      os << "2.0";
-      break;
-    case 4:
-      os << "3.0";
-      break;
-    default:
-      report_fatal_error("invalid Swift ABI version.");
-      break;
-    }
-  }
+  static void output(const SwiftVersion &value, void *, raw_ostream &os);
+  static StringRef input(StringRef scalar, void *, SwiftVersion &value);
+  static QuotingType mustQuote(StringRef);
+};
 
-  static StringRef input(StringRef scalar, void *, SwiftVersion &value) {
-    value = StringSwitch<SwiftVersion>(scalar)
-                .Case("1.0", 1)
-                .Case("1.1", 2)
-                .Case("2.0", 3)
-                .Case("3.0", 4)
-                .Default(0);
-    if (value == SwiftVersion(0))
-      return "invalid Swift ABI version.";
-    return StringRef();
-  }
+using TAPI_INTERNAL::AvailabilityInfo;
+template <> struct ScalarTraits<AvailabilityInfo> {
+  static void output(const AvailabilityInfo &value, void *, raw_ostream &os);
+  static StringRef input(StringRef scalar, void *, AvailabilityInfo &value);
+  static QuotingType mustQuote(StringRef);
+};
 
-  static bool mustQuote(StringRef) { return false; }
+template <> struct ScalarTraits<UUID> {
+  static void output(const UUID &value, void *, raw_ostream &os);
+  static StringRef input(StringRef scalar, void *, UUID &value);
+  static QuotingType mustQuote(StringRef);
+};
+
+using clang::InputKind;
+template <> struct ScalarEnumerationTraits<InputKind::Language> {
+  static void enumeration(IO &io, InputKind::Language &kind);
 };
 
 } // end namespace yaml.

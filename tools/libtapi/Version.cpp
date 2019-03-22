@@ -33,7 +33,17 @@ std::string Version::getAsString() noexcept {
 }
 
 std::string Version::getFullVersionAsString() noexcept {
-  return "Apple TAPI version " TAPI_MAKE_STRING(TAPI_VERSION);
+  std::string result;
+#ifdef TAPI_VENDOR
+  result += TAPI_VENDOR;
+#endif
+  result += "TAPI version " TAPI_MAKE_STRING(TAPI_VERSION);
+
+#ifdef TAPI_REPOSITORY_STRING
+  result += " (" TAPI_REPOSITORY_STRING ")";
+#endif
+
+  return result;
 }
 
 bool Version::isAtLeast(unsigned major, unsigned minor,

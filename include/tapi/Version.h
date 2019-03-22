@@ -15,9 +15,9 @@
 #ifndef TAPI_VERSION_H
 #define TAPI_VERSION_H
 
+#include <string>
 #include <tapi/Defines.h>
 #include <tapi/Version.inc>
-#include <string>
 
 ///
 /// \defgroup TAPI_VERSION Version methods
@@ -92,7 +92,7 @@ public:
   ///
 };
 
-} // end tapi namespace.
+} // namespace tapi
 
 ///
 /// @}
