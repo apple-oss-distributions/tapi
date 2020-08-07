@@ -1,5 +1,6 @@
 // RUN: %tapi-frontend -target i386-apple-macos10.12 -std=c++11 %s 2>&1 | FileCheck %s
-// RUN: %tapi-frontend -target x86_64-apple-macos10.12 -std=c++11 %s 2>&1 | FileCheck %s
+// RUN: %tapi-frontend -target x86_64-apple-macos10.15 -std=c++11 %s 2>&1 | FileCheck %s
+// RUN: %tapi-frontend -target x86_64-apple-ios13.0-macabi -std=c++11 %s 2>&1 | FileCheck %s
 
 // CHECK-LABEL: enum constants
 
@@ -7,56 +8,56 @@
 enum Foo : int;
 
 enum Bar {
-// CHECK:      - name: A
+  // CHECK:      - name: A
   A,
 
-// CHECK:      - name: B
+  // CHECK:      - name: B
   B,
 
-// CHECK:      - name: C
+  // CHECK:      - name: C
   C,
 };
 
 enum class Baz {
-// CHECK:      - name: Baz::A
+  // CHECK:      - name: Baz::A
   A,
 
-// CHECK:      - name: Baz::B
+  // CHECK:      - name: Baz::B
   B,
 
-// CHECK:      - name: Baz::C
+  // CHECK:      - name: Baz::C
   C,
 };
 
 enum struct Bazinga {
-// CHECK:      - name: Bazinga::A
+  // CHECK:      - name: Bazinga::A
   A,
 
-// CHECK:      - name: Bazinga::B
+  // CHECK:      - name: Bazinga::B
   B,
 
-// CHECK:      - name: Bazinga::C
+  // CHECK:      - name: Bazinga::C
   C,
 };
 
 enum {
-// CHECK:      - name: X
+  // CHECK:      - name: X
   X,
 
-// CHECK:      - name: Y
+  // CHECK:      - name: Y
   Y,
 
-// CHECK:      - name: Z
+  // CHECK:      - name: Z
   Z,
 };
 
 enum {
-// CHECK:      - name: U
+  // CHECK:      - name: U
   U,
 
-// CHECK:      - name: V
+  // CHECK:      - name: V
   V,
 
-// CHECK:      - name: W
+  // CHECK:      - name: W
   W,
 };

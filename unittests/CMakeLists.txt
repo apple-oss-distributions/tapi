@@ -7,4 +7,6 @@ endfunction()
 
 add_subdirectory(TapiCore)
 add_subdirectory(TapiDriver)
+add_subdirectory(TapiVerifier)
 add_subdirectory(libtapi)
+add_subdirectory(JSON)

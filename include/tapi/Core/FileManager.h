@@ -47,7 +47,7 @@ public:
   FileManager(const clang::FileSystemOptions &fileSystemOpts,
               llvm::IntrusiveRefCntPtr<FileSystemStatCacheFactory>
                   cacheFactory = nullptr,
-              llvm::IntrusiveRefCntPtr<clang::vfs::FileSystem> fs = nullptr);
+              llvm::IntrusiveRefCntPtr<llvm::vfs::FileSystem> fs = nullptr);
 
   /// \brief Check if a particular path exists.
   bool exists(StringRef path);

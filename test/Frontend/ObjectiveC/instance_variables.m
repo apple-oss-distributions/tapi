@@ -1,5 +1,6 @@
 // RUN: %tapi-frontend -target i386-apple-macos10.12 -isysroot %sysroot %s 2>&1 | FileCheck -check-prefixes=CHECK,CHECK_I386 %s
-// RUN: %tapi-frontend -target x86_64-apple-macos10.12 -isysroot %sysroot %s 2>&1 | FileCheck -check-prefixes=CHECK,CHECK_X86_64 %s
+// RUN: %tapi-frontend -target x86_64-apple-macos10.15 -isysroot %sysroot %s 2>&1 | FileCheck -check-prefixes=CHECK,CHECK_X86_64 %s
+// RUN: %tapi-frontend -target x86_64-apple-ios13.0-macabi -isysroot %sysroot %s 2>&1 | FileCheck -check-prefixes=CHECK,CHECK_X86_64 %s
 
 // CHECK-LABEL: objective-c interfaces:
 // CHECK-NEXT: - name: Forward

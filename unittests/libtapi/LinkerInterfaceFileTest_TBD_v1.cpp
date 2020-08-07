@@ -6,6 +6,9 @@
 // License. See LICENSE.TXT for details.
 //
 //===----------------------------------------------------------------------===//
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+
 #include "gtest/gtest.h"
 #include <mach/machine.h>
 #include <tapi/tapi.h>
@@ -803,3 +806,5 @@ TEST(libtapiTBDv1, LIF_No_FallBack_x86_64h) {
 }
 
 } // end namespace TBDv1
+
+#pragma clang diagnostic pop

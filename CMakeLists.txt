@@ -65,9 +65,22 @@ configure_file(
   ${CMAKE_CURRENT_BINARY_DIR}/include/tapi/Version.inc)
 
 # Check if the linker support -no_inits.
-SET(CMAKE_REQUIRED_FLAGS "-Wl,-no_inits")
-check_c_compiler_flag("" LINKER_SUPPORTS_NO_INITS)
+check_linker_flag("-Wl,-no_inits" LINKER_SUPPORTS_NO_INITS)
 
+# MARZIPAN RENAME: We might need to update this. This will also require an
+# update of the linker on the CI bots.
+# Check if the linker has iosmac support.
+check_linker_flag("-Wl,-iosmac_version_min,12.0" LINKER_SUPPORTS_IOSMAC)
+# MARZIPAN RENAME
+
+# Check if i386 is supported.
+SET(CMAKE_OLD_REQUIRED_FLAGS ${CMAKE_REQUIRED_FLAGS})
+SET(CMAKE_OLD_LINKER_FLAGS ${CMAKE_EXE_LINKER_FLAGS})
+SET(CMAKE_REQUIRED_FLAGS "-arch i386")
+SET(CMAKE_EXE_LINKER_FLAGS "-Wl,-arch_errors_fatal -Wl,-framework,Foundation")
+check_c_compiler_flag("" SDK_SUPPORTS_I386)
+SET(CMAKE_REQUIRED_FLAGS ${CMAKE_OLD_REQUIRED_FLAGS})
+SET(CMAKE_EXE_LINKER_FLAGS ${CMAKE_OLD_LINKER_FLAGS})
 
 macro(add_tapi_library name)
   cmake_parse_arguments(ARG
@@ -194,7 +207,10 @@ if( TAPI_INCLUDE_TESTS )
   if(EXISTS ${TAPI_SOURCE_DIR}/test)
     add_subdirectory(test)
   endif()
+  if(EXISTS ${TAPI_SOURCE_DIR}/sdk_tests)
+    add_subdirectory(sdk_tests)
+  endif()
 endif()
 if( TAPI_INCLUDE_DOCS )
   add_subdirectory(docs)
-endif()
+endif() 

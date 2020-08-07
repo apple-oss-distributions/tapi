@@ -5,6 +5,7 @@ add_tapi_unittest(libtapiTests
   LinkerInterfaceFileTest_TBD_v1.cpp
   LinkerInterfaceFileTest_TBD_v2.cpp
   LinkerInterfaceFileTest_TBD_v3.cpp
+  LinkerInterfaceFileTest_TBD_v4.cpp
   VersionTest.cpp
   )
 

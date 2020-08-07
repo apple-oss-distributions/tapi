@@ -1,44 +1,14 @@
-set(SOURCES
-  Mod2.m
-  )
-set(PUBLIC_HEADERS
-  Mod2.h
-  A.h
-  B.h
-  C.h
-  )
-
-SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -arch x86_64")
-set(CMAKE_SHARED_LINKER_FLAGS "-current_version 1 -compatibility_version 1")
-
-add_library(Mod2
-  SHARED
-  ${PUBLIC_HEADERS}
-  ${SOURCES}
-  )
-
-set_target_properties(Mod2
-  PROPERTIES
-  FRAMEWORK TRUE
-  FRAMEWORK_VERSION A
-  PUBLIC_HEADER "${PUBLIC_HEADERS}"
-  INSTALL_NAME_DIR /System/Library/Frameworks
-  VERSION 1
-  SOVERSION 1
-  )
-
-install(TARGETS Mod2
-  FRAMEWORK DESTINATION System/Library/Frameworks
-  )
-
-install(
-  FILES module.modulemap
-  DESTINATION System/Library/Frameworks/Mod2.framework/Versions/A/Modules/
-  )
-
-install(CODE "execute_process( \
-              COMMAND ${CMAKE_COMMAND} -E create_symlink \
-              Versions/A/Modules \
-              ${CMAKE_INSTALL_PREFIX}/System/Library/Frameworks/Mod2.framework/Modules \
-              )"
-  )
+set_property(
+  SOURCE module.modulemap
+  PROPERTY MACOSX_PACKAGE_LOCATION "Modules"
+)
+add_tapi_test_library(Mod2
+  FRAMEWORK
+  PUBLIC_HEADERS Mod2.h A.h B.h C.h
+  SOURCE Mod2.m module.modulemap
+)
+add_custom_command(TARGET Mod2
+  POST_BUILD
+  WORKING_DIRECTORY ${TAPI_BINARY_DIR}/Inputs/System/Library/Frameworks/Mod2.framework
+  COMMAND ${CMAKE_COMMAND} -E create_symlink Versions/Current/Modules Modules
+)

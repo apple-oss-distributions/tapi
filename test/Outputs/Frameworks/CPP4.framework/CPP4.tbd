@@ -2,8 +2,7 @@
 archs:           [ x86_64 ]
 platform:        macosx
 flags:           [ not_app_extension_safe ]
-install-name:    /System/Library/Frameworks/CPP4.framework/Versions/A/CPP4
-objc-constraint: none
+install-name:    '/System/Library/Frameworks/CPP4.framework/Versions/A/CPP4'
 exports:         
   - archs:           [ x86_64 ]
     symbols:         [ __ZN5test23FooIiE8instanceEv, __ZN5test33FooIfE3runEv, __ZN5test33FooIfE4run1Ev, 

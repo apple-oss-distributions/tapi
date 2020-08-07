@@ -11,9 +11,22 @@
 @property BOOL property1;
 @property(readonly) BOOL property2;
 @property(getter=isProperty3) BOOL property3;
+@property BOOL dynamicProp;
 @end
 
 @interface Basic4 : NSObject {
+@public
+  BOOL ivar1;
+@protected
+  BOOL ivar2;
+@package
+  BOOL ivar3;
+@private
+  BOOL ivar4;
+}
+@end
+
+__attribute__((visibility("hidden"))) @interface Basic4_1 : NSObject {
 @public
   BOOL ivar1;
 @protected
@@ -78,6 +91,7 @@ __attribute__((visibility("hidden")))
 
 @interface A : NSObject
 - (void)aMethod NS_AVAILABLE(10_11, 9_0);
+- (void)bMethod NS_UNAVAILABLE;
 @end
 
 @interface Basic9 : NSObject

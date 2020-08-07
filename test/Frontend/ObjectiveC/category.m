@@ -1,4 +1,5 @@
-// RUN: %tapi-frontend -target x86_64-apple-macos10.12 -isysroot %sysroot %s 2>&1 | FileCheck %s
+// RUN: %tapi-frontend -target x86_64-apple-macos10.15 -isysroot %sysroot %s 2>&1 | FileCheck %s
+// RUN: %tapi-frontend -target x86_64-apple-ios13.0-macabi -isysroot %sysroot %s 2>&1 | FileCheck %s
 
 @class NSSet;
 
@@ -28,7 +29,7 @@
 // CHECK-NEXT:      availability: i:0 o:0 u:0
 // CHECK-NEXT:    properties:
 // CHECK-NEXT:    - name: prop2
-// CHECK-NEXT:      attributes: assign readwrite atomic unsafe_unretained
+// CHECK-NEXT:      attributes:
 // CHECK-NEXT:      isOptional: false
 // CHECK-NEXT:      getter name: prop2
 // CHECK-NEXT:      setter name: setProp2:
@@ -94,7 +95,7 @@
 // CHECK-NEXT:     availability: i:0 o:0 u:0
 // CHECK-NEXT:   properties:
 // CHECK-NEXT:   - name: prop3
-// CHECK-NEXT:     attributes: assign readwrite atomic unsafe_unretained
+// CHECK-NEXT:     attributes:
 // CHECK-NEXT:     isOptional: false
 // CHECK-NEXT:     getter name: prop3
 // CHECK-NEXT:     setter name: setProp3:

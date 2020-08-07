@@ -6,6 +6,9 @@
 // License. See LICENSE.TXT for details.
 //
 //===----------------------------------------------------------------------===//
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+
 #include "tapi/Core/ArchitectureConfig.h"
 #include "gtest/gtest.h"
 #include <mach/machine.h>
@@ -1260,4 +1263,7 @@ TEST(libtapiTBDv2, LIF_Load_unknown_arch) {
   EXPECT_EQ("_sym1", file->exports().front().getName());
 }
 
+
 } // end namespace TBDv2
+
+#pragma clang diagnostic pop

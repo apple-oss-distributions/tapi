@@ -13,17 +13,29 @@ INVALID_XARCH_OPTION: error: invalid argument '-Xarch_x86_64' not allowed with '
 ; RUN: not %tapi installapi -x c++ 2>&1 | FileCheck --check-prefix=NO_TARGET %s
 NO_TARGET: error: no target specified: add --target=<triple>
 
+; RUN: not %tapi installapi -arch arm64 -target armv7-apple-ios12 2>&1 | FileCheck --check-prefix=CONFLICITNG_TARGET %s
+CONFLICITNG_TARGET: error: invalid argument '-arch arm64' not allowed with '--target=armv7-apple-ios12'
+
+; RUN: not %tapi installapi -arch x86_64 -target-variant x86_64-apple-ios13.0-macabi 2>&1 | FileCheck --check-prefix=CONFLICITNG_TARGET_VARIANT %s
+CONFLICITNG_TARGET_VARIANT: error: invalid argument '-arch x86_64' not allowed with '--target-variant=x86_64-apple-ios13.0-macabi'
+
 ; RUN: not %tapi installapi -arch arm64 2>&1 | FileCheck --check-prefix=NO_INSTALL_NAME %s
 NO_INSTALL_NAME: error: no install name specified: add -install_name <path>
 
 ; RUN: not %tapi installapi -arch arm64 -install_name Foo -current_version 1.2.3.4.5.6 2>&1 | FileCheck --check-prefix=INVALID_CURRENT_VERSION %s
 INVALID_CURRENT_VERSION: error: invalid current version '1.2.3.4.5.6'
 
+; RUN: not %tapi installapi -arch arm64 -install_name Foo -current_version ... 2>&1 | FileCheck --check-prefix=INVALID_CURRENT_VERSION2 %s
+INVALID_CURRENT_VERSION2: error: invalid current version '...'
+
 ; RUN: not %tapi installapi -arch arm64 -install_name Foo -current_version 1.2.3.4.5 2>&1 | FileCheck --check-prefix=TRUNCATE_CURRENT_VERSION %s
 TRUNCATE_CURRENT_VERSION: warning: truncating current version '1.2.3.4.5' to fit in 32-bit space used by old mach-o format
 
 ; RUN: not %tapi installapi -arch arm64 -install_name Foo -current_version 1.2.3 -compatibility_version 1.2.3.4.5 2>&1 | FileCheck --check-prefix=INVALID_COMPATIBILITY_VERSION %s
 INVALID_COMPATIBILITY_VERSION: error: invalid compatibility version '1.2.3.4.5'
+
+; RUN: not %tapi installapi -arch arm64 -install_name Foo -current_version 1.2.3 -compatibility_version .... 2>&1 | FileCheck --check-prefix=INVALID_COMPATIBILITY_VERSION2 %s
+INVALID_COMPATIBILITY_VERSION2: error: invalid compatibility version '....'
 
 ; RUN: not %tapi installapi -arch arm64 -install_name Foo -mmacos-version-min=10.12 -mios-version-min=10.0 -mtvos-version-min=10.0 -mwatchos-version-min=3.0 -mbridgeos-version-min=2.0 2>&1 | FileCheck --check-prefix=DEPLOYMENT_TARGET_NOT_ALLOWED1 %s
 DEPLOYMENT_TARGET_NOT_ALLOWED1: error: invalid argument '-mmacos-version-min=10.12' not allowed with '-mios-version-min=10.0'

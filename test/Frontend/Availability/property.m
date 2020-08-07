@@ -1,5 +1,5 @@
 // RUN: %tapi-frontend -target i386-apple-macos10.12 -isysroot %sysroot %s 2>&1 | FileCheck %s
-// RUN: %tapi-frontend -target x86_64-apple-macos10.12 -isysroot %sysroot %s 2>&1 | FileCheck %s
+// RUN: %tapi-frontend -target x86_64-apple-macos10.15 -isysroot %sysroot %s 2>&1 | FileCheck %s
 
 // CHECK:      objective-c interfaces
 // CHECK-NEXT: - name: Foo
@@ -12,7 +12,7 @@
 // CHECK-NEXT:   methods:
 // CHECK-NEXT:   properties:
 // CHECK-NEXT:   - name: aProperty
-// CHECK-NEXT:     attributes: readonly atomic
+// CHECK-NEXT:     attributes: readonly
 // CHECK-NEXT:     isOptional: false
 // CHECK-NEXT:     getter name: aProperty
 // CHECK-NEXT:     loc:
@@ -31,7 +31,7 @@
 // CHECK-NEXT:   methods:
 // CHECK-NEXT:   properties:
 // CHECK-NEXT:   - name: aProperty
-// CHECK-NEXT:     attributes: assign readwrite atomic unsafe_unretained
+// CHECK-NEXT:     attributes:
 // CHECK-NEXT:     isOptional: false
 // CHECK-NEXT:     getter name: aProperty
 // CHECK-NEXT:     setter name: setAProperty:

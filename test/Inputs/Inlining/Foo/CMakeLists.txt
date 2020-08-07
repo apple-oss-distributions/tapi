@@ -1,30 +1,9 @@
-set(SOURCES
-  Foo.m
-  )
-set(PUBLIC_HEADERS
-  Foo.h
-  )
-
-add_library(InliningFoo
-  SHARED
-  ${PUBLIC_HEADERS}
-  ${SOURCES}
-  )
-
-SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -arch i386 -arch x86_64")
-set(CMAKE_SHARED_LINKER_FLAGS "-current_version 1 -compatibility_version 1")
-
-set_target_properties(InliningFoo
-  PROPERTIES
-  FRAMEWORK TRUE
-  FRAMEWORK_VERSION A
-  PUBLIC_HEADER "${PUBLIC_HEADERS}"
+add_tapi_test_library(InliningFoo
+  FRAMEWORK
+  PUBLIC_HEADERS Foo.h
+  SOURCE Foo.m
+  ARCHITECTURES x86_64
   INSTALL_NAME_DIR /System/Library/Frameworks/Inlining.framework/Versions/A/Frameworks
-  VERSION 1
-  SOVERSION 1
+  OUTPUT_DIRECTORY_SUFFIX Inlining.framework/Versions/A/Frameworks
   OUTPUT_NAME Foo
-  )
-
-install(TARGETS InliningFoo
-  FRAMEWORK DESTINATION System/Library/Frameworks/Inlining.framework/Versions/A/Frameworks
-  )
+)

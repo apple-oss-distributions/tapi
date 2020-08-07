@@ -2,8 +2,7 @@
 archs:           [ x86_64 ]
 platform:        macosx
 flags:           [ not_app_extension_safe ]
-install-name:    /System/Library/Frameworks/CPP2.framework/Versions/A/CPP2
-objc-constraint: none
+install-name:    '/System/Library/Frameworks/CPP2.framework/Versions/A/CPP2'
 exports:         
   - archs:           [ x86_64 ]
     symbols:         [ __ZN9templates4foo1IiEEiT_ ]

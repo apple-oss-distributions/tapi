@@ -2,10 +2,9 @@
 archs:           [ x86_64 ]
 platform:        macosx
 flags:           [ not_app_extension_safe, installapi ]
-install-name:    /System/Library/Frameworks/Simple.framework/Versions/A/Simple
+install-name:    '/System/Library/Frameworks/Simple.framework/Versions/A/Simple'
 current-version: 47
 compatibility-version: 11
-objc-constraint: none
 exports:         
   - archs:           [ x86_64 ]
     symbols:         [ _otherFrameworkAPI, _otherFrameworkSPI, _privateGlobalVariable, 

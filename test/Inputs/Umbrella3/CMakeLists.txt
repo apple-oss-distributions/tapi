@@ -1,36 +1,22 @@
-add_subdirectory(Reexports)
+add_tapi_test_library(Foo FRAMEWORK SOURCE Reexports/Foo.m)
+add_tapi_test_library(Bar FRAMEWORK SOURCE Reexports/Bar.m)
+add_tapi_test_library(Baz SOURCE Reexports/Baz.m)
 
-set(SOURCES
-  Umbrella3.m
-  )
-set(PUBLIC_HEADERS
+add_tapi_test_library(Umbrella3
+  FRAMEWORK
+  PUBLIC_HEADERS
   Headers/Umbrella3.h
   Headers/Foo.h
   Headers/Bar.h
   Headers/Baz.h
-  )
-
-add_library(Umbrella3
-  SHARED
-  ${PUBLIC_HEADERS}
-  ${SOURCES}
-  )
+  SOURCE Umbrella3.m
+)
+target_link_libraries(Umbrella3
+  PRIVATE
+  -F${TAPI_BINARY_DIR}/Inputs/System/Library/Frameworks
+  -Wl,-reexport_framework,Foo
+  -Wl,-reexport_framework,Bar
+  -L${TAPI_BINARY_DIR}/Inputs/usr/lib
+  -Wl,-reexport-lBaz
+)
 add_dependencies(Umbrella3 Foo Bar Baz)
-
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -arch x86_64")
-set(LINKER_FLAGS "-current_version 1 -compatibility_version 1 -F${CMAKE_CURRENT_BINARY_DIR}/Reexports -L${CMAKE_CURRENT_BINARY_DIR}/Reexports -Wl,-reexport_framework,Foo -Wl,-reexport_framework,Bar -Wl,-reexport-lBaz")
-set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${LINKER_FLAGS}")
-
-set_target_properties(Umbrella3
-  PROPERTIES
-  FRAMEWORK TRUE
-  FRAMEWORK_VERSION A
-  PUBLIC_HEADER "${PUBLIC_HEADERS}"
-  INSTALL_NAME_DIR /System/Library/Frameworks
-  VERSION 1
-  SOVERSION 1
-  )
-
-install(TARGETS Umbrella3
-  FRAMEWORK DESTINATION System/Library/Frameworks
-  )

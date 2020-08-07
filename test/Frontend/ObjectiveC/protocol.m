@@ -1,5 +1,6 @@
 // RUN: %tapi-frontend -target i386-apple-macos10.12 -isysroot %sysroot %s 2>&1 | FileCheck %s
-// RUN: %tapi-frontend -target x86_64-apple-macos10.12 -isysroot %sysroot %s 2>&1 | FileCheck %s
+// RUN: %tapi-frontend -target x86_64-apple-macos10.15 -isysroot %sysroot %s 2>&1 | FileCheck %s
+// RUN: %tapi-frontend -target x86_64-apple-ios13.0-macabi -isysroot %sysroot %s 2>&1 | FileCheck %s
 
 // CHECK-LABEL: objective-c protocols:
 // CHECK-NEXT:  - name: Bar
@@ -26,7 +27,7 @@
 // CHECK-NEXT:    methods:
 // CHECK-NEXT:    properties:
 // CHECK-NEXT:    - name: baz
-// CHECK-NEXT:      attributes: assign readwrite atomic unsafe_unretained
+// CHECK-NEXT:      attributes:
 // CHECK-NEXT:      isOptional: true
 // CHECK-NEXT:      getter name: baz
 // CHECK-NEXT:      setter name: setBaz:

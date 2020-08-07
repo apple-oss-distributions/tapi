@@ -1,35 +1,15 @@
-set(SOURCES
-  foo.c
-  )
-set(PUBLIC_HEADERS
-  foo.h
-  )
-set(PRIVATE_HEADERS
-  foo_private.h
-  )
-
-SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -arch x86_64")
-set(CMAKE_SHARED_LINKER_FLAGS "-current_version 1 -compatibility_version 1")
-
-add_library(FooLib
-  SHARED
-  ${PUBLIC_HEADERS}
-  ${PRIVATE_HEADERS}
-  ${SOURCES}
-  )
-
-set_target_properties(FooLib
-  PROPERTIES
-  PUBLIC_HEADER "${PUBLIC_HEADERS}"
-  PRIVATE_HEADER "${PRIVATE_HEADERS}"
-  INSTALL_NAME_DIR /usr/lib
-  VERSION 1
-  SOVERSION 1
+add_tapi_test_library(FooLib
+  PUBLIC_HEADERS foo.h
+  PRIVATE_HEADERS foo_private.h
+  SOURCE foo.c
   OUTPUT_NAME foo
-  )
-
-install(TARGETS FooLib
-  LIBRARY DESTINATION dylib_dstroot/usr/lib
-  PUBLIC_HEADER DESTINATION dylib_dstroot/usr/include
-  PRIVATE_HEADER DESTINATION dylib_dstroot/usr/local/include
-  )
+  OUTPUT_DIRECTORY_PREFIX dylib_dstroot
+)
+add_custom_command(TARGET FooLib
+  POST_BUILD
+  WORKING_DIRECTORY ${TAPI_BINARY_DIR}/Inputs/dylib_dstroot
+  COMMAND mkdir -p ${TAPI_BINARY_DIR}/Inputs/dylib_dstroot/usr/include
+  COMMAND mkdir -p ${TAPI_BINARY_DIR}/Inputs/dylib_dstroot/usr/local/include
+  COMMAND cp ${CMAKE_CURRENT_SOURCE_DIR}/foo.h usr/include/
+  COMMAND cp ${CMAKE_CURRENT_SOURCE_DIR}/foo_private.h usr/local/include/
+)

@@ -1,5 +1,6 @@
 // RUN: %tapi-frontend -target i386-apple-macos10.12 %s 2>&1 | FileCheck %s
-// RUN: %tapi-frontend -target x86_64-apple-macos10.12 %s 2>&1 | FileCheck %s
+// RUN: %tapi-frontend -target x86_64-apple-macos10.15 %s 2>&1 | FileCheck %s
+// RUN: %tapi-frontend -target x86_64-apple-ios13.0-macabi %s 2>&1 | FileCheck %s
 
 // CHECK:      - name: _foo
 void foo(void);
@@ -14,11 +15,11 @@ void check_hidden(void) __attribute__((visibility("hidden")));
 void check_default(void) __attribute__((visibility("default")));
 
 // CHECK: check_inline
-// CHECK: inlined: true
+// CHECK: linkage: internal
 static inline void check_inline() {}
 
 // CHECK: check_inline1
-// CHECK: inlined: true
+// CHECK: linkage: internal
 static inline void check_inline1();
 void check_inline1() {}
 

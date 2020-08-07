@@ -1,5 +1,6 @@
-// RUN: %tapi-frontend -target i386-apple-macos10.12 %s 2>&1 | FileCheck --check-prefixes CHECK,CHECK-MAC %s
-// RUN: %tapi-frontend -target x86_64-apple-macos10.12 %s 2>&1 | FileCheck --check-prefixes CHECK,CHECK-MAC %s
+// RUN: %tapi-frontend -target i386-apple-macos10.15 %s 2>&1 | FileCheck --check-prefixes CHECK,CHECK-MAC %s
+// RUN: %tapi-frontend -target x86_64-apple-macos10.15 %s 2>&1 | FileCheck --check-prefixes CHECK,CHECK-MAC %s
+// RUN: %tapi-frontend -target x86_64-apple-ios13.0-macabi %s 2>&1 | FileCheck --check-prefixes CHECK,CHECK-IOSMAC %s
 
 // 7.1.3 The typedef specifier
 
@@ -19,8 +20,9 @@ typedef struct E { /* ... */ } E;
 
 // CHECK:       - name: new_type
 // CHECK-MAC:     availability: i:10.12 o:0 u:0
+// CHECK-IOSMAC:  availability: i:13 o:0 u:0
 typedef int new_type __attribute__((availability(macos, introduced = 10.12)))
-                     __attribute__((availability(ios, introduced = 11.0)));
+                     __attribute__((availability(ios, introduced = 13.0)));
 
 // CHECK:      - name: G
 // CHECK:      - name: H
@@ -74,4 +76,4 @@ void test() {
 - (void) run: (N<L> *) param;
 @end
 
-// CHECK-LABEL: functions:
+// CHECK-LABEL: globals:

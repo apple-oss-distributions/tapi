@@ -45,8 +45,11 @@ __attribute__((objc_exception))
 @synthesize property1;
 @synthesize property2;
 @synthesize property3;
+@dynamic dynamicProp;
 @end
 @implementation Basic4
+@end
+@implementation Basic4_1
 @end
 @implementation Basic4_2
 @end

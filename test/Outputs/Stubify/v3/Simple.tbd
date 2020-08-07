@@ -2,7 +2,7 @@
 archs:           [ x86_64 ]
 platform:        macosx
 flags:           [ not_app_extension_safe ]
-install-name:    /System/Library/Frameworks/Simple.framework/Versions/A/Simple
+install-name:    '/System/Library/Frameworks/Simple.framework/Versions/A/Simple'
 current-version: 1.2.3
 exports:         
   - archs:           [ x86_64 ]

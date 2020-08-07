@@ -19,7 +19,13 @@ target_link_libraries(tapi
   tapiDriver
   )
 
-add_dependencies(tapi tapi-clang-headers)
+if (TAPI_BUILD_LIBIOSSDK)
+target_link_libraries(tapi
+  iOSSDK
+  )
+endif()
+
+add_dependencies(tapi tapi-clang-headers tapi-configs)
 
 install(TARGETS tapi
   RUNTIME DESTINATION bin
