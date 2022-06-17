@@ -22,6 +22,7 @@
 #include <sstream>
 
 using namespace llvm;
+using namespace llvm::MachO;
 
 TAPI_NAMESPACE_INTERNAL_BEGIN
 
@@ -126,7 +127,7 @@ InterfaceFile::const_filtered_target_range
 InterfaceFile::targets(ArchitectureSet architectures) const {
   std::function<bool(const Target &)> fn =
       [architectures](const Target &target) {
-        return architectures.has(target.architecture);
+        return architectures.has(target.Arch);
       };
   return make_filter_range(_targets, fn);
 }
@@ -152,7 +153,7 @@ void InterfaceFile::addParentUmbrella(const Target &target,
                            Target rhs) { return lhs.first < rhs; });
 
   if ((it != _parentUmbrellas.end()) && !(target < it->first)) {
-    it->second = umbrella;
+    it->second = umbrella.str();
     return;
   }
 
@@ -166,7 +167,7 @@ void InterfaceFile::addUUID(const Target &target, StringRef uuid) {
                            Target rhs) { return lhs.first < rhs; });
 
   if ((it != _uuids.end()) && !(target < it->first)) {
-    it->second = uuid;
+    it->second = uuid.str();
     return;
   }
 
@@ -185,13 +186,24 @@ void InterfaceFile::addUUID(const Target &target, uint8_t uuid[16]) {
   addUUID(target, stream.str());
 }
 
-void InterfaceFile::inlineFramework(std::shared_ptr<InterfaceFile> framework) {
-  auto addFramework = [&](std::shared_ptr<InterfaceFile> &&framework) {
+void InterfaceFile::inlineFramework(std::shared_ptr<InterfaceFile> framework,
+                                    bool overwrite) {
+  auto addFramework = [&](std::shared_ptr<InterfaceFile> &&framework,
+                          bool overwrite) {
     auto it = lower_bound(
         _documents, framework->getInstallName(),
-        [](std::shared_ptr<InterfaceFile> &lhs, const std::string &rhs) {
+        [](std::shared_ptr<InterfaceFile> &lhs, const StringRef rhs) {
           return lhs->getInstallName() < rhs;
         });
+
+    // Want to replace the inlined document in the event that we need to inject
+    // more symbols at a later stage (e.g. 32 bit injection) Should be able to
+    // remove after <rdar://problem/56088272>
+    if (overwrite && it != _documents.end() &&
+        framework->getInstallName() == (*it)->getInstallName()) {
+      std::replace(_documents.begin(), _documents.end(), *it, std::move(framework));
+      return;
+    }
 
     if ((it != _documents.end()) &&
         !(framework->getInstallName() < (*it)->getInstallName()))
@@ -200,10 +212,10 @@ void InterfaceFile::inlineFramework(std::shared_ptr<InterfaceFile> framework) {
     _documents.emplace(it, std::move(framework));
   };
   for (auto &doc : framework->_documents)
-    addFramework(std::move(doc));
+    addFramework(std::move(doc), overwrite);
 
   framework->_documents.clear();
-  addFramework(std::move(framework));
+  addFramework(std::move(framework), overwrite);
 }
 
 void InterfaceFile::addSymbol(XPIKind kind, StringRef name,
@@ -242,7 +254,7 @@ Expected<std::unique_ptr<InterfaceFile>>
 InterfaceFile::extract(Architecture arch) const {
   if (!getArchitectures().has(arch)) {
     return make_error<StringError>("file doesn't have architecture '" +
-                                       getArchName(arch) + "'",
+                                       getArchitectureName(arch) + "'",
                                    inconvertibleErrorCode());
   }
 
@@ -258,16 +270,17 @@ InterfaceFile::extract(Architecture arch) const {
   interface->setApplicationExtensionSafe(isApplicationExtensionSafe());
   interface->setInstallAPI(isInstallAPI());
   for (const auto &it : umbrellas())
-    interface->addParentUmbrella(it.first, it.second);
+    if (it.first.Arch == arch)
+      interface->addParentUmbrella(it.first, it.second);
 
   for (const auto &lib : allowableClients())
     for (const auto &target : lib.targets())
-      if (target.architecture == arch)
+      if (target.Arch == arch)
         interface->addAllowableClient(lib.getInstallName(), target);
 
   for (const auto &lib : reexportedLibraries())
     for (const auto &target : lib.targets())
-      if (target.architecture == arch)
+      if (target.Arch == arch)
         interface->addReexportedLibrary(lib.getInstallName(), target);
 
   for (const auto &uuid : uuids())
@@ -299,7 +312,7 @@ Expected<std::unique_ptr<InterfaceFile>>
 InterfaceFile::remove(Architecture arch) const {
   if (getArchitectures() == arch)
     return make_error<StringError>("cannot remove last architecture slice '" +
-                                       getArchName(arch) + "'",
+                                       getArchitectureName(arch) + "'",
                                    inconvertibleErrorCode());
 
   if (!getArchitectures().has(arch)) {
@@ -318,7 +331,9 @@ InterfaceFile::remove(Architecture arch) const {
   std::unique_ptr<InterfaceFile> interface(new InterfaceFile());
   interface->setFileType(getFileType());
   interface->setPath(getPath());
-  interface->addTargets(targets(ArchitectureSet::All().clear(arch)));
+  auto arches = ArchitectureSet(std::numeric_limits<uint32_t>::max());
+  arches.clear(arch);
+  interface->addTargets(targets(arches));
   interface->setInstallName(getInstallName());
   interface->setCurrentVersion(getCurrentVersion());
   interface->setCompatibilityVersion(getCompatibilityVersion());
@@ -327,17 +342,18 @@ InterfaceFile::remove(Architecture arch) const {
   interface->setApplicationExtensionSafe(isApplicationExtensionSafe());
   interface->setInstallAPI(isInstallAPI());
   for (const auto &it : umbrellas())
-    interface->addParentUmbrella(it.first, it.second);
+    if (it.first.Arch != arch)
+      interface->addParentUmbrella(it.first, it.second);
 
   for (const auto &lib : allowableClients()) {
     for (const auto &target : lib.targets())
-      if (target.architecture != arch)
+      if (target.Arch != arch)
         interface->addAllowableClient(lib.getInstallName(), target);
   }
 
   for (const auto &lib : reexportedLibraries()) {
     for (const auto &target : lib.targets())
-      if (target.architecture != arch)
+      if (target.Arch != arch)
         interface->addReexportedLibrary(lib.getInstallName(), target);
   }
 
@@ -498,7 +514,7 @@ void InterfaceFile::printSymbolsForArch(Architecture arch) const {
       exports.emplace_back(symbol->getName());
       break;
     case XPIKind::ObjectiveCClass:
-      if (getPlatforms().count(Platform::macOS) && arch == AK_i386) {
+      if (getPlatforms().count(PlatformKind::macOS) && arch == AK_i386) {
         exports.emplace_back(".objc_class_name_" + symbol->getName().str());
       } else {
         exports.emplace_back("_OBJC_CLASS_$_" + symbol->getName().str());

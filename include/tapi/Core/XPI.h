@@ -16,19 +16,20 @@
 #define TAPI_CORE_XPI_H
 
 #include "tapi/Core/APICommon.h"
-#include "tapi/Core/Architecture.h"
-#include "tapi/Core/ArchitectureSet.h"
 #include "tapi/Core/AvailabilityInfo.h"
 #include "tapi/Core/LLVM.h"
-#include "tapi/Core/Target.h"
 #include "tapi/Defines.h"
 #include "tapi/Symbol.h"
 #include "clang/Basic/SourceLocation.h"
+#include "llvm/ADT/DenseMapInfo.h"
 #include "llvm/ADT/Optional.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/ADT/iterator.h"
 #include "llvm/Support/Allocator.h"
+#include "llvm/TextAPI/MachO/Architecture.h"
+#include "llvm/TextAPI/MachO/ArchitectureSet.h"
+#include "llvm/TextAPI/MachO/Target.h"
 #include <map>
 #include <utility>
 
@@ -137,14 +138,27 @@ public:
       if (avail.second.isUnavailable() || !avail.second._obsoleted.empty())
         continue;
 
-      result.set(avail.first.architecture);
+      result.set(avail.first.Arch);
     }
     return result;
   }
 
   bool hasArchitecture(Architecture arch) const {
     for (const auto &avail : _availability) {
-      if (avail.first.architecture != arch)
+      if (avail.first.Arch != arch)
+        continue;
+
+      if (avail.second.isUnavailable() || !avail.second._obsoleted.empty())
+        continue;
+
+      return true;
+    }
+    return false;
+  }
+
+  bool supportsTarget(Target target) const {
+    for (const auto &avail : _availability) {
+      if (avail.first != target)
         continue;
 
       if (avail.second.isUnavailable() || !avail.second._obsoleted.empty())
@@ -293,5 +307,20 @@ public:
 };
 
 TAPI_NAMESPACE_INTERNAL_END
+
+namespace llvm {
+using TAPI_INTERNAL::XPIKind;
+template <> struct DenseMapInfo<XPIKind> {
+  static inline XPIKind getEmptyKey() { return XPIKind(~0U); }
+  static inline XPIKind getTombstoneKey() { return XPIKind(~0U - 1); }
+  static unsigned getHashValue(const XPIKind &val) {
+    return unsigned(val) * 37U;
+  }
+
+  static bool isEqual(const XPIKind &lhs, const XPIKind &rhs) {
+    return lhs == rhs;
+  }
+};
+} // end namespace llvm.
 
 #endif // TAPI_CORE_XPI_H

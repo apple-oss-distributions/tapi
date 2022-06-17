@@ -1,0 +1,82 @@
+{
+  "PublicSDKContentRoot": [
+    {
+      "binaryInfo": {
+        "compatibilityVersion": "1",
+        "currentVersion": "1.2.4",
+        "installName": "/System/Library/Frameworks/Simple.framework/Versions/A/Simple",
+        "twoLevelNamespace": true,
+        "type": "dylib"
+      },
+      "categories": [],
+      "globals": [
+        {
+          "access": "public",
+          "kind": "variable",
+          "linkage": "exported",
+          "loc": "/System/Library/Frameworks/Simple.framework/Versions/A/Headers/Basic.h:10:12",
+          "name": "_OBJC_EHTYPE_$_Base"
+        },
+        {
+          "access": "public",
+          "kind": "variable",
+          "linkage": "exported",
+          "loc": "/System/Library/Frameworks/Simple.framework/Versions/A/Headers/Simple.h:10:12",
+          "name": "_publicGlobalVariable"
+        }
+      ],
+      "interfaces": [],
+      "protocols": [],
+      "target": "x86_64-apple-macos10.10"
+    }
+  ],
+  "RuntimeRoot": [
+    {
+      "binaryInfo": {
+        "compatibilityVersion": "1",
+        "currentVersion": "1.2.4",
+        "installName": "/System/Library/Frameworks/Simple.framework/Versions/C/Simple",
+        "twoLevelNamespace": true,
+        "type": "dylib"
+      },
+      "categories": [],
+      "globals": [
+        {
+          "linkage": "exported",
+          "name": "_OBJC_EHTYPE_$_Base"
+        },
+        {
+          "linkage": "exported",
+          "name": "_publicGlobalVariable"
+        }
+      ],
+      "interfaces": [],
+      "protocols": [],
+      "target": "x86_64-apple-macos10.10"
+    },
+    {
+      "binaryInfo": {
+        "compatibilityVersion": "1",
+        "currentVersion": "1.2.4",
+        "installName": "/System/Library/Frameworks/Simple.framework/Versions/B/Simple",
+        "twoLevelNamespace": true,
+        "type": "dylib"
+      },
+      "categories": [],
+      "globals": [
+        {
+          "linkage": "exported",
+          "name": "_OBJC_EHTYPE_$_Base"
+        },
+        {
+          "linkage": "exported",
+          "name": "_publicGlobalVariable"
+        }
+      ],
+      "interfaces": [],
+      "protocols": [],
+      "target": "x86_64-apple-macos10.10"
+    }
+  ],
+  "SDKContentRoot": []
+}

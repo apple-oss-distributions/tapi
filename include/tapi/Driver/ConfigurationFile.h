@@ -18,9 +18,9 @@
 #include "tapi/Core/LLVM.h"
 #include "tapi/Core/PackedVersion.h"
 #include "tapi/Core/Path.h"
-#include "tapi/Core/Platform.h"
 #include "tapi/Defines.h"
 #include "clang/Frontend/FrontendOptions.h"
+#include "llvm/TextAPI/MachO/Platform.h"
 #include <string>
 #include <utility>
 #include <vector>
@@ -29,8 +29,7 @@
 TAPI_NAMESPACE_INTERNAL_BEGIN
 
 using Macro = std::pair<std::string, bool>;
-static const clang::InputKind::Language defaultLanguage =
-    clang::InputKind::ObjC;
+static const clang::Language defaultLanguage = clang::Language::ObjC;
 
 namespace configuration {
 namespace v1 {
@@ -46,23 +45,25 @@ struct FrameworkConfiguration {
   std::string name;
   std::string path;
   std::string installName;
-  clang::InputKind::Language language;
+  clang::Language language;
   PathSeq includePaths;
   PathSeq frameworkPaths;
   std::vector<Macro> macros;
   HeaderConfiguration publicHeaderConfiguration;
   HeaderConfiguration privateHeaderConfiguration;
+  bool useOverlay = false;
 };
 
 struct ProjectConfiguration {
   std::string name;
-  clang::InputKind::Language language;
+  clang::Language language;
   PathSeq includePaths;
   PathSeq frameworkPaths;
   std::vector<Macro> macros;
   bool isiOSMac = false;
   bool useOverlay = false;
   bool useUmbrellaOnly = false;
+  PathSeq maskPaths;
   HeaderConfiguration publicHeaderConfiguration;
   HeaderConfiguration privateHeaderConfiguration;
 };
@@ -72,10 +73,10 @@ struct ProjectConfiguration {
 
 class ConfigurationFile {
 public:
-  Platform platform;
+  PlatformKind platform;
   PackedVersion version;
   std::string isysroot;
-  clang::InputKind::Language language{defaultLanguage};
+  clang::Language language{defaultLanguage};
   PathSeq includePaths;
   PathSeq frameworkPaths;
   std::vector<Macro> macros;

@@ -20,6 +20,17 @@ using namespace clang;
 
 TAPI_NAMESPACE_INTERNAL_BEGIN
 
+namespace {
+APIFlags getFlagsFromRecord(const GlobalRecord &record) {
+  auto flag = APIFlags::None;
+  if (record.isWeakDefined())
+    flag |= APIFlags::WeakDefined;
+  if (record.isThreadLocalValue())
+    flag |= APIFlags::ThreadLocalValue;
+  return flag;
+}
+} // namespace
+
 void API2XPIConverter::visitGlobal(const GlobalRecord &record) {
   // Skip non exported symbol.
   if (!record.isExported())
@@ -40,14 +51,12 @@ void API2XPIConverter::visitGlobal(const GlobalRecord &record) {
                                       record.access, record.availability);
     else
       xpiSet->addGlobalSymbol(record.name, APILinkage::Exported,
-                              record.isWeakDefined() ? APIFlags::WeakDefined
-                                                     : APIFlags::None,
-                              target, record.access, record.availability);
+                              getFlagsFromRecord(record), target, record.access,
+                              record.availability);
   } else if (record.kind == GVKind::Function) {
     xpiSet->addGlobalSymbol(record.name, APILinkage::Exported,
-                            record.isWeakDefined() ? APIFlags::WeakDefined
-                                                   : APIFlags::None,
-                            target, record.access, record.availability);
+                            getFlagsFromRecord(record), target, record.access,
+                            record.availability);
   }
 }
 

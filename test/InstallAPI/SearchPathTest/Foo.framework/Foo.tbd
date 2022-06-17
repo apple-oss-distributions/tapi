@@ -1,0 +1,10 @@
+--- !tapi-tbd-v3
+archs:           [ x86_64 ]
+uuids:           [ 'x86_64: 8C610CDC-3662-3281-8971-6F7E763DC9B0' ]
+platform:        macosx
+flags:           [ not_app_extension_safe ]
+install-name:    '/System/Library/Frameworks/Foo.framework/Versions/A/Foo'
+exports:
+  - archs:           [ x86_64 ]
+    symbols:         [ _not_foo ]
+...

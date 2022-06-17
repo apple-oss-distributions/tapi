@@ -1,0 +1,130 @@
+{
+  "PublicSDKContentRoot": [
+    {
+      "categories": [],
+      "globals": [],
+      "interfaces": [
+        {
+          "access": "public",
+          "linkage": "exported",
+          "loc": "Basic.h:10:12",
+          "name": "Basic",
+          "properties": [
+            {
+              "access": "public",
+              "getter": "property1",
+              "loc": "Basic.h:11:16",
+              "name": "property1",
+              "setter": "setProperty1:"
+            },
+            {
+              "access": "public",
+              "attr": [
+                "readonly"
+              ],
+              "getter": "property2",
+              "loc": "Basic.h:12:26",
+              "name": "property2"
+            },
+            {
+              "access": "public",
+              "getter": "isProperty3",
+              "loc": "Basic.h:13:36",
+              "name": "property3",
+              "setter": "myCustomizedSetter:"
+            },
+            {
+              "access": "public",
+              "attr": [
+                "class"
+              ],
+              "getter": "property4",
+              "loc": "Basic.h:14:26",
+              "name": "property4",
+              "setter": "setProperty4:"
+            }
+          ],
+          "super": "NSObject"
+        }
+      ],
+      "protocols": [],
+      "target": "x86_64-apple-macos10.10"
+    }
+  ],
+  "RuntimeRoot": [
+    {
+      "binaryInfo": {
+        "compatibilityVersion": "1",
+        "currentVersion": "1.2.3",
+        "installName": "/usr/lib/libproperty_test.dylib",
+        "twoLevelNamespace": true,
+        "type": "dylib"
+      },
+      "categories": [],
+      "globals": [],
+      "interfaces": [
+        {
+          "instanceMethods": [
+            {
+              "name": "property1"
+            },
+            {
+              "name": "setProperty1:"
+            },
+            {
+              "name": "property2"
+            },
+            {
+              "name": "isProperty3"
+            },
+            {
+              "name": "myCustomizedSetter:"
+            }
+          ],
+          "classMethods": [
+            {
+              "name": "property4"
+            },
+            {
+              "name": "setProperty4:"
+            }
+          ],
+          "linkage": "exported",
+          "name": "Basic",
+          "properties": [
+            {
+              "getter": "property1",
+              "name": "property1",
+              "setter": "setProperty1:"
+            },
+            {
+              "attr": [
+                "readonly"
+              ],
+              "getter": "property2",
+              "name": "property2"
+            },
+            {
+              "getter": "isProperty3",
+              "name": "property3",
+              "setter": "myCustomizedSetter:"
+            },
+            {
+              "access": "public",
+              "attr": [
+                "class"
+              ],
+              "getter": "property4",
+              "name": "property4",
+              "setter": "setProperty4"
+            }
+          ],
+          "super": "NSObject"
+        }
+      ],
+      "protocols": [],
+      "target": "x86_64-apple-macos10.10"
+    }
+  ],
+  "SDKContentRoot": []
+}

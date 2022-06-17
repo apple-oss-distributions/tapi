@@ -67,6 +67,8 @@ bool Driver::run(ArrayRef<const char *> args) {
     return InstallAPI::run(*diag, options);
   case TAPICommand::Reexport:
     return Reexport::run(*diag, options);
+  case TAPICommand::SDKDB:
+    return SDKDB::run(*diag, options);
   case TAPICommand::GenerateAPITests:
     return GenerateAPITests::run(*diag, options);
   }

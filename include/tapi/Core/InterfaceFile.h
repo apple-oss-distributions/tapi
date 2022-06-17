@@ -17,12 +17,9 @@
 #ifndef TAPI_CORE_INTERFACE_FILE_H
 #define TAPI_CORE_INTERFACE_FILE_H
 
-#include "tapi/Core/Architecture.h"
-#include "tapi/Core/ArchitectureSet.h"
-#include "tapi/Core/Platform.h"
-#include "tapi/Core/Target.h"
-#include "tapi/Core/XPISet.h"
 #include "tapi/Defines.h"
+#include "tapi/Core/LLVM.h"
+#include "tapi/Core/XPISet.h"
 #include "llvm/ADT/BitmaskEnum.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/ADT/iterator.h"
@@ -30,6 +27,10 @@
 #include "llvm/Support/Error.h"
 #include "llvm/Support/MemoryBuffer.h"
 #include "llvm/Support/Path.h"
+#include "llvm/TextAPI/MachO/Architecture.h"
+#include "llvm/TextAPI/MachO/ArchitectureSet.h"
+#include "llvm/TextAPI/MachO/Target.h"
+#include "llvm/TextAPI/MachO/Platform.h"
 
 namespace llvm {
 namespace yaml {
@@ -130,6 +131,10 @@ public:
     return mapToArchitectureSet(_targets);
   }
 
+  llvm::MachO::PlatformSet getPlatforms() const {
+    return mapToPlatformSet(_targets);
+  }
+
   bool operator==(const InterfaceFileRef &o) const {
     return std::tie(_installName, _targets) ==
            std::tie(o._installName, o._targets);
@@ -166,6 +171,9 @@ public:
   template <typename T> void setPath(T &&path) {
     _path = std::forward<T &&>(path);
   }
+
+  void setPath(StringRef path) { setPath(path.str()); }
+
   const std::string &getPath() const { return _path; }
 
   llvm::StringRef getFileName() const {
@@ -183,6 +191,9 @@ public:
 
   void addDocument(std::shared_ptr<InterfaceFile> &&document) {
     _documents.emplace_back(std::move(document));
+  }
+  std::vector<std::shared_ptr<InterfaceFile>> &inlinedDocuments() {
+    return _documents;
   }
 
   void addTarget(const Target &target);
@@ -202,12 +213,20 @@ public:
       llvm::iterator_range<const_filtered_target_iterator>;
   const_filtered_target_range targets(ArchitectureSet architectures) const;
 
-  PlatformSet getPlatforms() const { return mapToPlatformSet(_targets); }
+  bool hasTarget(Target target) const {
+    return llvm::find(_targets, target) != _targets.end();
+  }
+
+  llvm::MachO::PlatformSet getPlatforms() const {
+    return mapToPlatformSet(_targets);
+  }
   ArchitectureSet getArchitectures() const {
     return mapToArchitectureSet(_targets);
   }
 
-  void setInstallName(StringRef installName) { _installName = installName; }
+  void setInstallName(StringRef installName) {
+    _installName = std::string(installName);
+  }
   StringRef getInstallName() const { return _installName; }
 
   void setCurrentVersion(PackedVersion version) { _currentVersion = version; }
@@ -254,7 +273,7 @@ public:
   }
   void clearUUIDs() { _uuids.clear(); }
 
-  void inlineFramework(std::shared_ptr<InterfaceFile> framework);
+  void inlineFramework(std::shared_ptr<InterfaceFile> framework, bool overwrite = false);
 
   void addSymbol(XPIKind kind, StringRef name, const Target &targets,
                  APILinkage linkage = APILinkage::Exported,

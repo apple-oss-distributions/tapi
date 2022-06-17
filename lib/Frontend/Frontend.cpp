@@ -29,6 +29,7 @@
 #include "llvm/ADT/Triple.h"
 #include "llvm/Option/ArgList.h"
 #include "llvm/Option/Option.h"
+#include "llvm/Support/Host.h"
 #include "llvm/Support/Path.h"
 
 using namespace llvm;
@@ -36,32 +37,32 @@ using namespace clang;
 
 TAPI_NAMESPACE_INTERNAL_BEGIN
 
-static StringRef getLanguageOptions(clang::InputKind::Language lang) {
+static StringRef getLanguageOptions(clang::Language lang) {
   switch (lang) {
   default:
     return "";
-  case clang::InputKind::C:
+  case clang::Language::C:
     return "-xc";
-  case clang::InputKind::CXX:
+  case clang::Language::CXX:
     return "-xc++";
-  case clang::InputKind::ObjC:
+  case clang::Language::ObjC:
     return "-xobjective-c";
-  case clang::InputKind::ObjCXX:
+  case clang::Language::ObjCXX:
     return "-xobjective-c++";
   }
 }
 
-static StringRef getFileExtension(clang::InputKind::Language lang) {
+static StringRef getFileExtension(clang::Language lang) {
   switch (lang) {
   default:
     llvm_unreachable("Unexpected language option.");
-  case clang::InputKind::C:
+  case clang::Language::C:
     return ".c";
-  case clang::InputKind::CXX:
+  case clang::Language::CXX:
     return ".cpp";
-  case clang::InputKind::ObjC:
+  case clang::Language::ObjC:
     return ".m";
-  case clang::InputKind::ObjCXX:
+  case clang::Language::ObjCXX:
     return ".mm";
   }
 }
@@ -72,8 +73,7 @@ static SmallVectorImpl<char> &operator+=(SmallVectorImpl<char> &includes,
   return includes;
 }
 
-static void addHeaderInclude(StringRef headerName,
-                             clang::InputKind::Language lang,
+static void addHeaderInclude(StringRef headerName, clang::Language lang,
                              SmallVectorImpl<char> &includes) {
   SmallString<PATH_MAX> name;
   if (!(headerName.startswith("\"") && headerName.endswith("\"")) &&
@@ -84,7 +84,7 @@ static void addHeaderInclude(StringRef headerName,
   } else
     name += headerName;
 
-  if (lang == clang::InputKind::C || lang == clang::InputKind::CXX)
+  if (lang == clang::Language::C || lang == clang::Language::CXX)
     includes += "#include ";
   else
     includes += "#import ";
@@ -119,9 +119,7 @@ CompilerInvocation *newInvocation(DiagnosticsEngine *diagnostics,
                                   const opt::ArgStringList &cc1Args) {
   assert(!cc1Args.empty() && "Must at least contain the program name!");
   CompilerInvocation *invocation = new CompilerInvocation;
-  CompilerInvocation::CreateFromArgs(*invocation, cc1Args.data() + 1,
-                                     cc1Args.data() + cc1Args.size(),
-                                     *diagnostics);
+  CompilerInvocation::CreateFromArgs(*invocation, cc1Args, *diagnostics);
   invocation->getFrontendOpts().DisableFree = false;
   invocation->getCodeGenOpts().DisableFree = false;
   return invocation;
@@ -129,18 +127,17 @@ CompilerInvocation *newInvocation(DiagnosticsEngine *diagnostics,
 
 static bool runClang(FrontendContext &context, ArrayRef<std::string> options,
                      std::unique_ptr<llvm::MemoryBuffer> input) {
-  context.compiler = make_unique<CompilerInstance>();
+  context.compiler = std::make_unique<CompilerInstance>();
   IntrusiveRefCntPtr<DiagnosticIDs> diagID(new DiagnosticIDs());
   IntrusiveRefCntPtr<DiagnosticOptions> diagOpts(new DiagnosticOptions());
-  std::unique_ptr<llvm::opt::OptTable> opts = driver::createDriverOptTable();
+  const llvm::opt::OptTable &opts = driver::getDriverOptTable();
 
   std::vector<const char *> argv;
   for (const std::string &str : options)
     argv.push_back(str.c_str());
   const char *const binaryName = argv[0];
-
   unsigned MissingArgIndex, MissingArgCount;
-  llvm::opt::InputArgList parsedArgs = opts->ParseArgs(
+  llvm::opt::InputArgList parsedArgs = opts.ParseArgs(
       ArrayRef<const char *>(argv).slice(1), MissingArgIndex, MissingArgCount);
   ParseDiagnosticArgs(*diagOpts, parsedArgs);
   TextDiagnosticPrinter diagnosticPrinter(llvm::errs(), &*diagOpts);
@@ -149,8 +146,7 @@ static bool runClang(FrontendContext &context, ArrayRef<std::string> options,
 
   const std::unique_ptr<clang::driver::Driver> driver(new clang::driver::Driver(
       binaryName, llvm::sys::getDefaultTargetTriple(), diagnosticsEngine,
-      context.fileManager->getVirtualFileSystem()));
-  driver->setTitle("tapi");
+      "tapi", &context.fileManager->getVirtualFileSystem()));
   // Since the input might only be virtual, don't check whether it exists.
   driver->setCheckInputsExist(false);
   const std::unique_ptr<clang::driver::Compilation> compilation(
@@ -179,7 +175,7 @@ static bool runClang(FrontendContext &context, ArrayRef<std::string> options,
   // Create a compiler instance to handle the actual work.
   context.compiler->setInvocation(std::move(invocation));
   context.compiler->setFileManager(&*(context.fileManager));
-  auto action = make_unique<APIVisitorAction>(context);
+  auto action = std::make_unique<APIVisitorAction>(context);
 
   // Create the compiler's actual diagnostics engine.
   context.compiler->createDiagnostics();
@@ -238,17 +234,20 @@ extern Optional<FrontendContext> runFrontend(const FrontendJob &job,
       if (header.isPreInclude)
         continue; // Do not add extra header into files.
 
-      const auto *file = context.fileManager->getFile(header.fullPath);
-      context.files.emplace(file, header.type);
+      auto file = context.fileManager->getFile(header.fullPath);
+      if (!file)
+        continue; // File do not exist.
+      context.files.emplace(*file, header.type);
     }
 
     inputFilePath =
         ("tapi_include_headers" + getFileExtension(job.language)).str();
     input = llvm::MemoryBuffer::getMemBufferCopy(headerContents, inputFilePath);
   } else {
-    inputFilePath = inputFilename;
-    const auto *file = context.fileManager->getFile(inputFilename);
-    context.files.emplace(file, HeaderType::Public);
+    inputFilePath = inputFilename.str();
+    auto file = context.fileManager->getFile(inputFilename);
+    assert(file && "file do not exist");
+    context.files.emplace(*file, HeaderType::Public);
   }
 
   if (job.verbose && input)
@@ -275,7 +274,10 @@ extern Optional<FrontendContext> runFrontend(const FrontendJob &job,
   if (!job.language_std.empty())
     args.emplace_back("-std=" + job.language_std);
 
-  if (!job.useRTTI)
+  if (job.overwriteRTTI)
+    args.emplace_back("-frtti");
+
+  if (job.overwriteNoRTTI)
     args.emplace_back("-fno-rtti");
 
   if (!job.visibility.empty())
@@ -332,11 +334,26 @@ extern Optional<FrontendContext> runFrontend(const FrontendJob &job,
       continue;
     }
 
-    if (const auto *file = context.fileManager->getFile(path))
-      if (HeaderMap::Create(file, *context.fileManager))
+    if (auto file = context.fileManager->getFile(path))
+      if (HeaderMap::Create(*file, *context.fileManager))
         continue;
 
     args.emplace_back("-I" + path);
+  }
+
+  // Add quoted header search paths.
+  for (const auto &path : job.quotedIncludePaths) {
+    // Only add header maps for project headers.
+    if (job.type == HeaderType::Project) {
+      args.emplace_back("-iquote" + path);
+      continue;
+    }
+
+    if (auto file = context.fileManager->getFile(path))
+      if (HeaderMap::Create(*file, *context.fileManager))
+        continue;
+
+    args.emplace_back("-iquote" + path);
   }
 
   // Also add the private framework path, since it is not added by default.
@@ -351,8 +368,8 @@ extern Optional<FrontendContext> runFrontend(const FrontendJob &job,
   }
 
   // For c++ and objective-c++, add default stdlib to be libc++.
-  if (job.language == clang::InputKind::CXX ||
-      job.language == clang::InputKind::ObjCXX)
+  if (job.language == clang::Language::CXX ||
+      job.language == clang::Language::ObjCXX)
     args.emplace_back("-stdlib=libc++");
 
   // Add extra clang arguments.

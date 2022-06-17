@@ -13,7 +13,6 @@
 //===----------------------------------------------------------------------===//
 
 #include "tapi/Core/APIVisitor.h"
-#include "tapi/Core/Architecture.h"
 #include "tapi/Core/Framework.h"
 #include "tapi/Core/HeaderFile.h"
 #include "tapi/Defines.h"
@@ -28,9 +27,11 @@
 #include "llvm/Support/Path.h"
 #include "llvm/Support/Regex.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvm/TextAPI/MachO/Architecture.h"
 #include <string>
 
 using namespace llvm;
+using namespace llvm::MachO;
 using namespace clang;
 
 TAPI_NAMESPACE_INTERNAL_BEGIN
@@ -118,7 +119,7 @@ static bool emitJSON(const Framework &framework, StringRef isysroot, const Tripl
 
   auto frameworkName = sys::path::stem(framework.getName());
   if (umbrellaFramework.empty())
-    umbrellaFramework = frameworkName;
+    umbrellaFramework = frameworkName.str();
   for (auto &sub : framework._subFrameworks) {
     if (!emitJSON(sub, isysroot, target, os, n, umbrellaFramework))
       return false;
@@ -241,7 +242,7 @@ static bool parseFramework(Framework &framework, Options &opts,
   // will prevent it from being droped from the top of the list if there is
   // a matching system framework include path.
   job.frameworkPaths.insert(job.frameworkPaths.begin(),
-                            sys::path::parent_path(framework.getPath()));
+                            sys::path::parent_path(framework.getPath()).str());
 
   for (auto &target : opts.frontendOptions.targets) {
     job.target = target;
@@ -275,8 +276,8 @@ bool Driver::GenerateAPITests::run(DiagnosticsEngine &diag, Options &opts) {
   }
 
   // Set default language option.
-  if (opts.frontendOptions.language == clang::InputKind::Unknown)
-    opts.frontendOptions.language = clang::InputKind::ObjC;
+  if (opts.frontendOptions.language == clang::Language::Unknown)
+    opts.frontendOptions.language = clang::Language::ObjC;
 
   //
   // Scan through the directories and create a list of all found frameworks.

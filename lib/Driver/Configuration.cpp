@@ -49,8 +49,11 @@ static PathSeq updatePathSeq(const PathSeq &paths, StringRef root) {
   return headers;
 }
 
-PathSeq Configuration::updateDirectories(const PathSeq &paths) const {
-  PathSeq headers = updatePathSeq(paths, rootPath);
+PathSeq Configuration::updateDirectories(StringRef frameworkPath,
+                                         const PathSeq &paths) const {
+  PathSeq headers;
+  if (!useOverlay(frameworkPath))
+    headers = updatePathSeq(paths, rootPath);
   PathSeq headersFromSDK = updatePathSeq(paths, getSysRoot());
   headers.insert(headers.end(), headersFromSDK.begin(), headersFromSDK.end());
   return headers;
@@ -127,57 +130,58 @@ void Configuration::setConfiguration(ConfigurationFile &&configFile,
   }
 
   // Get the project name from environment.
-  auto project = llvm::sys::Process::GetEnv("RC_ProjectName");
-  if (!project)
+  if (projectName.empty())
     return;
 
+  StringRef projName(projectName);
   // If the project name ends with _iosmac, set the default to iosmac.
-  isiOSMac = StringRef(*project).endswith("_iosmac");
-
-  isDriverKit = StringRef(*project).endswith("_driverkit");
+  isiOSMac = projName.endswith("_iosmac");
+  isDriverKit = projName.endswith("_driverkit");
 
   // Find the project setting from configuration file.
   // If there is setting for the project, update them as commandline options.
   for (auto &conf : file.projectConfigurations) {
-    if (conf.name == *project) {
+    if (projName == conf.name) {
       projectConfig.reset(new configuration::v1::ProjectConfiguration(conf));
       break;
+    }
+    // Handle the forked version.
+    auto altName = projName.split('_');
+    if (altName.second == conf.name) {
+      projectConfig.reset(new configuration::v1::ProjectConfiguration(conf));
+      break;
+    }
+  }
+
+  // For projects end with "_Sim", try search without suffix.
+  if (!projectConfig && projName.consume_back("_Sim")) {
+    for (auto &conf : file.projectConfigurations) {
+      if (projName.endswith(conf.name)) {
+        projectConfig.reset(new configuration::v1::ProjectConfiguration(conf));
+        break;
+      }
     }
   }
 }
 
 std::string Configuration::getSysRoot() const {
-  auto sysroot =
-      !commandLine.isysroot.empty() ? commandLine.isysroot : file.isysroot;
-
-  // remap SYSROOT from MacOS to DriverKit.
-  if (isDriverKitProject()) {
-    auto platformSDKPath = llvm::sys::path::parent_path(sysroot);
-    // Search platformSDKPath to see if there is "DriverKit*.Internal.sdk".
-    std::error_code ec;
-    auto fs = context.getFileManager().getVirtualFileSystem();
-    for (auto i = fs->dir_begin(platformSDKPath, ec);
-         i != llvm::vfs::directory_iterator(); i.increment(ec)) {
-      auto path = i->path();
-      auto name = llvm::sys::path::filename(path);
-      if (name.startswith("DriverKit") && name.endswith("Internal.sdk"))
-        sysroot = path;
-    }
-  }
-
-  return sysroot;
+  return !commandLine.isysroot.empty() ? commandLine.isysroot : file.isysroot;
 }
 
-clang::InputKind::Language Configuration::getLanguage(StringRef path) const {
-  if (commandLine.language != clang::InputKind::Unknown)
+clang::Language Configuration::getLanguage(StringRef path) const {
+  if (commandLine.language != clang::Language::Unknown)
     return commandLine.language;
 
   if (projectConfig)
     return projectConfig->language;
- 
-  auto it = pathToConfig.find(path);
+
+  auto it = pathToConfig.find(path.str());
   if (it != pathToConfig.end())
     return it->second->language;
+
+  // DriverKit is c++.
+  if (isDriverKitProject())
+    return clang::Language::CXX;
 
   return file.language;
 }
@@ -189,7 +193,7 @@ std::vector<Macro> Configuration::getMacros(StringRef path) const {
   if (projectConfig)
     return projectConfig->macros;
 
-  auto it = pathToConfig.find(path);
+  auto it = pathToConfig.find(path.str());
   if (it != pathToConfig.end())
     return it->second->macros;
 
@@ -203,19 +207,19 @@ PathSeq Configuration::getIncludePaths(StringRef path) const {
                         commandLine.includePaths.end());
 
   if (projectConfig) {
-    auto projectIncludes = updateDirectories(projectConfig->includePaths);
+    auto projectIncludes = updateDirectories(path, projectConfig->includePaths);
     includePaths.insert(includePaths.end(), projectIncludes.begin(),
                         projectIncludes.end());
   }
 
-  auto it = pathToConfig.find(path);
+  auto it = pathToConfig.find(path.str());
   if (it != pathToConfig.end()) {
-    auto frameworkIncludes = updateDirectories(it->second->includePaths);
+    auto frameworkIncludes = updateDirectories(path, it->second->includePaths);
     includePaths.insert(includePaths.end(), frameworkIncludes.begin(),
                         frameworkIncludes.end());
   }
 
-  auto globalIncludes = updateDirectories(file.includePaths);
+  auto globalIncludes = updateDirectories(path, file.includePaths);
   includePaths.insert(includePaths.end(), globalIncludes.begin(),
                       globalIncludes.end());
 
@@ -227,22 +231,24 @@ PathSeq Configuration::getFrameworkPaths(StringRef path) const {
   if (!commandLine.frameworkPaths.empty())
     frameworkPaths.insert(frameworkPaths.end(),
                           commandLine.frameworkPaths.begin(),
-                          commandLine.includePaths.end());
+                          commandLine.frameworkPaths.end());
 
   if (projectConfig) {
-    auto projectFrameworks = updateDirectories(projectConfig->frameworkPaths);
+    auto projectFrameworks =
+        updateDirectories(path, projectConfig->frameworkPaths);
     frameworkPaths.insert(frameworkPaths.end(), projectFrameworks.begin(),
                           projectFrameworks.end());
   }
 
-  auto it = pathToConfig.find(path);
+  auto it = pathToConfig.find(path.str());
   if (it != pathToConfig.end()) {
-    auto frameworkFrameworks = updateDirectories(it->second->frameworkPaths);
+    auto frameworkFrameworks =
+        updateDirectories(path, it->second->frameworkPaths);
     frameworkPaths.insert(frameworkPaths.end(), frameworkFrameworks.begin(),
                           frameworkFrameworks.end());
   }
 
-  auto globalFrameworks = updateDirectories(file.frameworkPaths);
+  auto globalFrameworks = updateDirectories(path, file.frameworkPaths);
   frameworkPaths.insert(frameworkPaths.end(), globalFrameworks.begin(),
                         globalFrameworks.end());
 
@@ -268,7 +274,7 @@ PathSeq Configuration::getExtraHeaders(StringRef path, HeaderType type) const {
           projectConfig->privateHeaderConfiguration.includes);
   }
 
-  auto it = pathToConfig.find(path);
+  auto it = pathToConfig.find(path.str());
   if (it == pathToConfig.end())
     return {};
 
@@ -282,50 +288,64 @@ PathSeq Configuration::getPreIncludedHeaders(StringRef path,
                                              HeaderType type) const {
   if (projectConfig) {
     if (type == HeaderType::Public)
-      return updateSDKHeaderFiles(
-          projectConfig->publicHeaderConfiguration.preIncludes);
+      return projectConfig->publicHeaderConfiguration.preIncludes;
     else
-      return updateSDKHeaderFiles(
-          projectConfig->privateHeaderConfiguration.preIncludes);
+      return projectConfig->privateHeaderConfiguration.preIncludes;
   }
 
-  auto it = pathToConfig.find(path);
+  auto it = pathToConfig.find(path.str());
   if (it == pathToConfig.end())
     return {};
 
   if (type == HeaderType::Public)
-    return updateSDKHeaderFiles(it->second->publicHeaderConfiguration.preIncludes);
+    return it->second->publicHeaderConfiguration.preIncludes;
 
   assert(type == HeaderType::Private && "Unexpected header type.");
-  return updateSDKHeaderFiles(it->second->privateHeaderConfiguration.preIncludes);
+  return it->second->privateHeaderConfiguration.preIncludes;
 }
 
 PathSeq Configuration::getExcludedHeaders(StringRef path,
                                           HeaderType type) const {
+  PathSeq excludePaths;
   if (type == HeaderType::Public) {
-    if (!commandLine.excludePublicHeaders.empty())
-      return commandLine.excludePublicHeaders;
+    excludePaths.insert(excludePaths.end(),
+                        commandLine.excludePublicHeaders.begin(),
+                        commandLine.excludePublicHeaders.end());
   } else {
     assert(type == HeaderType::Private && "Unexpected header type.");
-    if (!commandLine.excludePrivateHeaders.empty())
-      return commandLine.excludePrivateHeaders;
+    excludePaths.insert(excludePaths.end(),
+                        commandLine.excludePrivateHeaders.begin(),
+                        commandLine.excludePrivateHeaders.end());
   }
 
   if (projectConfig) {
     if (type == HeaderType::Public)
-      return projectConfig->publicHeaderConfiguration.excludes;
+      excludePaths.insert(
+          excludePaths.end(),
+          projectConfig->publicHeaderConfiguration.excludes.begin(),
+          projectConfig->publicHeaderConfiguration.excludes.end());
     else
-      return projectConfig->privateHeaderConfiguration.excludes;
+      excludePaths.insert(
+          excludePaths.end(),
+          projectConfig->privateHeaderConfiguration.excludes.begin(),
+          projectConfig->privateHeaderConfiguration.excludes.end());
   }
 
-  auto it = pathToConfig.find(path);
-  if (it == pathToConfig.end())
-    return {};
+  auto it = pathToConfig.find(path.str());
+  if (it != pathToConfig.end()) {
+    if (type == HeaderType::Public)
+      excludePaths.insert(
+          excludePaths.end(),
+          it->second->publicHeaderConfiguration.excludes.begin(),
+          it->second->publicHeaderConfiguration.excludes.end());
+    else
+      excludePaths.insert(
+          excludePaths.end(),
+          it->second->privateHeaderConfiguration.excludes.begin(),
+          it->second->privateHeaderConfiguration.excludes.end());
+  }
 
-  if (type == HeaderType::Public)
-    return it->second->publicHeaderConfiguration.excludes;
-
-  return it->second->privateHeaderConfiguration.excludes;
+  return excludePaths;
 }
 
 std::string Configuration::getUmbrellaHeader(StringRef path,
@@ -346,7 +366,7 @@ std::string Configuration::getUmbrellaHeader(StringRef path,
       return projectConfig->privateHeaderConfiguration.umbrellaHeader;
   }
 
-  auto it = pathToConfig.find(path);
+  auto it = pathToConfig.find(path.str());
   if (it == pathToConfig.end())
     return {};
 
@@ -360,12 +380,26 @@ bool Configuration::isiOSMacProject() const {
   return isiOSMac || (projectConfig && projectConfig->isiOSMac);
 }
 
-bool Configuration::useOverlay() const {
-  return projectConfig && projectConfig->useOverlay;
+bool Configuration::useOverlay(StringRef path) const {
+  if (projectConfig)
+    return projectConfig->useOverlay;
+
+  auto it = pathToConfig.find(path.str());
+  if (it != pathToConfig.end())
+    return it->second->useOverlay;
+
+  return true; // true by default.
 }
 
 bool Configuration::useUmbrellaOnly() const {
   return projectConfig && projectConfig->useUmbrellaOnly;
+}
+
+PathSeq Configuration::getMaskPaths() const {
+  PathSeq paths;
+  if (projectConfig)
+    paths = projectConfig->maskPaths;
+  return paths;
 }
 
 bool Configuration::isPromotedToPublicDylib(StringRef installName) const {

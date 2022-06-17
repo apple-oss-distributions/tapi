@@ -25,6 +25,8 @@ std::string AvailabilityInfo::str() const {
 void AvailabilityInfo::print(raw_ostream &os) const {
   os << "i:" << _introduced << " o:" << _obsoleted
      << " u:" << static_cast<int>((bool)_unavailable);
+  if (_isSPIAvailable)
+    os << " (spi)";
 }
 
 TAPI_NAMESPACE_INTERNAL_END

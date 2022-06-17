@@ -15,6 +15,7 @@
 #include "tapi/Core/FileSystem.h"
 #include "tapi/Core/LLVM.h"
 #include "llvm/ADT/Twine.h"
+#include "llvm/Support/Errc.h"
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/Path.h"
 #include <sys/stat.h>
@@ -119,6 +120,41 @@ std::error_code make_relative(StringRef from, StringRef to,
   relativePath.swap(result);
 
   return {};
+}
+
+MaskingOverlayFileSystem::MaskingOverlayFileSystem(
+    IntrusiveRefCntPtr<FileSystem> base, StringRef root)
+    : OverlayFileSystem(base), sysroot(root.data(), root.size()) {}
+
+ErrorOr<vfs::Status> MaskingOverlayFileSystem::status(const Twine &path) {
+  SmallString<PATH_MAX> realPath;
+  auto p = path.toStringRef(realPath);
+  // If the path is from sysroot, try to test if that is a public location.
+  // This is a looser check than strict public location check for now.
+  if (p.consume_front(sysroot)) {
+    // Remove the iOSSupport/DriverKit prefix to identify public locations
+    // inside the iOSSupport/DriverKit directory.
+    p.consume_front("/System/iOSSupport");
+    p.consume_front("/System/DriverKit");
+    // Apply extra masks first.
+    for (auto &mask : extraMaskingPath) {
+      if (p.startswith(mask))
+        return llvm::errc::no_such_file_or_directory;
+    }
+    if (p.consume_front("/usr/local") ||
+        p.consume_front("/System/Library/PrivateFrameworks"))
+      return llvm::errc::no_such_file_or_directory;
+    if (p.consume_front("/System/Library/Frameworks/")) {
+      // Exclude everything from PrivateHeaders.
+      while (!p.empty()) {
+        auto split = p.split('/');
+        if (split.first == "PrivateHeaders")
+          return llvm::errc::no_such_file_or_directory;
+        p = split.second;
+      }
+    }
+  }
+  return OverlayFileSystem::status(path);
 }
 
 TAPI_NAMESPACE_INTERNAL_END

@@ -28,18 +28,19 @@ class StatRecorder final : public clang::FileSystemStatCache {
 public:
   StatRecorder() = default;
 
-  LookupResult getStat(StringRef path, llvm::vfs::Status &status, bool isFile,
-                       std::unique_ptr<llvm::vfs::File> *file,
-                       llvm::vfs::FileSystem &fs) override {
-    if (get(path, status, isFile, file, nullptr, fs))
-      return CacheMissing;
+  std::error_code getStat(StringRef path, llvm::vfs::Status &status,
+                          bool isFile, std::unique_ptr<llvm::vfs::File> *file,
+                          llvm::vfs::FileSystem &fs) override {
+    auto err = get(path, status, isFile, file, nullptr, fs);
+    if (err)
+      return err;
 
     if (status.isDirectory())
       TAPI_INTERNAL::globalSnapshot->recordDirectory(path);
     else
       TAPI_INTERNAL::globalSnapshot->recordFile(path);
 
-    return CacheExists;
+    return std::error_code();
   }
 };
 

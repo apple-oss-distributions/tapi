@@ -14,10 +14,10 @@ INVALID_XARCH_OPTION: error: invalid argument '-Xarch_x86_64' not allowed with '
 NO_TARGET: error: no target specified: add --target=<triple>
 
 ; RUN: not %tapi installapi -arch arm64 -target armv7-apple-ios12 2>&1 | FileCheck --check-prefix=CONFLICITNG_TARGET %s
-CONFLICITNG_TARGET: error: invalid argument '-arch arm64' not allowed with '--target=armv7-apple-ios12'
+CONFLICITNG_TARGET: error: invalid argument '-arch arm64' not allowed with '-target armv7-apple-ios12'
 
 ; RUN: not %tapi installapi -arch x86_64 -target-variant x86_64-apple-ios13.0-macabi 2>&1 | FileCheck --check-prefix=CONFLICITNG_TARGET_VARIANT %s
-CONFLICITNG_TARGET_VARIANT: error: invalid argument '-arch x86_64' not allowed with '--target-variant=x86_64-apple-ios13.0-macabi'
+CONFLICITNG_TARGET_VARIANT: error: invalid argument '-arch x86_64' not allowed with '-target-variant x86_64-apple-ios13.0-macabi'
 
 ; RUN: not %tapi installapi -arch arm64 2>&1 | FileCheck --check-prefix=NO_INSTALL_NAME %s
 NO_INSTALL_NAME: error: no install name specified: add -install_name <path>

@@ -19,6 +19,7 @@
 #include <string>
 
 using namespace llvm;
+using namespace llvm::MachO;
 
 TAPI_NAMESPACE_INTERNAL_BEGIN
 
@@ -31,7 +32,7 @@ XPI::const_filtered_target_range
 XPI::targets(ArchitectureSet architectures) const {
   std::function<bool(const Target &)> fn =
       [architectures](const Target &target) {
-        return architectures.has(target.architecture);
+        return architectures.has(target.Arch);
       };
   return make_filter_range(make_range<const_target_iterator>(
                                _availability.begin(), _availability.end()),
@@ -39,13 +40,14 @@ XPI::targets(ArchitectureSet architectures) const {
 }
 
 std::string XPI::getPrettyName(bool demangle) const {
+  auto name = std::string(_name);
   if (!demangle)
-    return _name;
+    return name;
 
   if (demangle && _name.startswith("__Z")) {
     int status = 0;
-    char *demangledName = itaniumDemangle(_name.substr(1).str().c_str(),
-                                          nullptr, nullptr, &status);
+    char *demangledName =
+        itaniumDemangle(name.substr(1).c_str(), nullptr, nullptr, &status);
     if (status == 0) {
       std::string result = demangledName;
       free(demangledName);
@@ -54,9 +56,9 @@ std::string XPI::getPrettyName(bool demangle) const {
   }
 
   if (_name[0] == '_')
-    return _name.substr(1);
+    return name.substr(1);
 
-  return _name;
+  return name;
 }
 
 std::string XPI::getAnnotatedName(bool demangle) const {

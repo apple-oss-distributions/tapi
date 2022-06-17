@@ -15,8 +15,11 @@ using namespace clang;
 
 TAPI_NAMESPACE_INTERNAL_BEGIN
 
-APILoc::APILoc(StringRef file, unsigned line, unsigned col)
+APILoc::APILoc(std::string file, unsigned line, unsigned col)
     : file(file), line(line), col(col) {}
+
+APILoc::APILoc(StringRef file, unsigned line, unsigned col)
+    : file(file.str()), line(line), col(col) {}
 
 bool APILoc::isInvalid() const {
   if (loc)

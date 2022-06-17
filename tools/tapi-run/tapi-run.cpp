@@ -211,22 +211,13 @@ int main(int argc, const char *argv[]) {
     if (sys::path::extension(i->path()) != ".tbd")
       continue;
 
-    auto bufferOrError = MemoryBuffer::getFile(i->path());
-    if (auto ec = bufferOrError.getError()) {
-      errs() << "error: " << ec.message() << " (" << i->path() << ")\n";
-      return 1;
-    }
-
-    auto buffer = bufferOrError.get()->getBuffer();
     for (auto &arch : archSet) {
       for (unsigned j = 0; j < num; ++j) {
         std::string errorMessage;
         auto file = std::unique_ptr<tapi::LinkerInterfaceFile>(
             tapi::LinkerInterfaceFile::create(
-                i->path(), reinterpret_cast<const uint8_t *>(buffer.data()),
-                buffer.size(), std::get<0>(arch), std::get<1>(arch),
-                tapi::CpuSubTypeMatching::ABI_Compatible, packedVersion,
-                errorMessage));
+                i->path(), std::get<0>(arch), std::get<1>(arch),
+                tapi::ParsingFlags::None, packedVersion, errorMessage));
         if (file == nullptr) {
           errs() << "error: " << errorMessage << "\n";
           return 1;

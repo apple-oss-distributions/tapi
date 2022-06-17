@@ -27,12 +27,15 @@ struct AvailabilityInfo {
   PackedVersion _introduced{0};
   PackedVersion _obsoleted{0};
   bool _unavailable{false};
+  bool _isSPIAvailable{false};
 
   constexpr AvailabilityInfo(bool unavailable = false)
       : _unavailable(unavailable) {}
 
-  constexpr AvailabilityInfo(PackedVersion i, PackedVersion o, bool u)
-      : _introduced(i), _obsoleted(o), _unavailable(u) {}
+  constexpr AvailabilityInfo(PackedVersion i, PackedVersion o, bool u,
+                             bool isSPI = false)
+      : _introduced(i), _obsoleted(o), _unavailable(u), _isSPIAvailable(isSPI) {
+  }
 
   bool isDefault() const { return *this == AvailabilityInfo(); }
 
@@ -54,6 +57,8 @@ struct AvailabilityInfo {
 
   bool isUnavailable() const { return _unavailable; }
 
+  bool isSPIAvailable() const { return _isSPIAvailable; }
+
   void print(raw_ostream &os) const;
 
   friend bool operator==(const AvailabilityInfo &lhs,
@@ -66,8 +71,10 @@ struct AvailabilityInfo {
 
 inline bool operator==(const AvailabilityInfo &lhs,
                        const AvailabilityInfo &rhs) {
-  return std::tie(lhs._introduced, lhs._obsoleted, lhs._unavailable) ==
-         std::tie(rhs._introduced, rhs._obsoleted, rhs._unavailable);
+  return std::tie(lhs._introduced, lhs._obsoleted, lhs._unavailable,
+                  lhs._isSPIAvailable) ==
+         std::tie(rhs._introduced, rhs._obsoleted, rhs._unavailable,
+                  rhs._isSPIAvailable);
 }
 
 inline bool operator!=(const AvailabilityInfo &lhs,
@@ -77,8 +84,10 @@ inline bool operator!=(const AvailabilityInfo &lhs,
 
 inline bool operator<(const AvailabilityInfo &lhs,
                       const AvailabilityInfo &rhs) {
-  return std::tie(lhs._introduced, lhs._obsoleted, lhs._unavailable) <
-         std::tie(rhs._introduced, rhs._obsoleted, rhs._unavailable);
+  return std::tie(lhs._introduced, lhs._obsoleted, lhs._isSPIAvailable,
+                  lhs._unavailable) < std::tie(rhs._introduced, rhs._obsoleted,
+                                               rhs._isSPIAvailable,
+                                               rhs._unavailable);
 }
 
 inline raw_ostream &operator<<(raw_ostream &os, const AvailabilityInfo &avail) {

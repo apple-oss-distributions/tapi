@@ -128,7 +128,7 @@ def infer_tapi_tool(NAME, ENV, PATH):
     # If the user set ENV in the environment, definitely use that and don't
     # try to validate.
     if tool:
-        return tapi_run
+        return tool
 
     # Otherwise look in the path.
     tool = lit.util.which(NAME, PATH)
@@ -150,7 +150,7 @@ def get_macos_sdk_path(config):
         res = -1
 
     if res == 0 and out:
-        return out
+        return out.decode()
 
     lit_config.fatal("couldn't find sysroot")
 
@@ -177,36 +177,50 @@ if config.iosmac_support == '1':
 if config.i386_support == '1':
     config.available_features.add("i386")
 
+# swift-api-extract config
+def find_swift_api_extract():
+    # look for the overwrite.
+    tool = os.getenv("TAPI_TEST_SWIFT_API_EXTRACT")
+    if tool:
+        return tool
+    try:
+        cmd = subprocess.Popen(['xcrun', '-f', 'swift-api-extract'],
+                               stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        out, err = cmd.communicate()
+        out = out.strip()
+        res = cmd.wait()
+    except OSError:
+        res = -1
+    if res == 0 and out:
+        return out.decode()
+    return None
+
+config.swift_api_extract = find_swift_api_extract()
+if config.swift_api_extract is not None:
+    config.available_features.add("swift_api_extract")
+    config.substitutions.append( ('%swift_api_extract', config.swift_api_extract) )
+
 config.inputs = os.path.join(tapi_obj_root, 'Inputs')
 config.tapi = infer_tapi_tool("tapi", "TAPI", config.environment['PATH']).replace('\\', '/')
 config.tapi_run = infer_tapi_tool("tapi-run", "TAPI_RUN", config.environment['PATH']).replace('\\', '/')
 config.tapi_frontend = infer_tapi_tool("tapi-frontend", "TAPI_FRONTEND", config.environment['PATH']).replace('\\', '/')
 config.tapi_binary_reader = infer_tapi_tool("tapi-binary-reader", "TAPI_BINARY_READER", config.environment['PATH']).replace('\\', '/')
+config.tapi_sdkdb = infer_tapi_tool("tapi-sdkdb", "TAPI_SDKDB", config.environment['PATH']).replace('\\', '/')
 config.sysroot = get_macos_sdk_path(config)
 lit_config.note('using SDKROOT: %r' % config.sysroot)
 
 config.substitutions.append( ('%inputs', config.inputs) )
 config.substitutions.append( ('%tapi-frontend', config.tapi_frontend + ' -no-colors') )
 config.substitutions.append( ('%tapi-binary-reader', config.tapi_binary_reader + ' -no-colors') )
+config.substitutions.append( ('%tapi-sdkdb', config.tapi_sdkdb) )
 config.substitutions.append( ('%tapi-run', config.tapi_run) )
 config.substitutions.append( ('%tapi', config.tapi) )
 config.substitutions.append( ('%sysroot', config.sysroot) )
 config.substitutions.append(
     ('%hmaptool', "'%s' %s" % (config.python_executable,
                              os.path.join(config.tapi_tools_dir, 'hmaptool'))))
+config.substitutions.append( ('%host-clang', config.host_compiler) )
 
 config.substitutions.append(
     (' tapi ', """*** Do not use 'tapi' in tests, use '%tapi'. ***""") )
 
-# Sanitizers.
-if 'Address' in config.llvm_use_sanitizer:
-    config.available_features.add("asan")
-else:
-    config.available_features.add("not_asan")
-
-if 'Undefined' in config.llvm_use_sanitizer:
-    config.available_features.add("ubsan")
-else:
-    config.available_features.add("not_ubsan")
-
-###

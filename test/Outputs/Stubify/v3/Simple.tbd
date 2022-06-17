@@ -4,7 +4,7 @@ platform:        macosx
 flags:           [ not_app_extension_safe ]
 install-name:    '/System/Library/Frameworks/Simple.framework/Versions/A/Simple'
 current-version: 1.2.3
-exports:         
+exports:
   - archs:           [ x86_64 ]
     symbols:         [ _extraGlobalAPI1, _extraGlobalAPI2, _privateGlobalVariable, 
                        _publicGlobalVariable ]

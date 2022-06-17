@@ -27,6 +27,7 @@
 
 using namespace llvm;
 using namespace llvm::yaml;
+using namespace llvm::MachO;
 using namespace TAPI_INTERNAL;
 
 namespace {
@@ -85,44 +86,50 @@ namespace yaml {
 
 template <> struct ScalarTraits<Target> {
   static void output(const Target &value, void *, raw_ostream &os) {
-    os << value.architecture << "-";
-    switch (value.platform) {
+    os << value.Arch << "-";
+    switch (value.Platform) {
     default:
       os << "unknown";
       break;
-    case Platform::macOS:
+    case PlatformKind::macOS:
       os << "macos";
       break;
-    case Platform::iOS:
+    case PlatformKind::iOS:
       os << "ios";
       break;
-    case Platform::tvOS:
+    case PlatformKind::tvOS:
       os << "tvos";
       break;
-    case Platform::watchOS:
+    case PlatformKind::watchOS:
       os << "watchos";
       break;
-    // MARZIPAN RENAME
-    case Platform::macCatalyst:
-      os << "<6>";
+    case PlatformKind::bridgeOS:
+      os << "bridgeos";
       break;
-    // MARZIPAN RENAME
-    case Platform::iOSSimulator:
+    case PlatformKind::macCatalyst:
+      os << "maccatalyst";
+      break;
+    case PlatformKind::iOSSimulator:
       os << "ios-simulator";
       break;
-    case Platform::tvOSSimulator:
+    case PlatformKind::tvOSSimulator:
       os << "tvos-simulator";
       break;
-    case Platform::watchOSSimulator:
+    case PlatformKind::watchOSSimulator:
       os << "watchos-simulator";
+      break;
+    case PlatformKind::driverKit:
+      os << "driverkit";
       break;
     }
   }
 
   static StringRef input(StringRef scalar, void *, Target &value) {
     auto result = Target::create(scalar);
-    if (!result)
-      return toString(result.takeError());
+    if (!result) {
+      errs() << toString(result.takeError());
+      return "failed to create target";
+    }
 
     value = *result;
     return {};
@@ -390,7 +397,7 @@ template <> struct MappingTraits<const InterfaceFile *> {
             file->addSymbol(XPIKind::ObjectiveCInstanceVariable, sym,
                             section.targets, linkage);
 
-          auto flags = linkage == APILinkage::Exported
+          auto flags = linkage == APILinkage::External
                            ? APIFlags::WeakReferenced
                            : APIFlags::WeakDefined;
           for (auto &sym : section.weakSymbols)

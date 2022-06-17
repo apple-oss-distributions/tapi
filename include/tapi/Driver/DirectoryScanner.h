@@ -69,6 +69,10 @@ public:
   // Get scanner output.
   std::vector<Framework> takeResult();
 
+  using FileMap = std::vector<std::pair<std::string, std::string>>;
+  // Get VFS overlay for the scanner result.
+  FileMap getVFSFileMap(StringRef sysroot) const;
+
 private:
   // Private helper functions.
   Expected<bool> isDynamicLibrary(StringRef path) const;
@@ -83,14 +87,19 @@ private:
   bool scanSubFrameworksDirectory(std::vector<Framework> &frameworks,
                                   StringRef path) const;
   bool scanFrameworkDirectory(Framework &framework, StringRef path) const;
-  bool scanHeaders(Framework &framework, StringRef path, HeaderType type) const;
+  bool scanHeaders(Framework &framework, StringRef path, HeaderType type,
+                   StringRef basePath, bool isDynamicLibrary) const;
   bool scanModules(Framework &framework, StringRef path) const;
+  bool scanSwiftModules(Framework &framework, StringRef path) const;
   bool scanFrameworkVersionsDirectory(Framework &framework,
                                       StringRef path) const;
   bool scanLibraryDirectory(Framework &framework, StringRef path) const;
 
   bool scanDirectory(StringRef directory);
   bool scanSDKContent(StringRef directory);
+
+  void addVFSForFramework(FileMap &output, StringRef sysroot,
+                          const Framework &framework) const;
 
 private:
   Registry _registry;

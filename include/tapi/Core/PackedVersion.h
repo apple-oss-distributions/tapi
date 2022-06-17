@@ -83,7 +83,7 @@ inline raw_ostream &operator<<(raw_ostream &os, const PackedVersion &version) {
   return os;
 }
 
-const DiagnosticBuilder &operator<<(const DiagnosticBuilder &db,
+const StreamingDiagnostic &operator<<(const StreamingDiagnostic &db,
                                     const PackedVersion &version);
 
 TAPI_NAMESPACE_INTERNAL_END

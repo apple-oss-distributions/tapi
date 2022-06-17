@@ -53,8 +53,8 @@ static cl::opt<std::string> language_std("std",
 
 static cl::list<std::string> xparser("Xparser", cl::cat(tapiCategory));
 
-static cl::opt<std::string> whitelist("whitelist",
-                                      cl::desc("whitelist YAML file"),
+static cl::opt<std::string> allowlist("allowlist",
+                                      cl::desc("allowlist YAML file"),
                                       cl::cat(tapiCategory));
 
 static cl::opt<std::string> inputFilename(cl::Positional,
@@ -113,14 +113,14 @@ static std::string getClangResourcesPath(clang::FileManager &fm) {
   llvm::sys::path::append(path, "..", Twine("lib") + CLANG_LIBDIR_SUFFIX,
                           "tapi", TAPI_MAKE_STRING(TAPI_VERSION));
   if (fileExists(path))
-    return path.str();
+    return path.str().str();
 
   // Try the default clang path. This is used by check-tapi.
   path = dir;
   llvm::sys::path::append(path, "..", Twine("lib") + CLANG_LIBDIR_SUFFIX,
                           "clang", CLANG_VERSION_STRING);
   if (fileExists(path))
-    return path.str();
+    return path.str().str();
 
   return std::string();
 }
@@ -172,17 +172,17 @@ int main(int argc, const char *argv[]) {
     }
     DiagnosticsEngine diag;
     APIVerifier apiVerifier(diag);
-    if (!whitelist.empty()) {
-      auto inputBuf = MemoryBuffer::getFile(whitelist);
+    if (!allowlist.empty()) {
+      auto inputBuf = MemoryBuffer::getFile(allowlist);
       if (!inputBuf) {
-        errs() << "cannot open whitelist file: " << whitelist << "\n";
+        errs() << "cannot open allowlist file: " << allowlist << "\n";
         return -1;
       }
 
       auto error = apiVerifier.getConfiguration().readConfig(
           (*inputBuf)->getMemBufferRef());
       if (error) {
-        errs() << "cannot parse whitelist file: " << toString(std::move(error))
+        errs() << "cannot parse allowlist file: " << toString(std::move(error))
                << "\n";
         return -1;
       }

@@ -1,0 +1,38 @@
+; RUN: rm -rf %t && mkdir -p %t/SDKContentRoot/System/Library/Frameworks/Dummy.framework/Headers
+; RUN: mkdir -p %t.out
+; RUN: cp %p/Inputs/DummyHasInclude.h %t/SDKContentRoot/System/Library/Frameworks/Dummy.framework/Headers
+; RUN: mkdir -p %t/Sysroot/usr/local/include
+; RUN: touch %t/Sysroot/usr/local/include/private.h
+; RUN: RC_PROJECT_COMPILATION_PLATFORM=osx  RC_MIN_VERSION_OPTION="-mmacos-verison-min=10.13" RC_ARCHS="x86_64" RC_XBS="YES" RC_ProjectName="DummyFoundationOverlayTest" \
+; RUN:  %tapi sdkdb --private-headers -o %t.out -isysroot %t/Sysroot --runtime-root %t/SDKContentRoot --sdk-content-root %t/SDKContentRoot
+; RUN: cat %t.out/partial.sdkdb | FileCheck %s
+
+; CHECK:       "PublicSDKContentRoot": [
+; CHECK-NEXT:    {
+; CHECK-NEXT:      "globals": [
+; CHECK-NEXT:        {
+; CHECK-NEXT:          "access": "public",
+; CHECK-NEXT:          "file": "/System/Library/Frameworks/Dummy.framework/Headers/DummyHasInclude.h",
+; CHECK-NEXT:          "kind": "variable",
+; CHECK-NEXT:          "linkage": "exported",
+; CHECK-NEXT:          "name": "_no_include"
+; CHECK-NEXT:        }
+; CHECK-NEXT:      ],
+; CHECK-NEXT:      "target": "x86_64-apple-macos10.13"
+; CHECK-NEXT:    }
+; CHECK-NEXT:  ],
+; CHECK-NEXT:  "RuntimeRoot": [],
+; CHECK-NEXT:  "SDKContentRoot": [
+; CHECK-NEXT:    {
+; CHECK-NEXT:      "globals": [
+; CHECK-NEXT:        {
+; CHECK-NEXT:          "access": "public",
+; CHECK-NEXT:          "file": "/System/Library/Frameworks/Dummy.framework/Headers/DummyHasInclude.h",
+; CHECK-NEXT:          "kind": "variable",
+; CHECK-NEXT:          "linkage": "exported",
+; CHECK-NEXT:          "name": "_has_include"
+; CHECK-NEXT:        }
+; CHECK-NEXT:      ],
+; CHECK-NEXT:      "target": "x86_64-apple-macos10.13"
+; CHECK-NEXT:    }
+; CHECK-NEXT:  ],

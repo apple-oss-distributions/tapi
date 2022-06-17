@@ -5,7 +5,7 @@ flags:           [ not_app_extension_safe, installapi ]
 install-name:    '/System/Library/Frameworks/Foo.framework/Foo'
 current-version: 0
 compatibility-version: 0
-exports:         
+exports:
   - archs:           [ x86_64 ]
     symbols:         [ _public_api, _secret_api ]
 ...

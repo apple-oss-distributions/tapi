@@ -1,0 +1,27 @@
+;; Testing existing SDKDB in output directory but contains uncovered headers
+
+; RUN: rm -rf %t && mkdir -p %t/output %t/RuntimeRoot %t/SDKContentRoot %t/PublicSDKContentRoot/System/Library/Frameworks/Test.framework/Headers
+
+; Setup partial input.
+; RUN: cp %S/Inputs/property.partial.sdkdb %t/output/test.sdkdb
+
+; Throw in a header that is not covered in partial input.
+; RUN: echo "int test(void);" > %t/PublicSDKContentRoot/System/Library/Frameworks/Test.framework/Headers/Test.h
+
+; RUN: RC_ARCHS="x86_64" RC_PROJECT_COMPILATION_PLATFORM=osx %tapi sdkdb --action=scan-interface --runtime-root %t/RuntimeRoot --sdk-content-root %t/SDKContentRoot --public-sdk-content-root %t/PublicSDKContentRoot --sdk %sysroot --output %t/output
+
+; RUN: cat %t/output/partial.sdkdb | FileCheck %s
+
+; CHECK:      "PublicSDKContentRoot": [
+; CHECK-NEXT:   {
+; CHECK-NEXT:     "globals": [
+; CHECK-NEXT:       {
+; CHECK-NEXT:         "access": "public",
+; CHECK-NEXT:         "file": "/System/Library/Frameworks/Test.framework/Headers/Test.h",
+; CHECK-NEXT:         "kind": "function",
+; CHECK-NEXT:         "linkage": "exported",
+; CHECK-NEXT:         "name": "_test"
+; CHECK-NEXT:       }
+; CHECK-NEXT:     ],
+; CHECK-NEXT:     "target": "x86_64-apple-macos"
+

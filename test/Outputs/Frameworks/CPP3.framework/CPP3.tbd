@@ -3,7 +3,7 @@ archs:           [ x86_64 ]
 platform:        macosx
 flags:           [ not_app_extension_safe ]
 install-name:    '/System/Library/Frameworks/CPP3.framework/Versions/A/CPP3'
-exports:         
+exports:
   - archs:           [ x86_64 ]
     symbols:         [ __ZN5test16Simple3runEv, __ZN5test26Simple3runEv, __ZN5test43Sub3runEv, 
                        __ZN5test53Sub3runEv, __ZN5test63Sub3runEv, __ZN6test113Sub4run3Ev, 

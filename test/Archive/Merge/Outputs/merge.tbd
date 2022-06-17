@@ -2,10 +2,10 @@
 tbd-version:     4
 targets:         [ x86_64-macos, x86_64h-macos ]
 install-name:    '/usr/lib/libfoo.dylib'
-reexported-libraries: 
+reexported-libraries:
   - targets:         [ x86_64-macos, x86_64h-macos ]
     libraries:       [ '/usr/lib/internal/libbar.dylib' ]
-exports:         
+exports:
   - targets:         [ x86_64-macos ]
     symbols:         [ _sym1, _sym3 ]
   - targets:         [ x86_64h-macos ]

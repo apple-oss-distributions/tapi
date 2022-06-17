@@ -27,7 +27,6 @@ std::string getTAPIFullVersion() {
   OS << TAPI_VENDOR;
 #endif
   OS << "TAPI version " TAPI_MAKE_STRING(TAPI_VERSION);
-
 #ifdef TAPI_REPOSITORY_STRING
   OS << " (" TAPI_REPOSITORY_STRING ")";
 #endif

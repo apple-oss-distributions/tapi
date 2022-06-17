@@ -7,14 +7,13 @@ set(BUG_REPORT_URL "http://developer.apple.com/bugreporter/" CACHE STRING "" FOR
 set(LLVM_EXTERNALIZE_DEBUGINFO ON CACHE BOOL "" FORCE)
 set(LLVM_INCLUDE_TESTS OFF CACHE BOOL "" FORCE)
 
-set(LLVM_ENABLE_LTO ON CACHE BOOL "" FORCE)
+set(LLVM_ENABLE_LTO Thin CACHE BOOL "" FORCE)
 
 set(LLVM_DISTRIBUTION_COMPONENTS
   tapi-headers
   libtapi
-  tapi-clang-headers
+  tapi-clang-resource-headers
   tapi
   tapi-docs
-  tapi-configs
-  tapi-api-verifier
+  tapi-sdkdb
   CACHE STRING "" FORCE)

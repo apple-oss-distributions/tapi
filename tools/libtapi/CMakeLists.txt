@@ -13,6 +13,7 @@ add_tapi_library(libtapi
   LINK_LIBS
   tapiCore
   tapiNoInits
+  tapiObjCMetadata
 
   NO_INSTALL_RPATH
   )

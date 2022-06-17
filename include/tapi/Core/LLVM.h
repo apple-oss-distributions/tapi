@@ -33,6 +33,13 @@ class Twine;
 class MemoryBuffer;
 class MemoryBufferRef;
 
+namespace MachO {
+enum Architecture : uint8_t;
+class ArchitectureSet;
+enum class PlatformKind : unsigned;
+class Target;
+} // namespace MachO
+
 } // end namespace llvm.
 
 namespace clang {
@@ -40,6 +47,7 @@ namespace clang {
 class DirectoryEntry;
 class FileEntry;
 class DiagnosticBuilder;
+class StreamingDiagnostic;
 
 } // end namespace clang.
 
@@ -71,6 +79,14 @@ using clang::DirectoryEntry;
 using clang::FileEntry;
 
 using clang::DiagnosticBuilder;
+using clang::StreamingDiagnostic;
+
+// TextAPI types
+using llvm::MachO::Architecture;
+using llvm::MachO::ArchitectureSet;
+using llvm::MachO::PlatformKind;
+using llvm::MachO::Target;
+
 } // end namespace tapi.
 
 #endif // TAPI_CORE_LLVM_H

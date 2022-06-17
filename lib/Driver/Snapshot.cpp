@@ -12,6 +12,7 @@
 #include "tapi/Core/FileSystem.h"
 #include "tapi/Core/LLVM.h"
 #include "tapi/Core/TextStubCommon.h"
+#include "tapi/Core/Utils.h"
 #include "tapi/Defines.h"
 #include "clang/Frontend/FrontendOptions.h"
 #include "llvm/ADT/ArrayRef.h"
@@ -22,6 +23,7 @@
 #include "llvm/Support/xxhash.h"
 
 using namespace llvm;
+using namespace llvm::MachO;
 using namespace TAPI_INTERNAL;
 using clang::InputKind;
 
@@ -32,6 +34,8 @@ LLVM_YAML_IS_SEQUENCE_VECTOR(Reexports)
 LLVM_YAML_IS_SEQUENCE_VECTOR(LibraryRef)
 LLVM_YAML_IS_FLOW_SEQUENCE_VECTOR(Macro)
 LLVM_YAML_IS_FLOW_SEQUENCE_VECTOR(Triple)
+LLVM_YAML_IS_SEQUENCE_VECTOR(PathToPlatform)
+LLVM_YAML_IS_SEQUENCE_VECTOR(Optional<PlatformKind>)
 LLVM_YAML_IS_STRING_MAP(uint64_t)
 
 namespace llvm {
@@ -72,6 +76,31 @@ template <> struct MappingTraits<LibraryRef> {
   static void mapping(IO &io, LibraryRef &ref) {
     io.mapRequired("install-name", ref.installName);
     io.mapRequired("architectures", ref.architectures);
+  }
+};
+
+template <> struct MappingTraits<PathToPlatform> {
+  static void mapping(IO &io, PathToPlatform &ref) {
+    io.mapRequired("path", ref.first);
+    io.mapRequired("platform", ref.second);
+  }
+};
+
+template <> struct ScalarTraits<Optional<PlatformKind>> {
+  static void output(const Optional<PlatformKind> &value, void * /*unused*/,
+                     raw_ostream &os) {
+    os << (value.hasValue() ? getPlatformName(value.getValue()) : "all");
+  }
+
+  static StringRef input(StringRef scalar, void * /*unused*/,
+                         Optional<PlatformKind> &value) {
+    if (scalar != "all")
+      value = getPlatformFromName(scalar);
+    return {};
+  }
+
+  static QuotingType mustQuote(StringRef /*unused*/) {
+    return QuotingType::None;
   }
 };
 
@@ -175,23 +204,28 @@ struct MappingContextTraits<tapi::internal::FrontendOptions,
                             Snapshot::MappingContext> {
   static void mapping(IO &io, tapi::internal::FrontendOptions &opts,
                       Snapshot::MappingContext &ctx) {
-    io.mapOptional("platform", ctx.platform, Platform::unknown);
+    io.mapOptional("platform", ctx.platform, PlatformKind::unknown);
     io.mapOptional("os-version", ctx.osVersion, std::string());
     io.mapOptional("targets", opts.targets, std::vector<llvm::Triple>{});
     io.mapOptional("target-variants", opts.targetVariants,
                    std::vector<llvm::Triple>{});
-    io.mapOptional("language", opts.language, InputKind::ObjC);
+    io.mapOptional("language", opts.language, clang::Language::ObjC);
     io.mapOptional("language-std", opts.language_std, std::string());
     io.mapOptional("isysroot", opts.isysroot, std::string());
     io.mapOptional("umbrella", opts.umbrella, std::string());
-    io.mapOptional("system-framework-paths", opts.systemFrameworkPaths,
-                   PathSeq{});
+    io.mapOptional("system-framework-paths-with-platform",
+                   opts.systemFrameworkPaths, PathToPlatformSeq{});
+    // Keep mapping for older snapshots.
+    auto systemFrameworkPaths = getAllPaths(opts.systemFrameworkPaths);
+    io.mapOptional("system-framework-paths", systemFrameworkPaths, PathSeq{});
     io.mapOptional("system-include-paths", opts.systemIncludePaths, PathSeq{});
+    io.mapOptional("quoted-include-paths", opts.quotedIncludePaths, PathSeq{});
     io.mapOptional("framework-paths", opts.frameworkPaths, PathSeq{});
     io.mapOptional("library-paths", opts.libraryPaths, PathSeq{});
     io.mapOptional("include-paths", opts.includePaths, PathSeq{});
     io.mapOptional("macros", opts.macros, std::vector<Macro>{});
-    io.mapOptional("use-rtti", opts.useRTTI, true);
+    io.mapOptional("use-rtti", opts.useRTTI, false);
+    io.mapOptional("use-no-rtti", opts.useNoRTTI, false);
     io.mapOptional("visibility", opts.visibility, std::string());
     io.mapOptional("enable-modules", opts.enableModules, false);
     io.mapOptional("module-cache-path", opts.moduleCachePath, std::string());
@@ -257,7 +291,7 @@ template <> struct MappingTraits<TAPIOptions> {
 
 template <> struct CustomMappingTraits<FileMapping> {
   static void inputOne(IO &io, StringRef key, FileMapping &v) {
-    io.mapRequired(key.str().c_str(), v[key]);
+    io.mapRequired(key.str().c_str(), v[key.str()]);
   }
 
   static void output(IO &io, FileMapping &v) {
@@ -316,7 +350,7 @@ void Snapshot::findAndRecordSymlinks(SmallVectorImpl<char> &path,
   SmallString<PATH_MAX> currentPath;
   for (auto dir = sys::path::begin(p), e = sys::path::end(p); dir != e; ++dir) {
     sys::path::append(currentPath, *dir);
-    if (directorySet.count(currentPath.str()))
+    if (directorySet.count(currentPath.str().str()))
       continue;
 
     auto fileType = sys::fs::get_file_type(currentPath, /*follow=*/false);
@@ -341,7 +375,7 @@ void Snapshot::findAndRecordSymlinks(SmallVectorImpl<char> &path,
         return;
       }
       sys::path::remove_dots(newPath, /*remove_dot_dot=*/true);
-      symlinkToPath[currentPath.str()] = newPath.str();
+      symlinkToPath[currentPath.str().str()] = newPath.str().str();
 
       for (auto itr = std::next(dir); itr != e; ++itr)
         sys::path::append(newPath, *itr);
@@ -410,7 +444,8 @@ void Snapshot::writeSnapshot(bool isCrash) {
     sys::path::remove_dots(normalizedPathStorage, /*remove_dot_dot=*/true);
 
     findAndRecordSymlinks(normalizedPathStorage);
-    auto normalizedPath = normalizedPathStorage.str();
+    auto normalizedPath = normalizedPathStorage.str().str();
+    auto normalizedPathStr = normalizedPath;
 
     // Skip the file if we have it already hashed and copied.
     if (pathToHash.count(normalizedPath))
@@ -560,9 +595,10 @@ bool Snapshot::loadSnapshot(StringRef path_) {
 
   for (auto arch : context.architectures) {
     Triple target;
-    target.setArchName(getArchName(arch));
+    target.setArchName(getArchitectureName(arch));
     target.setVendor(Triple::Apple);
-    auto platform = mapToSim(context.platform, context.architectures.hasX86());
+    auto platform =
+        mapToPlatformKind(context.platform, context.architectures.hasX86());
     target.setOSName(getOSAndEnvironmentName(platform, context.osVersion));
     frontendOptions.targets.push_back(target);
   }
@@ -583,7 +619,7 @@ bool Snapshot::loadSnapshot(StringRef path_) {
       }
     }
     if (!clangExecutablePath.empty())
-      driverOptions.clangExecutablePath = clangExecutablePath.str();
+      driverOptions.clangExecutablePath = clangExecutablePath.str().str();
   }
 
   // Create a separate directory for the output files.
@@ -605,7 +641,7 @@ bool Snapshot::loadSnapshot(StringRef path_) {
     return false;
   }
   sys::path::append(root, driverOptions.outputPath);
-  driverOptions.outputPath = root.str();
+  driverOptions.outputPath = root.str().str();
 
   sys::path::append(inputPath, filesDirectory);
   for (const auto &mapping : pathToHash) {
@@ -614,7 +650,7 @@ bool Snapshot::loadSnapshot(StringRef path_) {
     std::string fileName;
     if (StringRef(mapping.second).startswith("0x"))
       // This is the new snapshot format that uses hex numbers.
-      fileName = StringRef(mapping.second).drop_front(2);
+      fileName = StringRef(mapping.second).drop_front(2).str();
     else {
       // Support old snapshot files.
       uint64_t intValue = 0;

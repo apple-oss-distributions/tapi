@@ -54,10 +54,10 @@ public:
   void recordRawArguments(ArrayRef<const char *> args);
 
   /// \brief Sets the name of the snapshot.
-  void setName(StringRef name) { this->name = name; }
+  void setName(StringRef name) { this->name = name.str(); }
 
   /// \brief Specify the directory where to store the snapshot.
-  void setRootPath(StringRef path) { rootPath = path; }
+  void setRootPath(StringRef path) { rootPath = path.str(); }
 
   /// \brief Record all the options.
   ///
@@ -94,13 +94,13 @@ public:
   }
 
   /// \brief Set current working directory.
-  void setWorkingDirectory(StringRef path) { workingDirectory = path; }
+  void setWorkingDirectory(StringRef path) { workingDirectory = path.str(); }
 
   StringRef getWorkingDirectory() { return workingDirectory; }
 
   struct MappingContext {
     ArchitectureSet architectures;
-    Platform platform = Platform::unknown;
+    PlatformKind platform = PlatformKind::unknown;
     std::string osVersion;
   };
 

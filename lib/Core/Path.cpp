@@ -54,7 +54,7 @@ enumerateFiles(FileManager &fm, StringRef path,
                const std::function<bool(StringRef)> &func) {
   PathSeq files;
   std::error_code ec;
-  auto &fs = *fm.getVirtualFileSystem();
+  auto &fs = fm.getVirtualFileSystem();
   for (llvm::vfs::recursive_directory_iterator i(fs, path, ec), ie; i != ie;
        i.increment(ec)) {
     if (ec)
@@ -74,6 +74,27 @@ enumerateFiles(FileManager &fm, StringRef path,
 
 Expected<PathSeq> enumerateHeaderFiles(FileManager &fm, StringRef path) {
   return enumerateFiles(fm, path, isHeaderFile);
+}
+
+PathSeq getPathsForPlatform(const PathToPlatformSeq &paths,
+                            PlatformKind platform) {
+  PathSeq result;
+
+  for (const auto &path : paths) {
+    if (!path.second.hasValue() || path.second.getValue() == platform)
+      result.push_back(path.first);
+  }
+
+  return result;
+}
+
+PathSeq getAllPaths(const PathToPlatformSeq &paths) {
+  PathSeq result;
+
+  transform(paths.begin(), paths.end(), std::back_inserter(result),
+            [](auto const &pair) { return pair.first; });
+
+  return result;
 }
 
 TAPI_NAMESPACE_INTERNAL_END

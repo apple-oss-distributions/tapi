@@ -2,6 +2,8 @@ add_tapi_test_library(IOSMac
   FRAMEWORK
   PUBLIC_HEADERS IOSMac.h
   SOURCE IOSMac.m
+  INSTALL_NAME_DIR /System/iOSSupport/System/Library/Frameworks
+  OUTPUT_DIRECTORY /System/iOSSupport/System/Library/Frameworks
 )
 target_compile_options(IOSMac
   PRIVATE

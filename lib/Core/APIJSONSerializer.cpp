@@ -112,25 +112,39 @@ static void serializeArray(Object &obj, StringRef key,
   obj[key] = std::move(values);
 }
 
-static void serializeLocation(Object &obj, const APILoc &loc) {
+static void serializeLocation(Object &obj, const APILoc &loc,
+                              const APIJSONOption &options) {
   // skip invalid location.
   if (loc.isInvalid())
     return;
 
+  obj["file"] = loc.getFilename().str();
+  if (options.ignoreLineCol)
+    return;
+
+  obj["line"] = loc.getLine();
+  obj["col"] = loc.getColumn();
+}
+
+static std::string getStringForPackedVersion(const PackedVersion &version) {
   std::string str;
   raw_string_ostream rss(str);
-  rss << loc.getFilename() << ":" << loc.getLine() << ":" << loc.getColumn();
-  obj["loc"] = rss.str();
+  rss << version;
+  return rss.str();
 }
 
 static void serializeAvailability(Object &obj, const AvailabilityInfo &avail) {
   if (avail.isDefault())
     return;
 
-  std::string str;
-  raw_string_ostream rss(str);
-  rss << avail;
-  obj["availability"] = rss.str();
+  if (avail._introduced != PackedVersion())
+    obj["introduced"] = getStringForPackedVersion(avail._introduced);
+  if (avail._obsoleted != PackedVersion())
+    obj["obsoleted"] = getStringForPackedVersion(avail._obsoleted);
+  if (avail.isUnavailable())
+    obj["unavailable"] = true;
+  if (avail.isSPIAvailable())
+    obj["SPIAvailable"] = true;
 }
 
 static void serializeLinkage(Object &obj, APILinkage linkage) {
@@ -168,7 +182,7 @@ static void serializeAPIRecord(Object &obj, const APIRecord &var,
                                const APIJSONOption &options) {
   obj["name"] = var.name;
 
-  serializeLocation(obj, var.loc);
+  serializeLocation(obj, var.loc, options);
   serializeAvailability(obj, var.availability);
   serializeLinkage(obj, var.linkage);
   serializeFlags(obj, var.flags);
@@ -298,7 +312,7 @@ static void serializeObjCContainer(Object &root,
 
   if (!record.protocols.empty()) {
     Array protocols;
-    for (const auto protocol : record.protocols)
+    for (const auto &protocol : record.protocols)
       if (!protocol.empty())
         protocols.emplace_back(protocol);
     root["protocols"] = std::move(protocols);
@@ -512,54 +526,33 @@ Expected<StringRef> APIJSONParser::parseName(const Object *obj) {
 }
 
 Expected<APILoc> APIJSONParser::parseLocation(const Object *obj) {
-  auto loc = obj->getString("loc");
-  if (!loc)
+  auto file = obj->getString("file");
+  if (!file)
     return APILoc();
 
-  // parse location string.
-  StringRef location, line, col;
-  unsigned lineNum, colNum;
-  std::tie(location, col) = loc->rsplit(":");
-  auto errCol = col.getAsInteger(10, colNum);
-  if (errCol)
-    return make_error<APIJSONError>("cannot parse col num in location");
-  std::tie(location, line) = location.rsplit(":");
-  auto errLine = line.getAsInteger(10, lineNum);
-  if (errLine)
-    return make_error<APIJSONError>("cannot parse line num in location");
+  auto line = obj->getInteger("line");
+  auto col = obj->getInteger("col");
 
-  auto filename = result.copyString(location);
-  return APILoc(filename, lineNum, colNum);
+  return APILoc(file->str(), line ? *line : 0, col ? *col : 0);
 }
 
 Expected<AvailabilityInfo> APIJSONParser::parseAvailability(const Object *obj) {
-  auto avail = obj->getString("availability");
-  if (!avail)
+  auto intro = obj->getString("introduced");
+  auto obs = obj->getString("obsoleted");
+  auto unavail = obj->getBoolean("unavailable");
+  auto isSPIAvailable = obj->getBoolean("SPIAvailable");
+
+  if (!intro && !obs && !unavail && !isSPIAvailable)
     return AvailabilityInfo();
 
-  // parse availability string.
-  StringRef iVer, oVer, remain;
   PackedVersion introduced, obsoleted;
-  auto success = avail->consume_front("i:");
-  if (!success)
-    return make_error<APIJSONError>("malformed availability string");
-  std::tie(iVer, remain) = avail->split(" ");
-  if (!introduced.parse32(iVer))
-    return make_error<APIJSONError>("malformed availability string");
-  success = remain.consume_front("o:");
-  if (!success)
-    return make_error<APIJSONError>("malformed availability string");
-  std::tie(oVer, remain) = remain.split(" ");
-  if (!obsoleted.parse32(oVer))
-    return make_error<APIJSONError>("malformed availability string");
-  success = remain.consume_front("u:");
-  if (!success)
-    return make_error<APIJSONError>("malformed availability string");
-  bool unavailable;
-  auto err = remain.getAsInteger(10, unavailable);
-  if (err)
-    return make_error<APIJSONError>("malformed availability string");
-  return AvailabilityInfo(introduced, obsoleted, unavailable);
+  if (intro && !introduced.parse32(*intro))
+    return make_error<APIJSONError>("malformed introduced version");
+  if (obs && !obsoleted.parse32(*obs))
+    return make_error<APIJSONError>("malformed obsoleted version");
+
+  return AvailabilityInfo(introduced, obsoleted, unavail ? *unavail : false,
+                          isSPIAvailable ? *isSPIAvailable : false);
 }
 
 Expected<APIAccess> APIJSONParser::parseAccess(const Object *obj) {

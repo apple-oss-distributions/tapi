@@ -124,7 +124,7 @@ private:
 public:
   SnapshotFileSystem(IntrusiveRefCntPtr<FileSystem> externalFS =
                          llvm::vfs::getRealFileSystem())
-      : root(llvm::make_unique<DirectoryEntry>("/")),
+      : root(std::make_unique<DirectoryEntry>("/")),
         externalFS(std::move(externalFS)) {}
 
   /// \brief Get the status of the entry at \p Path, if one exists.

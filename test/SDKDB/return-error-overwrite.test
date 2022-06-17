@@ -1,0 +1,14 @@
+; no error
+; RUN: %tapi sdkdb -o - --action=all --diagnostics-file=%t/diag.plist -isysroot %sysroot 
+
+; error with overwrite
+; RUN: TAPI_SDKDB_FORCE_ERROR=1 not %tapi sdkdb -o - --action=all --diagnostics-file=%t/diag.plist -isysroot %sysroot
+
+; default empty output if scanning interface
+; RUN: RC_ProjectName=TestError %tapi sdkdb -o - --action=interface-scan --diagnostics-file=%t/diag.plist -isysroot %sysroot | FileCheck %s
+
+; CHECK:        "PublicSDKContentRoot": [],
+; CHECK-NEXT:   "RuntimeRoot": [],
+; CHECK-NEXT:   "SDKContentRoot": [],
+; CHECK-NEXT:   "error": true,
+; CHECK-NEXT:   "projectName": "TestError",

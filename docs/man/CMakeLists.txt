@@ -6,9 +6,20 @@ set(TAPI_MAN_FILES
   tapi-reexport.1
   )
 
+set(TAPI_MAN_EXPERIMENTAL_FILES
+  tapi-sdkdb.1
+  tapi-api-verify.1
+  )
+
 install(
   FILES ${TAPI_MAN_FILES}
   DESTINATION share/man/man1
+  COMPONENT tapi-docs
+  )
+
+install(
+  FILES ${TAPI_MAN_EXPERIMENTAL_FILES}
+  DESTINATION local/share/man/man1
   COMPONENT tapi-docs
   )
 

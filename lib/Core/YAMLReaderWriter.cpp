@@ -61,7 +61,7 @@ static void DiagHandler(const SMDiagnostic &diag, void *context) {
                        diag.getRanges(), diag.getFixIts());
 
   newdiag.print(nullptr, s);
-  file->errorMessage = message.str();
+  file->errorMessage = message.str().str();
 }
 
 bool YAMLBase::canRead(MemoryBufferRef memBufferRef, FileType types) const {
@@ -110,10 +110,11 @@ Expected<FileType> YAMLReader::getFileType(file_magic magic,
 
 Expected<std::unique_ptr<InterfaceFile>>
 YAMLReader::readFile(std::unique_ptr<MemoryBuffer> memBuffer,
-                     ReadFlags readFlags, ArchitectureSet arches) const {
+                     ReadFlags readFlags,
+                     llvm::MachO::ArchitectureSet arches) const {
   // Create YAML Input Reader.
   YAMLContext ctx(*this);
-  ctx.path = memBuffer->getBufferIdentifier();
+  ctx.path = std::string(memBuffer->getBufferIdentifier());
   ctx.readFlags = readFlags;
   llvm::yaml::Input yin(memBuffer->getBuffer(), &ctx, DiagHandler, &ctx);
 

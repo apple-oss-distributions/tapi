@@ -1,0 +1,12 @@
+--- !tapi-tbd
+tbd-version:     4
+targets:         [ x86_64-macos ]
+uuids:
+  - target:          x86_64-macos
+    value:           7B8B288E-97EE-3D82-86F8-8BF04BFB2D5B
+flags:           [ not_app_extension_safe ]
+install-name:    '/System/Library/Frameworks/Swift.framework/Versions/A/Swift'
+exports:
+  - targets:         [ x86_64-macos ]
+    symbols:         [ _ignore_another_symbol, _$S6Swifty3fooSiyF ]
+...

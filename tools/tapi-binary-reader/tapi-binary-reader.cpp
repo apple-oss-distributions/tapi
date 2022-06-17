@@ -26,6 +26,7 @@
 #include "llvm/Support/raw_ostream.h"
 
 using namespace llvm;
+using namespace llvm::MachO;
 using namespace TAPI_INTERNAL;
 
 static cl::OptionCategory tapiCategory("tapi-binary-reader options");
@@ -87,7 +88,7 @@ int main(int argc, const char *argv[]) {
     archToParse = ArchitectureSet::All();
   } else {
     for (const auto &arch : arches) {
-      archToParse.set(getArchType(arch)); 
+      archToParse.set(getArchitectureFromName(arch));
     }
   }
 

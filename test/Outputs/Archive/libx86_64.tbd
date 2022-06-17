@@ -2,7 +2,7 @@
 archs:           [ x86_64 ]
 platform:        macosx
 install-name:    '/usr/lib/libfat.dylib'
-exports:         
+exports:
   - archs:           [ x86_64 ]
     allowable-clients: [ ClientAll, ClientB ]
     re-exports:      [ '/usr/lib/liball.dylib', '/usr/lib/libb.dylib' ]

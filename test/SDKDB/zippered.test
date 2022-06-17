@@ -1,0 +1,9 @@
+; REQUIRES: iosmac
+; RUN: rm -rf %t && mkdir -p %t/Input/System/Library/Frameworks
+; RUN: cp -a %inputs/System/Library/Frameworks/ZipperedAPI.framework %t/Input/System/Library/Frameworks
+; RUN: cp -a %inputs/System/Library/Frameworks/Zippered.framework %t/Input/System/Library/Frameworks
+; RUN: %tapi sdkdb --action=scan-interface --verify-api --private-headers -o %t/Output -isysroot %sysroot --runtime-root %t/Input --sdk-content-root %t/Input 2>&1 | FileCheck %s
+
+; CHECK: warning: 'MyType' has incompatible definitions
+; CHECK: warning: 'a' has incompatible definitions
+; CHECK-NOT: warning: 'image' has incompatible definitions

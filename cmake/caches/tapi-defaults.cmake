@@ -7,7 +7,7 @@ set(LLVM_ENABLE_TIMESTAMPS OFF CACHE BOOL "Don't time-stamp shipping builds - th
 set(LLVM_EXTERNALIZE_DEBUGINFO OFF CACHE BOOL "")
 set(LLVM_EXTERNALIZE_DEBUGINFO_SKIP_STRIP ON CACHE BOOL "")
 
-set(LLVM_ENABLE_ZLIB OFF CACHE BOOL "")
+set(LLVM_ENABLE_ZLIB ON CACHE BOOL "")
 set(LLVM_ENABLE_TERMINFO OFF CACHE BOOL "")
 set(LLVM_REQUIRES_RTTI OFF CACHE BOOL "")
 set(LLVM_ENABLE_CRASH_OVERRIDES OFF CACHE BOOL "")
@@ -38,10 +38,10 @@ set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-Os -g -DNDEBUG"     CACHE STRING "")
 set(LLVM_DISTRIBUTION_COMPONENTS
   tapi-headers
   libtapi
-  tapi-clang-headers
+  tapi-clang-resource-headers
   tapi
   tapi-docs
-  tapi-run
+  tapi-sdkdb
   CACHE STRING "")
 
 

@@ -22,6 +22,7 @@
 #include <vector>
 
 using namespace llvm;
+using namespace llvm::MachO;
 
 TAPI_NAMESPACE_V1_BEGIN
 
@@ -69,7 +70,6 @@ static PackedVersion32 parseVersion32(StringRef str) {
 
 class LLVM_LIBRARY_VISIBILITY LinkerInterfaceFile::Impl {
 public:
-  FileType _fileType{FileType::Unsupported};
   std::vector<uint32_t> _platforms;
   std::string _installName;
   std::string _parentFrameworkName;
@@ -140,7 +140,7 @@ public:
     }
 
     if (action == "install_name") {
-      _installName = symbolName;
+      _installName = symbolName.str();
       _installPathOverride = true;
       if (_installName == "/System/Library/Frameworks/"
                           "ApplicationServices.framework/Versions/A/"
@@ -161,7 +161,7 @@ static Architecture getArchForCPU(cpu_type_t cpuType, cpu_subtype_t cpuSubType,
                                   bool enforceCpuSubType,
                                   ArchitectureSet archs) {
   // First check the exact cpu type and cpu sub type.
-  auto arch = getArchType(cpuType, cpuSubType);
+  auto arch = getArchitectureFromCpuType(cpuType, cpuSubType);
   if (archs.has(arch))
     return arch;
 
@@ -169,7 +169,19 @@ static Architecture getArchForCPU(cpu_type_t cpuType, cpu_subtype_t cpuSubType,
     return AK_unknown;
 
   // Find ABI compatible slice instead.
-  return archs.getABICompatibleSlice(arch);
+  uint32_t CpuType;
+  std::tie(CpuType, std::ignore) = getCPUTypeFromArchitecture(arch);
+
+  for (auto Arch2 : archs) {
+    uint32_t CpuType2;
+    std::tie(CpuType2, std::ignore) = getCPUTypeFromArchitecture(Arch2);
+
+    if (CpuType == CpuType2)
+      return Arch2;
+  }
+
+  return AK_unknown;
+
 }
 
 LinkerInterfaceFile::LinkerInterfaceFile() noexcept
@@ -290,9 +302,6 @@ mapRawValuesToPlatform(const std::vector<uint32_t> &platforms) {
       // skip
       break;
     case MachO::PLATFORM_MACOS:
-      if (platform == Platform::iOSMac)
-        platform = Platform::zippered;
-      else
         platform = Platform::OSX;
       break;
     case MachO::PLATFORM_IOS:
@@ -300,9 +309,6 @@ mapRawValuesToPlatform(const std::vector<uint32_t> &platforms) {
       platform = Platform::iOS;
       break;
     case MachO::PLATFORM_MACCATALYST:
-      if (platform == Platform::OSX)
-        platform = Platform::zippered;
-      else
         platform = Platform::iOSMac;
       break;
     case MachO::PLATFORM_WATCHOS:
@@ -316,38 +322,35 @@ mapRawValuesToPlatform(const std::vector<uint32_t> &platforms) {
     case MachO::PLATFORM_BRIDGEOS:
       platform = Platform::bridgeOS;
       break;
-    case MachO::PLATFORM_DRIVERKIT:
-      platform = Platform::DriverKit;
-      break;
     }
   }
 
   return platform;
 }
 
-static uint32_t mapPlatformToRawValue(tapi::internal::Platform platform) {
+static uint32_t mapPlatformToRawValue(PlatformKind platform) {
   switch (platform) {
   default:
     return 0;
-  case tapi::internal::Platform::macOS:
+  case PlatformKind::macOS:
     return MachO::PLATFORM_MACOS;
-  case tapi::internal::Platform::iOS:
+  case PlatformKind::iOS:
     return MachO::PLATFORM_IOS;
-  case tapi::internal::Platform::iOSSimulator:
+  case PlatformKind::iOSSimulator:
     return MachO::PLATFORM_IOSSIMULATOR;
-  case tapi::internal::Platform::macCatalyst:
+  case PlatformKind::macCatalyst:
     return MachO::PLATFORM_MACCATALYST;
-  case tapi::internal::Platform::watchOS:
+  case PlatformKind::watchOS:
     return MachO::PLATFORM_WATCHOS;
-  case tapi::internal::Platform::watchOSSimulator:
+  case PlatformKind::watchOSSimulator:
     return MachO::PLATFORM_WATCHOSSIMULATOR;
-  case tapi::internal::Platform::tvOS:
+  case PlatformKind::tvOS:
     return MachO::PLATFORM_TVOS;
-  case tapi::internal::Platform::tvOSSimulator:
+  case PlatformKind::tvOSSimulator:
     return MachO::PLATFORM_TVOSSIMULATOR;
-  case tapi::internal::Platform::bridgeOS:
+  case PlatformKind::bridgeOS:
     return MachO::PLATFORM_BRIDGEOS;
-  case tapi::internal::Platform::DriverKit:
+  case PlatformKind::driverKit:
     return MachO::PLATFORM_DRIVERKIT;
   }
 }
@@ -362,16 +365,16 @@ bool LinkerInterfaceFile::Impl::init(
   auto arch = getArchForCPU(cpuType, cpuSubType, enforceCpuSubType,
                             interface->getArchitectures());
   if (arch == AK_unknown) {
-    auto arch = getArchType(cpuType, cpuSubType);
+    auto arch = getArchitectureFromCpuType(cpuType, cpuSubType);
     auto count = interface->getArchitectures().count();
     if (count > 1)
       errorMessage = "missing required architecture " +
-                     getArchName(arch).str() + " in file " +
+                     getArchitectureName(arch).str() + " in file " +
                      interface->getPath() + " (" + std::to_string(count) +
                      " slices)";
     else
       errorMessage = "missing required architecture " +
-                     getArchName(arch).str() + " in file " +
+                     getArchitectureName(arch).str() + " in file " +
                      interface->getPath();
     return false;
   }
@@ -387,31 +390,16 @@ bool LinkerInterfaceFile::Impl::init(
     _platforms.emplace_back(value);
   }
   llvm::sort(_platforms);
-  _installName = interface->getInstallName();
+  _installName = std::string(interface->getInstallName());
   _currentVersion = interface->getCurrentVersion();
   _compatibilityVersion = interface->getCompatibilityVersion();
   _hasTwoLevelNamespace = interface->isTwoLevelNamespace();
   _isAppExtensionSafe = interface->isApplicationExtensionSafe();
   _swiftABIVersion = interface->getSwiftABIVersion();
   for (const auto &it : interface->umbrellas()) {
-    if (it.first.architecture != arch)
+    if (it.first.Arch != arch)
       continue;
     _parentFrameworkName = it.second;
-    break;
-  }
-
-  switch (interface->getFileType().version) {
-  default:
-    _fileType = FileType::Unsupported;
-    break;
-  case 1:
-    _fileType = FileType::TBD_V1;
-    break;
-  case 2:
-    _fileType = FileType::TBD_V2;
-    break;
-  case 3:
-    _fileType = FileType::TBD_V3;
     break;
   }
 
@@ -431,15 +419,15 @@ bool LinkerInterfaceFile::Impl::init(
   _ignoreExports.erase(last, _ignoreExports.end());
 
   bool useObjC1ABI =
-      interface->getPlatforms().count(tapi::internal::Platform::macOS) &&
-      (arch == AK_i386);
+      interface->getPlatforms().count(PlatformKind::macOS) && (arch == AK_i386);
   for (const auto *symbol : interface->exports()) {
     if (!symbol->hasArchitecture(arch))
       continue;
 
     switch (symbol->getKind()) {
     case XPIKind::GlobalSymbol:
-      if (symbol->getName().startswith("$ld$"))
+      if (symbol->getName().startswith("$ld$") &&
+          !symbol->getName().startswith("$ld$previous"))
         continue;
       addSymbol(symbol->getName(), symbol->getFlags());
       break;
@@ -500,12 +488,12 @@ bool LinkerInterfaceFile::Impl::init(
 
   for (const auto &lib : interface->allowableClients())
     for (const auto &target : lib.targets())
-      if (target.architecture == arch)
+      if (target.Arch == arch)
         _allowableClients.emplace_back(lib.getInstallName());
 
   for (const auto &lib : interface->reexportedLibraries())
     for (const auto &target : lib.targets())
-      if (target.architecture == arch)
+      if (target.Arch == arch)
         _reexportedLibraries.emplace_back(lib.getInstallName());
 
   for (auto &file : interface->_documents) {
@@ -609,10 +597,6 @@ LinkerInterfaceFile::create(const std::string &path, cpu_type_t cpuType,
 
   delete file;
   return nullptr;
-}
-
-FileType LinkerInterfaceFile::getFileType() const noexcept {
-  return _pImpl->_fileType;
 }
 
 #pragma clang diagnostic push

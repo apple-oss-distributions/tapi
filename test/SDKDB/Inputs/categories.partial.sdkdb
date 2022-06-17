@@ -1,0 +1,94 @@
+{
+  "PublicSDKContentRoot": [
+    {
+      "categories": [
+        {
+          "access": "public",
+          "instanceMethods": [
+            {
+              "access": "public",
+              "loc": "Basic:1:1",
+              "name": "anInstanceMethodFromAnCategory"
+            }
+          ],
+          "interface": "Basic",
+          "loc": "Basic:2:1",
+          "name": "Cat"
+        },
+        {
+          "access": "public",
+          "instanceMethods": [
+            {
+              "access": "public",
+              "loc": "Basic:1:1",
+              "name": "anInstanceMethodFromAnotherCategory"
+            }
+          ],
+          "interface": "Basic",
+          "loc": "Basic:2:1",
+          "name": "Another"
+        }
+      ],
+      "globals": [],
+      "interfaces": [
+        {
+          "access": "public",
+          "instanceMethods": [
+            {
+              "access": "public",
+              "loc": "Basic:3:1",
+              "name": "anInstanceMethodFromAnInterface"
+            }
+          ],
+          "linkage": "exported",
+          "loc": "Basic:4:1",
+          "name": "Basic",
+          "super": "NSObject"
+        }
+      ],
+      "protocols": [],
+      "target": "x86_64-apple-macos10.10"
+    }
+  ],
+  "RuntimeRoot": [
+    {
+      "binaryInfo": {
+        "compatibilityVersion": "1",
+        "currentVersion": "1.2.3",
+        "installName": "/usr/lib/libproperty_test.dylib",
+        "twoLevelNamespace": true,
+        "type": "dylib"
+      },
+      "categories": [
+        {
+          "instanceMethods": [
+            {
+              "name": "anInstanceMethodFromAnInterface"
+            },
+            {
+              "name": "anInstanceMethodFromAnotherCategory"
+            }
+          ],
+          "interface": "Basic",
+          "name": "SomeExtension"
+        }
+      ],
+      "globals": [],
+      "interfaces": [
+        {
+          "instanceMethods": [
+            {
+              "name": "anInstanceMethodFromAnCategory"
+            }
+          ],
+          "linkage": "exported",
+          "name": "Basic",
+          "super": "NSObject"
+        }
+      ],
+      "protocols": [],
+      "target": "x86_64-apple-macos10.10"
+    }
+  ],
+  "SDKContentRoot": []
+}

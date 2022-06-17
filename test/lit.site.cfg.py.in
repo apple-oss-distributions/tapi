@@ -12,7 +12,9 @@ config.tapi_tools_dir = "@TAPI_TOOLS_DIR@"
 config.llvm_use_sanitizer = "@LLVM_USE_SANITIZER@"
 config.iosmac_support = "@LINKER_SUPPORTS_IOSMAC@"
 config.i386_support = "@SDK_SUPPORTS_I386@"
-config.python_executable = "@PYTHON_EXECUTABLE@"
+config.python_executable = "@Python3_EXECUTABLE@"
+config.host_compiler = "@CMAKE_C_COMPILER@"
+config.apple_disclosure = "@APPLE_DISCLOSURE@"
 
 # Support substitution of the tools and libs dirs with user parameters. This is
 # used when we can't determine the tool dir at configuration time.
@@ -23,6 +25,9 @@ except KeyError:
     e = sys.exc_info()[1]
     key, = e.args
     lit_config.fatal("unable to find %r parameter, use '--param=%s=VALUE'" % (key,key))
+
+import lit.llvm
+lit.llvm.initialize(lit_config, config)
 
 # Let the main config do the real work.
 lit_config.load_config(config, "@TAPI_SOURCE_DIR@/test/lit.cfg.py")

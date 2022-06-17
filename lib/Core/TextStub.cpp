@@ -27,6 +27,7 @@
 
 using namespace llvm;
 using namespace llvm::yaml;
+using namespace llvm::MachO;
 using namespace TAPI_INTERNAL;
 
 namespace {
@@ -125,44 +126,29 @@ template <> struct ScalarTraits<PlatformSet> {
     const auto *ctx = reinterpret_cast<TAPI_INTERNAL::YAMLContext *>(io);
     assert((!ctx || ctx && ctx->fileType != TAPI_INTERNAL::FileType::Invalid) &&
            "File type is not set in context");
-    // Conditionally add support for iosmac and zippered, because previous TBD
-    // files don't support these values. Zippered is temporary and will be
-    // obsoleted by TBD v4.
-    if (value.count(Platform::macOS) && value.count(Platform::macCatalyst)) {
-      if (ctx && ctx->fileType >= TBDv3) {
-        out << "zippered";
-        return;
-      }
-      llvm_unreachable("bad runtime enum value");
-    }
 
     switch (*value.begin()) {
     default:
       out << "unknown";
       return;
-    case Platform::macOS:
+    case PlatformKind::macOS:
       out << "macosx";
       return;
-    case Platform::iOS:
-    case Platform::iOSSimulator:
+    case PlatformKind::iOS:
+    case PlatformKind::iOSSimulator:
       out << "ios";
       return;
-    case Platform::watchOS:
-    case Platform::watchOSSimulator:
+    case PlatformKind::watchOS:
+    case PlatformKind::watchOSSimulator:
       out << "watchos";
       return;
-    case Platform::tvOS:
-    case Platform::tvOSSimulator:
+    case PlatformKind::tvOS:
+    case PlatformKind::tvOSSimulator:
       out << "tvos";
       return;
-    case Platform::macCatalyst:
-      // DON'T RENAME THIS. We need to keep existing tools that read TBD v3
-      // files working.
-      if (ctx && ctx->fileType >= TBDv3) {
-        out << "iosmac";
-        return;
-      }
-      llvm_unreachable("bad runtime enum value");
+    case PlatformKind::bridgeOS:
+      out << "bridgeos";
+      return;
     }
   }
 
@@ -170,33 +156,21 @@ template <> struct ScalarTraits<PlatformSet> {
     const auto *ctx = reinterpret_cast<TAPI_INTERNAL::YAMLContext *>(io);
     assert((!ctx || ctx && ctx->fileType != TAPI_INTERNAL::FileType::Invalid) &&
            "File type is not set in context");
-    // Conditionally add support for iosmac and zippered, because previous TBD
-    // files don't support these values. Zippered is temporary and will be
-    // obsoleted by TBD v4.
-    if (scalar == "zippered") {
-      if (ctx && ctx->fileType >= TBDv3) {
-        value.insert(Platform::macOS);
-        value.insert(Platform::macCatalyst);
-        return {};
-      }
-      return "unknown enumerated scalar";
-    }
 
-    auto platform = StringSwitch<Platform>(scalar)
-                        .Case("unknown", Platform::unknown)
-                        .Case("macosx", Platform::macOS)
-                        .Case("ios", Platform::iOS)
-                        .Case("watchos", Platform::watchOS)
-                        .Case("tvos", Platform::tvOS)
+    auto platform = StringSwitch<PlatformKind>(scalar)
+                        .Case("unknown", PlatformKind::unknown)
+                        .Case("macosx", PlatformKind::macOS)
+                        .Case("ios", PlatformKind::iOS)
+                        .Case("watchos", PlatformKind::watchOS)
+                        .Case("tvos", PlatformKind::tvOS)
+                        .Case("bridgeos", PlatformKind::bridgeOS)
                         // DON'T RENAME THIS. We need this to keep existing
                         // internal TBD v3 files working.
-                        .Case("iosmac", Platform::macCatalyst)
-                        .Case("maccatalyst", Platform::macCatalyst)
-                        .Default(Platform::unknown);
+                        .Case("iosmac", PlatformKind::macCatalyst)
+                        .Case("maccatalyst", PlatformKind::macCatalyst)
+                        .Case("driverkit", PlatformKind::driverKit)
+                        .Default(PlatformKind::unknown);
 
-    if (platform == Platform::macCatalyst)
-      if (ctx && ctx->fileType < TBDv3)
-        return "unknown enumerated scalar";
 
     value.insert(platform);
     return {};
@@ -367,16 +341,17 @@ template <> struct MappingTraits<const InterfaceFile *> {
     // architectures. It is possible to have more than one platform for TBD v3
     // files if they are zippered, but the architectures don't apply to all
     // platforms. In particular we need to filter out the i386 slice from
-    // platform <6>.
+    // platform maccatalyst.
     std::vector<Target> synthesizeTargets(ArchitectureSet architectures,
                                           const PlatformSet &platforms) {
       std::vector<Target> targets;
 
       for (auto platform : platforms) {
-        platform = mapToSim(platform, architectures.hasX86());
+        platform = mapToPlatformKind(platform, architectures.hasX86());
 
-        for (const auto &architecture : architectures) {
-          if ((architecture == AK_i386) && (platform == Platform::macCatalyst))
+        for (const auto architecture : architectures) {
+          if ((architecture == AK_i386) &&
+              (platform == PlatformKind::macCatalyst))
             continue;
 
           targets.emplace_back(architecture, platform);
@@ -394,7 +369,7 @@ template <> struct MappingTraits<const InterfaceFile *> {
       file->setFileType(ctx->fileType);
       file->addTargets(synthesizeTargets(architectures, platforms));
       for (auto &id : uuids)
-        for (const auto &target : file->targets(id.first.architecture))
+        for (const auto &target : file->targets(id.first.Arch))
           file->addUUID(target, id.second);
       file->setInstallName(installName);
       file->setCurrentVersion(currentVersion);

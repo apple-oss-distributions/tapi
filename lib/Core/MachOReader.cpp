@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "tapi/Core/MachOReader.h"
+#include "tapi/ObjCMetadata/ObjCMachOBinary.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/BinaryFormat/Magic.h"
 #include "llvm/Object/MachO.h"
@@ -22,6 +23,7 @@
 
 using namespace llvm;
 using namespace llvm::object;
+using namespace llvm::MachO;
 
 TAPI_NAMESPACE_INTERNAL_BEGIN
 
@@ -89,7 +91,7 @@ Expected<FileType> getMachOFileType(MemoryBufferRef bufferRef) {
 
 static Error readMachOHeader(MachOObjectFile *object, API &api) {
   auto H = object->getHeader();
-  auto arch = getArchType(H.cputype, H.cpusubtype);
+  auto arch = getArchitectureFromCpuType(H.cputype, H.cpusubtype);
   if (arch == AK_unknown)
     return make_error<StringError>(
         "unknown/unsupported architecture",
@@ -160,21 +162,24 @@ static Error readMachOHeader(MachOObjectFile *object, API &api) {
   }
 
   for (auto &section : object->sections()) {
-    StringRef sectionName;
-    section.getName(sectionName);
-    if (sectionName != "__objc_imageinfo" && sectionName != "__image_info")
+    auto sectionName = section.getName();
+    if (!sectionName)
+      return sectionName.takeError();
+    if (*sectionName != "__objc_imageinfo" && *sectionName != "__image_info")
       continue;
-    StringRef content;
-    section.getContents(content);
-    if ((content.size() >= 8) && (content[0] == 0)) {
+    auto content = section.getContents();
+    if (!content)
+      return content.takeError();
+
+    if ((content->size() >= 8) && (content->front() == 0)) {
       uint32_t flags;
       if (object->isLittleEndian()) {
         auto *p =
-            reinterpret_cast<const support::ulittle32_t *>(content.data() + 4);
+            reinterpret_cast<const support::ulittle32_t *>(content->data() + 4);
         flags = *p;
       } else {
         auto *p =
-            reinterpret_cast<const support::ubig32_t *>(content.data() + 4);
+            reinterpret_cast<const support::ubig32_t *>(content->data() + 4);
         flags = *p;
       }
       binaryInfo.swiftABIVersion = (flags >> 8) & 0xFF;
@@ -184,8 +189,9 @@ static Error readMachOHeader(MachOObjectFile *object, API &api) {
 }
 
 static Error readExportedSymbols(MachOObjectFile *object, API &api) {
-  assert(getArchType(object->getHeader().cputype,
-                     object->getHeader().cpusubtype) != AK_unknown &&
+  assert(getArchitectureFromCpuType(object->getHeader().cputype,
+                                    object->getHeader().cpusubtype) !=
+             AK_unknown &&
          "unknown architecture slice");
 
   Error error = Error::success();
@@ -224,18 +230,305 @@ static ObjCPropertyRecord::AttributeKind getAttributeKind(StringRef attr) {
   return (ObjCPropertyRecord::AttributeKind)attrs;
 }
 
+static Error readObjectiveCMetadata(MachOObjectFile *object, API &api) {
+  auto error = Error::success();
+  MachOMetadata metadata(object, error);
+  if (error)
+    return std::move(error);
+
+  ///
+  /// Classes
+  ///
+  auto classes = metadata.classes();
+  if (!classes)
+    return classes.takeError();
+
+  for (const auto &classRef : *classes) {
+    auto objcClassMeta = classRef.getObjCClass();
+    if (!objcClassMeta)
+      return objcClassMeta.takeError();
+
+    auto superClassName = objcClassMeta->getSuperClassName();
+    if (!superClassName)
+      return superClassName.takeError();
+
+    auto className = objcClassMeta->getName();
+    if (!className)
+      return className.takeError();
+
+    auto *objcClass = api.addObjCInterface(
+        *className, APILoc(), AvailabilityInfo(), APIAccess::Unknown,
+        APILinkage::Exported, *superClassName, nullptr);
+
+    auto properties = objcClassMeta->properties();
+    if (!properties)
+      return properties.takeError();
+
+    for (const auto &property : *properties) {
+      auto name = property.getName();
+      if (!name)
+        return name.takeError();
+
+      auto attr = property.getAttribute();
+      if (!attr)
+        return attr.takeError();
+      auto attrs = getAttributeKind(*attr);
+
+      auto setter = property.getSetter();
+      if (!setter)
+        return setter.takeError();
+      auto getter = property.getGetter();
+      if (!getter)
+        return getter.takeError();
+
+      api.addObjCProperty(objcClass, *name, *getter, *setter, APILoc(),
+                          AvailabilityInfo(), APIAccess::Unknown, attrs,
+                          /*isOptional=*/false, nullptr);
+    }
+
+    auto classMethods = objcClassMeta->classMethods();
+    if (!classMethods)
+      return classMethods.takeError();
+
+    for (const auto &method : *classMethods) {
+      auto name = method.getName();
+      if (!name)
+        return name.takeError();
+
+      api.addObjCMethod(objcClass, *name, APILoc(), AvailabilityInfo(),
+                        APIAccess::Unknown,
+                        /*isInstanceMethod=*/false, /*isOptional=*/false,
+                        /*isDynamic=*/false, nullptr);
+    }
+
+    auto instanceMethods = objcClassMeta->instanceMethods();
+    if (!instanceMethods)
+      return instanceMethods.takeError();
+
+    for (const auto &method : *instanceMethods) {
+      auto name = method.getName();
+      if (!name)
+        return name.takeError();
+
+      api.addObjCMethod(objcClass, *name, APILoc(), AvailabilityInfo(),
+                        APIAccess::Unknown,
+                        /*isInstanceMethod=*/true, /*isOptional=*/false,
+                        /*isDynamic=*/false, nullptr);
+    }
+  }
+
+  ///
+  /// Categories
+  ///
+  auto categories = metadata.categories();
+  if (!categories)
+    return categories.takeError();
+
+  for (const auto &categoryRef : *categories) {
+    auto category = categoryRef.getObjCCategory();
+    if (!category)
+      return category.takeError();
+
+    auto categoryName = category->getName();
+    if (!categoryName)
+      return categoryName.takeError();
+
+    auto baseClassName = category->getBaseClassName();
+    if (!baseClassName)
+      return baseClassName.takeError();
+
+    auto *objcCategory =
+        api.addObjCCategory(*baseClassName, *categoryName, APILoc(),
+                            AvailabilityInfo(), APIAccess::Unknown, nullptr);
+
+    auto properties = category->properties();
+    if (!properties)
+      return properties.takeError();
+
+    for (const auto &property : *properties) {
+      auto name = property.getName();
+      if (!name)
+        return name.takeError();
+
+      auto attr = property.getAttribute();
+      if (!attr)
+        return attr.takeError();
+      auto attrs = getAttributeKind(*attr);
+
+      auto setter = property.getSetter();
+      if (!setter)
+        return setter.takeError();
+      auto getter = property.getGetter();
+      if (!getter)
+        return getter.takeError();
+
+      api.addObjCProperty(objcCategory, *name, *getter, *setter, APILoc(),
+                          AvailabilityInfo(), APIAccess::Unknown, attrs,
+                          /*isOptional=*/false, nullptr);
+    }
+
+    auto classMethods = category->classMethods();
+    if (!classMethods)
+      return classMethods.takeError();
+
+    for (const auto &method : *classMethods) {
+      auto name = method.getName();
+      if (!name)
+        return name.takeError();
+
+      api.addObjCMethod(objcCategory, *name, APILoc(), AvailabilityInfo(),
+                        APIAccess::Unknown,
+                        /*isInstanceMethod=*/false, /*isOptional=*/false,
+                        /*isDynamic=*/false, nullptr);
+    }
+
+    auto instanceMethods = category->instanceMethods();
+    if (!instanceMethods)
+      return instanceMethods.takeError();
+
+    for (const auto &method : *instanceMethods) {
+      auto name = method.getName();
+      if (!name)
+        return name.takeError();
+
+      api.addObjCMethod(objcCategory, *name, APILoc(), AvailabilityInfo(),
+                        APIAccess::Unknown,
+                        /*isInstanceMethod=*/true, /*isOptional=*/false,
+                        /*isDynamic=*/false, nullptr);
+    }
+  }
+
+  ///
+  /// Protocols
+  ///
+  auto protocols = metadata.protocols();
+  if (!protocols)
+    return protocols.takeError();
+
+  for (const auto &protocolRef : *protocols) {
+    auto protocol = protocolRef.getObjCProtocol();
+    if (!protocol)
+      return protocol.takeError();
+
+    auto protocolName = protocol->getName();
+    if (!protocolName)
+      return protocolName.takeError();
+
+    auto *objcProtocol =
+        api.addObjCProtocol(*protocolName, APILoc(), AvailabilityInfo(),
+                            APIAccess::Unknown, nullptr);
+
+    auto properties = protocol->properties();
+    if (!properties)
+      return properties.takeError();
+
+    for (const auto &property : *properties) {
+      auto name = property.getName();
+      if (!name)
+        return name.takeError();
+
+      auto attr = property.getAttribute();
+      if (!attr)
+        return attr.takeError();
+      auto attrs = getAttributeKind(*attr);
+
+      auto setter = property.getSetter();
+      if (!setter)
+        return setter.takeError();
+      auto getter = property.getGetter();
+      if (!getter)
+        return getter.takeError();
+
+      api.addObjCProperty(objcProtocol, *name, *getter, *setter, APILoc(),
+                          AvailabilityInfo(), APIAccess::Unknown, attrs,
+                          /*isOptional=*/false, nullptr);
+    }
+
+    auto classMethods = protocol->classMethods();
+    if (!classMethods)
+      return classMethods.takeError();
+
+    for (const auto &method : *classMethods) {
+      auto name = method.getName();
+      if (!name)
+        return name.takeError();
+
+      api.addObjCMethod(objcProtocol, *name, APILoc(), AvailabilityInfo(),
+                        APIAccess::Unknown,
+                        /*isInstanceMethod=*/false, /*isOptional=*/false,
+                        /*isDynamic=*/false, nullptr);
+    }
+
+    classMethods = protocol->optionalClassMethods();
+    if (!classMethods)
+      return classMethods.takeError();
+
+    for (const auto &method : *classMethods) {
+      auto name = method.getName();
+      if (!name)
+        return name.takeError();
+
+      api.addObjCMethod(objcProtocol, *name, APILoc(), AvailabilityInfo(),
+                        APIAccess::Unknown,
+                        /*isInstanceMethod=*/false, /*isOptional=*/true,
+                        /*isDynamic=*/false, nullptr);
+    }
+
+    auto instanceMethods = protocol->instanceMethods();
+    if (!instanceMethods)
+      return instanceMethods.takeError();
+
+    for (const auto &method : *instanceMethods) {
+      auto name = method.getName();
+      if (!name)
+        return name.takeError();
+
+      api.addObjCMethod(objcProtocol, *name, APILoc(), AvailabilityInfo(),
+                        APIAccess::Unknown,
+                        /*isInstanceMethod=*/true, /*isOptional=*/false,
+                        /*isDynamic=*/false, nullptr);
+    }
+
+    instanceMethods = protocol->optionalInstanceMethods();
+    if (!instanceMethods)
+      return instanceMethods.takeError();
+
+    for (const auto &method : *instanceMethods) {
+      auto name = method.getName();
+      if (!name)
+        return name.takeError();
+
+      api.addObjCMethod(objcProtocol, *name, APILoc(), AvailabilityInfo(),
+                        APIAccess::Unknown,
+                        /*isInstanceMethod=*/true, /*isOptional=*/true,
+                        /*isDynamic=*/false, nullptr);
+    }
+  }
+
+  // Potentially defined selectors for swift.
+  // Swift compiler generates certain data structure which can dynamically
+  // constructing objc metadata.
+  if (api.hasBinaryInfo() && api.getBinaryInfo().swiftABIVersion != 0)
+    metadata.getAllPotentiallyDefinedSelectors(
+        api.getPotentiallyDefinedSelectors());
+
+  return Error::success();
+}
+
 static Error readUndefinedSymbols(MachOObjectFile *object, API &api) {
   for (const auto &symbol : object->symbols()) {
     auto symbolFlags = symbol.getFlags();
-    if ((symbolFlags & BasicSymbolRef::SF_Global) == 0)
+    if (!symbolFlags)
+      return symbolFlags.takeError();
+    if ((*symbolFlags & BasicSymbolRef::SF_Global) == 0)
       continue;
-    if ((symbolFlags & BasicSymbolRef::SF_Undefined) == 0)
+    if ((*symbolFlags & BasicSymbolRef::SF_Undefined) == 0)
       continue;
     auto symbolName = symbol.getName();
     if (!symbolName)
       return symbolName.takeError();
 
-    auto flags = (symbolFlags & BasicSymbolRef::SF_Weak)
+    auto flags = (*symbolFlags & BasicSymbolRef::SF_Weak)
                      ? APIFlags::WeakReferenced
                      : APIFlags::None;
 
@@ -259,6 +552,12 @@ static Error load(MachOObjectFile *object, API &api, MachOParseOption &option) {
       return error;
   }
 
+  if (option.parseObjCMetadata) {
+    auto error = readObjectiveCMetadata(object, api);
+    if (error)
+      return error;
+  }
+
   if (option.parseUndefined) {
     auto error = readUndefinedSymbols(object, api);
     if (error)
@@ -268,12 +567,12 @@ static Error load(MachOObjectFile *object, API &api, MachOParseOption &option) {
   return Error::success();
 }
 
-static std::vector<Triple> constructTripleFromMachO(MachOObjectFile *object) {
+std::vector<Triple> constructTripleFromMachO(MachOObjectFile *object) {
   std::vector<Triple> triples;
 
-  auto archType =
-      getArchType(object->getHeader().cputype, object->getHeader().cpusubtype);
-  auto arch = getArchName(archType);
+  auto archType = getArchitectureFromCpuType(object->getHeader().cputype,
+                                             object->getHeader().cpusubtype);
+  auto arch = getArchitectureName(archType);
 
   bool isIntelBased = ArchitectureSet(archType).hasX86();
 
@@ -333,6 +632,9 @@ static std::vector<Triple> constructTripleFromMachO(MachOObjectFile *object) {
       case MachO::PLATFORM_WATCHOS:
         triples.emplace_back(arch, "apple", "watchos" + OSVersion);
         break;
+      case MachO::PLATFORM_BRIDGEOS:
+        triples.emplace_back(arch, "apple", "bridgeos" + OSVersion);
+        break;
       case MachO::PLATFORM_MACCATALYST:
         triples.emplace_back(arch, "apple", "ios" + OSVersion, "macabi");
         break;
@@ -344,6 +646,9 @@ static std::vector<Triple> constructTripleFromMachO(MachOObjectFile *object) {
         break;
       case MachO::PLATFORM_WATCHOSSIMULATOR:
         triples.emplace_back(arch, "apple", "watchos" + OSVersion, "simulator");
+        break;
+      case MachO::PLATFORM_DRIVERKIT:
+        triples.emplace_back(arch, "apple", "driverkit" + OSVersion);
         break;
       default:
         break; // skip.
@@ -381,8 +686,8 @@ llvm::Expected<MachOParseResult> readMachOFile(MemoryBufferRef memBuffer,
 
   Binary &binary = *binaryOrErr.get();
   if (auto *object = dyn_cast<MachOObjectFile>(&binary)) {
-    auto arch = getArchType(object->getHeader().cputype,
-                            object->getHeader().cpusubtype);
+    auto arch = getArchitectureFromCpuType(object->getHeader().cputype,
+                                           object->getHeader().cpusubtype);
     if (!option.arches.has(arch))
       return make_error<StringError>(
           "Requested architectures don't exist",
@@ -406,7 +711,8 @@ llvm::Expected<MachOParseResult> readMachOFile(MemoryBufferRef memBuffer,
 
   for (auto OI = UB->begin_objects(), OE = UB->end_objects(); OI != OE; ++OI) {
     // Skip the architecture that is not requested.
-    auto arch = getArchType(OI->getCPUType(), OI->getCPUSubType());
+    auto arch =
+        getArchitectureFromCpuType(OI->getCPUType(), OI->getCPUSubType());
     if (!option.arches.has(arch))
       continue;
 

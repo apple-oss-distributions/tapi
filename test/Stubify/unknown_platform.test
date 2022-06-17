@@ -162,7 +162,7 @@ LinkEditData:
 ...
 
 # RUN: yaml2obj %s -o=%t
-# RUN: %tapi stubify %t -o %t.tbd 2>&1 | FileCheck -allow-empty %s
+# RUN: %tapi stubify --filetype=tbd-v3 %t -o %t.tbd 2>&1 | FileCheck -allow-empty %s
 # RUN: diff -a %p/../Outputs/usr/lib/libUnknownPlatform.tbd %t.tbd
 
 # CHECK-NOT: error

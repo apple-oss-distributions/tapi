@@ -151,7 +151,7 @@ SnapshotFileSystem::openFileForRead(const Twine &path) {
 
   auto status = getFileStatus(path, *externalStatus);
   return std::unique_ptr<File>(
-      make_unique<FileWithFixedStatus>(std::move(*result2), status));
+      std::make_unique<FileWithFixedStatus>(std::move(*result2), status));
 }
 
 class SnapshotDirIterImpl : public llvm::vfs::detail::DirIterImpl {
@@ -175,7 +175,7 @@ public:
     if ((ec = result.getError()))
       return;
 
-    CurrentEntry = {path.str(), result->getType()};
+    CurrentEntry = {path.str().str(), result->getType()};
   }
 
   std::error_code increment() override {
@@ -190,7 +190,7 @@ public:
     if (auto ec = result.getError())
       return ec;
 
-    CurrentEntry = {path.str(), result->getType()};
+    CurrentEntry = {path.str().str(), result->getType()};
     return {};
   }
 };
@@ -225,7 +225,7 @@ SnapshotFileSystem::setCurrentWorkingDirectory(const Twine &path_) {
   llvm::sys::path::remove_dots(path, /*remove_dot_dot=*/true);
 
   if (!path.empty())
-    workingDirectory = path.str();
+    workingDirectory = path.str().str();
   return {};
 }
 
@@ -242,7 +242,7 @@ SnapshotFileSystem::addFile(StringRef path, StringRef externalPath) {
   if (auto ec = directory.getError())
     return ec;
   return cast<FileEntry>(directory.get()->addContent(
-      make_unique<FileEntry>(filename, externalPath)));
+      std::make_unique<FileEntry>(filename, externalPath)));
 }
 
 ErrorOr<SnapshotFileSystem::SymlinkEntry *>
@@ -254,7 +254,7 @@ SnapshotFileSystem::addSymlink(StringRef path, StringRef linkPath) {
   if (auto ec = directory.getError())
     return ec;
   return cast<SymlinkEntry>(directory.get()->addContent(
-      make_unique<SymlinkEntry>(filename, linkPath)));
+      std::make_unique<SymlinkEntry>(filename, linkPath)));
 }
 
 ErrorOr<SnapshotFileSystem::DirectoryEntry *>
@@ -270,7 +270,7 @@ SnapshotFileSystem::lookupOrCreate(StringRef name, DirectoryEntry *current) {
       return cast<DirectoryEntry>(entry.get());
   }
   return cast<DirectoryEntry>(
-      current->addContent(make_unique<DirectoryEntry>(name)));
+      current->addContent(std::make_unique<DirectoryEntry>(name)));
 }
 
 ErrorOr<SnapshotFileSystem::DirectoryEntry *>

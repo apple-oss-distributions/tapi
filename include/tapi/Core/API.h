@@ -37,6 +37,7 @@ class APILoc {
 public:
   APILoc() = default;
   APILoc(clang::PresumedLoc loc) : loc(loc) {}
+  APILoc(std::string file, unsigned line, unsigned col);
   APILoc(StringRef file, unsigned line, unsigned col);
 
   bool isInvalid() const;
@@ -47,7 +48,7 @@ public:
 
 private:
   llvm::Optional<clang::PresumedLoc> loc;
-  StringRef file;
+  std::string file;
   unsigned line;
   unsigned col;
 };
@@ -78,6 +79,7 @@ struct APIRecord {
     return (flags & APIFlags::ThreadLocalValue) == APIFlags::ThreadLocalValue;
   }
 
+  bool isExternal() const { return linkage == APILinkage::External; }
   bool isExported() const { return linkage >= APILinkage::Reexported; }
   bool isReexported() const { return linkage == APILinkage::Reexported; }
 };
@@ -94,10 +96,10 @@ struct EnumConstantRecord : APIRecord {
                                     APIAccess access, const Decl *decl);
 };
 
-enum class GVKind {
-  Unknown,
-  Variable,
-  Function,
+enum class GVKind : uint8_t {
+  Unknown = 0,
+  Variable = 1,
+  Function = 2,
 };
 
 struct GlobalRecord : APIRecord {

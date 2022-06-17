@@ -2,16 +2,20 @@
   "api_json_version": 1,
   "categories": [
     {
-      "availability": "i:10.10 o:0 u:0",
+      "col": 12,
+      "file": "test.m",
       "instanceMethods": [
         {
-          "availability": "i:10.10 o:0 u:0",
-          "loc": "test.m:27:1",
+          "col": 1,
+          "file": "test.m",
+          "introduced": "10.10",
+          "line": 27,
           "name": "method"
         }
       ],
       "interface": "A",
-      "loc": "test.m:26:12",
+      "introduced": "10.10",
+      "line": 26,
       "name": "P",
       "protocols": [
         "P"
@@ -20,32 +24,42 @@
   ],
   "enums": [
     {
-      "loc": "test.m:5:9",
+      "col": 9,
+      "file": "test.m",
+      "line": 5,
       "name": "MyValue"
     },
     {
-      "loc": "test.m:5:9",
+      "col": 9,
+      "file": "test.m",
+      "line": 5,
       "name": "MyValue1"
     },
     {
-      "loc": "test.m:5:9",
+      "col": 9,
+      "file": "test.m",
+      "line": 5,
       "name": "MyValue2"
     }
   ],
   "globals": [
     {
       "access": "public",
-      "availability": "i:10.10 o:0 u:0",
+      "col": 6,
+      "file": "test.m",
+      "introduced": "10.10",
       "kind": "function",
+      "line": 41,
       "linkage": "exported",
-      "loc": "test.m:41:6",
       "name": "_foobar"
     }
   ],
   "interfaces": [
     {
+      "col": 12,
+      "file": "test.m",
+      "line": 1,
       "linkage": "exported",
-      "loc": "test.m:1:12",
       "name": "NSObject",
       "super": ""
     },
@@ -55,36 +69,47 @@
       ],
       "classMethods": [
         {
-          "availability": "i:10.4 o:10.7 u:0",
-          "loc": "test.m:15:1",
-          "name": "bar"
+          "col": 1,
+          "file": "test.m",
+          "introduced": "10.4",
+          "line": 15,
+          "name": "bar",
+          "obsoleted": "10.7"
         }
       ],
+      "col": 12,
+      "file": "test.m",
       "instanceMethods": [
         {
-          "availability": "i:0 o:0 u:1",
-          "loc": "test.m:14:1",
-          "name": "foo"
+          "col": 1,
+          "file": "test.m",
+          "line": 14,
+          "name": "foo",
+          "unavailable": true
         }
       ],
       "ivars": [
         {
           "access": "public",
           "accessControl": "protected",
-          "loc": "test.m:12:7",
+          "col": 7,
+          "file": "test.m",
+          "line": 12,
           "name": "a"
         }
       ],
+      "line": 11,
       "linkage": "exported",
-      "loc": "test.m:11:12",
       "name": "A",
       "properties": [
         {
           "attr": [
             "dynamic"
           ],
+          "col": 23,
+          "file": "test.m",
           "getter": "baz",
-          "loc": "test.m:16:23",
+          "line": 16,
           "name": "baz",
           "setter": "setBaz:"
         },
@@ -93,8 +118,10 @@
             "readonly",
             "class"
           ],
+          "col": 32,
+          "file": "test.m",
           "getter": "nowrite",
-          "loc": "test.m:17:32",
+          "line": 17,
           "name": "nowrite"
         }
       ],
@@ -103,15 +130,19 @@
   ],
   "protocols": [
     {
-      "availability": "i:10.10 o:0 u:0",
+      "col": 11,
+      "file": "test.m",
       "instanceMethods": [
         {
-          "availability": "i:10.10 o:0 u:0",
-          "loc": "test.m:22:1",
+          "col": 1,
+          "file": "test.m",
+          "introduced": "10.10",
+          "line": 12,
           "name": "method"
         }
       ],
-      "loc": "test.m:21:11",
+      "introduced": "10.10",
+      "line": 21,
       "name": "P"
     }
   ],
@@ -119,12 +150,16 @@
   "typedefs": [
     {
       "access": "public",
-      "loc": "test.m:3:13",
+      "col": 13,
+      "file": "test.m",
+      "line": 3,
       "name": "MyInt"
     },
     {
       "access": "public",
-      "loc": "test.m:9:3",
+      "col": 3,
+      "file": "test.m",
+      "line": 9,
       "name": "MyEnum"
     }
   ]

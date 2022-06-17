@@ -20,7 +20,7 @@
 #include "llvm/ADT/IntrusiveRefCntPtr.h"
 
 namespace llvm {
-raw_ostream &errs();
+raw_fd_ostream &errs();
 }
 
 TAPI_NAMESPACE_INTERNAL_BEGIN
@@ -31,7 +31,7 @@ using Severity = clang::diag::Severity;
 enum {
   DIAG_START_TAPI = clang::diag::DIAG_UPPER_LIMIT,
 #define DIAG(ENUM, FLAGS, DEFAULT_MAPPING, DESC, GROUP, SFINAE, CATEGORY,      \
-             NOWERROR, SHOWINSYSHEADER)                                        \
+             NOWERROR, SHOWINSYSHEADER, DEFERRABLE)                                        \
   ENUM,
 #include "tapi/Diagnostics/DiagnosticTAPIKinds.inc"
 #undef DIAG
@@ -58,6 +58,8 @@ public:
   void setErrorLimit(unsigned value) { diag->setErrorLimit(value); }
   bool hasErrorOccurred() const { return diag->hasErrorOccurred(); }
 
+  void setupLogDiagnostics(raw_ostream &os,
+                           std::unique_ptr<raw_ostream> streamOwner);
   void setupDiagnosticsFile(StringRef output);
 
   void setSourceManager(clang::SourceManager *sourceMgr) {

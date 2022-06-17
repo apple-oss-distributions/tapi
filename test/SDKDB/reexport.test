@@ -1,0 +1,27 @@
+; RUN: %tapi sdkdb --action=all --no-verify-api -o - -isysroot %sysroot --runtime-root %inputs/ReexportAll --sdk-content-root %inputs/ReexportAll 2>&1 | FileCheck %s
+
+; CHECK-NOT: warning:
+; CHECK: {
+; CHECK:   "access": "public",
+; CHECK:   "kind": "function",
+; CHECK:   "linkage": "exported",
+; CHECK:   "name": "_foo"
+; CHECK: }
+; CHECK: {
+; CHECK:   "access": "public",
+; CHECK:   "instanceMethods": [
+; CHECK:     {
+; CHECK:       "access": "public",
+; CHECK:       "name": "test"
+; CHECK:     }
+; CHECK:   ],
+; CHECK:   "linkage": "exported",
+; CHECK:   "name": "Class1",
+; CHECK:   "super": "NSObject"
+; CHECK: },
+; CHECK: {
+; CHECK:   "access": "public",
+; CHECK:   "linkage": "exported",
+; CHECK:   "name": "Class2",
+; CHECK:   "super": "NSObject"
+; CHECK: }

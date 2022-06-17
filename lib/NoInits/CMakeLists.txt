@@ -4,4 +4,5 @@ add_tapi_library(tapiNoInits
   ErrorHandling.cpp
   Signals.cpp
   WithColor.cpp
+  Statistic.cpp
   )

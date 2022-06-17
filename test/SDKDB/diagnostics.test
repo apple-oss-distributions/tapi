@@ -1,0 +1,8 @@
+; RUN: rm -rf %t && mkdir -p %t/Simple/System/Library/Frameworks
+; RUN: cp -R %inputs/System/Library/Frameworks/Simple.framework %t/Simple/System/Library/Frameworks
+; RUN: %tapi sdkdb -o - --action=all --diagnostics-file=%t/diag.plist -isysroot %sysroot --runtime-root %t/Simple --sdk-content-root %t/Simple
+; RUN: cat %t/diag.plist | FileCheck %s
+; CHECK: <string>cannot find protocol definition for &apos;ForwardProcotol&apos;</string>
+; CHECK: <string>protocol &apos;ForwardProcotol&apos; has no definition</string>
+; CHECK: <string>missing symbol &apos;_otherFrameworkAPI&apos; from binary interface</string>
+; CHECK: <string>missing ObjC protocol &apos;_A&apos; from binary interface</string>

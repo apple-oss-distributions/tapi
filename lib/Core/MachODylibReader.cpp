@@ -19,6 +19,7 @@
 #include "tapi/Core/LLVM.h"
 #include "tapi/Core/MachOReader.h"
 #include "tapi/Core/XPI.h"
+#include "tapi/ObjCMetadata/ObjCMachOBinary.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/ADT/Triple.h"
 #include "llvm/BinaryFormat/Magic.h"
@@ -27,6 +28,7 @@
 #include <tuple>
 
 using namespace llvm;
+using namespace llvm::MachO;
 using namespace llvm::object;
 
 TAPI_NAMESPACE_INTERNAL_BEGIN
@@ -95,11 +97,8 @@ private:
 };
 
 void InterfaceFileConverter::visitGlobal(const GlobalRecord &record) {
-  // ignore internal and unknown linkage.
-  if (!record.isExported())
-    return;
-
-  if (!includeUndefs && record.linkage == APILinkage::External)
+  // ignore internal and unknown linkage it unless came from flat namespace
+  if ( !(record.isExported() || (includeUndefs && record.isExternal())) )
     return;
 
   StringRef name;

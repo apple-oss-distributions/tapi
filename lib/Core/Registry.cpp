@@ -20,6 +20,7 @@
 #include "llvm/Support/raw_ostream.h"
 
 using namespace llvm;
+using namespace llvm::MachO;
 
 TAPI_NAMESPACE_INTERNAL_BEGIN
 
@@ -150,7 +151,7 @@ void Registry::addBinaryReaders() {
 }
 
 void Registry::addYAMLReaders() {
-  auto reader = make_unique<YAMLReader>();
+  auto reader = std::make_unique<YAMLReader>();
   reader->add(
       std::unique_ptr<DocumentHandler>(new stub::v1::YAMLDocumentHandler));
   reader->add(
@@ -163,7 +164,7 @@ void Registry::addYAMLReaders() {
 }
 
 void Registry::addYAMLWriters() {
-  auto writer = make_unique<YAMLWriter>();
+  auto writer = std::make_unique<YAMLWriter>();
   writer->add(
       std::unique_ptr<DocumentHandler>(new stub::v1::YAMLDocumentHandler));
   writer->add(
@@ -176,7 +177,7 @@ void Registry::addYAMLWriters() {
 }
 
 void Registry::addDiagnosticReader() {
-  add(make_unique<DiagnosticReader>());
+  add(std::make_unique<DiagnosticReader>());
 }
 
 TAPI_NAMESPACE_INTERNAL_END

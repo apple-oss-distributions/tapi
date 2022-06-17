@@ -77,10 +77,11 @@ private:
   std::string getMangledCXXVTableName(const CXXRecordDecl *decl) const;
   std::string getMangledCXXRTTI(const CXXRecordDecl *decl) const;
   std::string getMangledCXXRTTIName(const CXXRecordDecl *decl) const;
-  std::string getMangledCXXThunk(const GlobalDecl &decl,
-                                 const ThunkInfo &thunk) const;
+  std::string getMangledCXXThunk(const GlobalDecl &decl, const ThunkInfo &thunk,
+                                 bool) const;
   std::string getMangledCtorDtor(const CXXMethodDecl *decl, int type) const;
   AvailabilityInfo getAvailabilityInfo(const Decl *decl) const;
+  bool isAvailabilitySPI(SourceLocation loc) const;
 
   FrontendContext &frontend;
   ASTContext &context;
@@ -98,7 +99,7 @@ public:
     context.ast = &compiler.getASTContext();
     context.sourceMgr = &compiler.getSourceManager();
     context.pp = compiler.getPreprocessorPtr();
-    return llvm::make_unique<APIVisitor>(context);
+    return std::make_unique<APIVisitor>(context);
   }
 
   FrontendContext &context;

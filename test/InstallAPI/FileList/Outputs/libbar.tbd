@@ -5,7 +5,7 @@ flags:           [ not_app_extension_safe, installapi ]
 install-name:    '/usr/lib/libbar.dylib'
 current-version: 0
 compatibility-version: 0
-exports:         
+exports:
   - archs:           [ x86_64 ]
     symbols:         [ _bar_api, _bar_internal ]
 ...

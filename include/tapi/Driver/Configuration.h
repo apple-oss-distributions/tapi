@@ -15,7 +15,6 @@
 #ifndef TAPI_CORE_CONFIGURATION_H
 #define TAPI_CORE_CONFIGURATION_H
 
-#include "tapi/Core/ArchitectureSet.h"
 #include "tapi/Core/PackedVersion.h"
 #include "tapi/Core/Path.h"
 #include "tapi/Defines.h"
@@ -23,6 +22,7 @@
 #include "clang/Frontend/FrontendOptions.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/ADT/Triple.h"
+#include "llvm/TextAPI/MachO/ArchitectureSet.h"
 #include <map>
 #include <string>
 
@@ -34,7 +34,7 @@ class FileManager;
 class Context;
 
 struct CommandLineConfiguration {
-  clang::InputKind::Language language = clang::InputKind::Unknown;
+  clang::Language language = clang::Language::Unknown;
   std::string std;
   std::string isysroot;
   std::string publicUmbrellaHeaderPath;
@@ -50,7 +50,8 @@ struct CommandLineConfiguration {
   PathSeq excludePublicHeaders;
   PathSeq excludePrivateHeaders;
   std::string visibility;
-  bool useRTTI = true;
+  bool useRTTI = false;
+  bool useNoRTTI = false;
   bool scanPublicHeaders = true;
   bool scanPrivateHeaders = true;
   bool enableModules = false;
@@ -73,7 +74,7 @@ public:
   std::string getSysRoot() const;
   void setRootPath(StringRef root) { rootPath = root.str(); }
 
-  clang::InputKind::Language getLanguage(StringRef path) const;
+  clang::Language getLanguage(StringRef path) const;
   std::vector<Macro> getMacros(StringRef path) const;
   PathSeq getIncludePaths(StringRef path) const;
   PathSeq getFrameworkPaths(StringRef path) const;
@@ -85,9 +86,12 @@ public:
   bool isDriverKitProject() const {
     return isDriverKit;
   }
-  bool useOverlay() const;
+  bool useOverlay(StringRef path) const;
   bool useUmbrellaOnly() const;
   bool isPromotedToPublicDylib(StringRef installName) const;
+  PathSeq getMaskPaths() const;
+
+  void setProjectName(StringRef name) { projectName = name.str(); }
 
 private:
   Context &context;
@@ -100,8 +104,10 @@ private:
       pathToConfig;
   std::unique_ptr<configuration::v1::ProjectConfiguration> projectConfig;
   std::string rootPath;
+  std::string projectName;
 
-  PathSeq updateDirectories(const PathSeq &paths) const;
+  PathSeq updateDirectories(StringRef frameworkPath,
+                            const PathSeq &paths) const;
   PathSeq updateSDKHeaderFiles(const PathSeq &paths) const;
   PathSeq updateBinaryFiles(const PathSeq &paths) const;
 };

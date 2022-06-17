@@ -28,16 +28,15 @@ configure_lit_site_cfg(
 list(APPEND TAPI_TEST_DEPS
   tapi
   tapi-run
-  clang-headers
+  clang-resource-headers
   FileCheck
   hmaptool
   not
   TapiTestInputs
   yaml2obj
   tapi-frontend
-  tapi-api-verifier
   tapi-binary-reader
-  tapi-import
+  tapi-sdkdb
   tapi-configs
   )
 

@@ -13,5 +13,7 @@
 namespace llvm {
 
 bool CrashRecoveryContext::isRecoveringFromCrash() { abort(); }
+CrashRecoveryContext *CrashRecoveryContext::GetCurrent() { abort(); }
+void CrashRecoveryContext::HandleExit(int) { abort(); }
 
 } // end namespace llvm.

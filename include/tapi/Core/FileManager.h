@@ -54,7 +54,7 @@ public:
 
   /// \brief Check if a particular path is a directory.
   bool isDirectory(StringRef path, bool CacheFailure = true) {
-    return getDirectory(path, CacheFailure) != nullptr;
+    return (bool)getDirectory(path, CacheFailure);
   }
 
   /// \brief Check if a particular path is a symlink using directory_iterator.

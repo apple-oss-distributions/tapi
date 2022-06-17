@@ -29,6 +29,7 @@ TEST(Utils, isPublicLocation) {
       "/System/iOSSupport/System/Library/Frameworks/Public.framework/Versions/"
       "A/Public",
       "/System/DriverKit/usr/lib/libfoo.dylib",
+      "/Library/Apple/System/Library/Frameworks/Foo.framework/Foo",
   };
 
   static const char *privatePaths[] = {
@@ -44,11 +45,12 @@ TEST(Utils, isPublicLocation) {
       "/System/iOSSupport/System/Library/Frameworks/Foo.framework/Frameworks/"
       "XFoo.framework/XFoo",
       "/System/DriverKit/usr/local/lib/libfoo.dylib",
+      "/Library/Apple/System/Library/PrivateFrameworks/Foo.framework/Foo",
   };
 
   for (const char *path : publicPaths)
-    EXPECT_TRUE(isPublicLocation(path));
+    EXPECT_TRUE(isPublicDylib(path));
 
   for (const char *path : privatePaths)
-    EXPECT_FALSE(isPublicLocation(path));
+    EXPECT_FALSE(isPublicDylib(path));
 }

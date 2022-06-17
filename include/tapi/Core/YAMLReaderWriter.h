@@ -15,12 +15,12 @@
 #ifndef TAPI_CORE_YAML_READER_WRITER_H
 #define TAPI_CORE_YAML_READER_WRITER_H
 
-#include "tapi/Core/ArchitectureSet.h"
 #include "tapi/Core/LLVM.h"
 #include "tapi/Core/Registry.h"
 #include "tapi/Defines.h"
 #include "llvm/BinaryFormat/Magic.h"
 #include "llvm/Support/Error.h"
+#include "llvm/TextAPI/MachO/ArchitectureSet.h"
 #include <string>
 
 namespace llvm {

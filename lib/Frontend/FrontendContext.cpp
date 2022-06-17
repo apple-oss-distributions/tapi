@@ -21,8 +21,8 @@ FrontendContext::FrontendContext(
     IntrusiveRefCntPtr<FileSystemStatCacheFactory> cacheFactory,
     IntrusiveRefCntPtr<llvm::vfs::FileSystem> vfs)
     : target(triple), api(triple) {
-  fileManager = new FileManager(clang::FileSystemOptions{workingDirectory},
-                                cacheFactory, vfs);
+  fileManager = new FileManager(
+      clang::FileSystemOptions{workingDirectory.str()}, cacheFactory, vfs);
 }
 
 TAPI_NAMESPACE_INTERNAL_END

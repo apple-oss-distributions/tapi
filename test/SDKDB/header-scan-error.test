@@ -1,0 +1,230 @@
+;; Create input DSTROOT
+; RUN: rm -rf %t && mkdir %t
+; RUN: cp -r %inputs/Export/ %t/
+;; Create a header cannot be parsed
+; RUN: echo "#error cannot parse" > %t/System/Library/Frameworks/Export.framework/Versions/A/Headers/error.h
+; RUN: RC_ProjectName=TestError %tapi sdkdb -o - --action=interface-scan \
+; RUN:   -isysroot %sysroot  --runtime-root %t --sdk-content-root %t | FileCheck %s
+
+; CHECK:       "PublicSDKContentRoot": [],
+; CHECK-NEXT:  "RuntimeRoot": [
+; CHECK-NEXT:    {
+; CHECK-NEXT:      "binaryInfo": {
+; CHECK-NEXT:        "compatibilityVersion": "1",
+; CHECK-NEXT:        "currentVersion": "1",
+; CHECK-NEXT:        "installName": "/System/Library/Frameworks/Export.framework/Versions/A/Export",
+; CHECK-NEXT:        "twoLevelNamespace": true,
+; CHECK-NEXT:        "type": "dylib"
+; CHECK-NEXT:      },
+; CHECK-NEXT:      "globals": [
+; CHECK-NEXT:        {
+; CHECK-NEXT:          "linkage": "exported",
+; CHECK-NEXT:          "name": "_OBJC_CLASS_$_A"
+; CHECK-NEXT:        },
+; CHECK-NEXT:        {
+; CHECK-NEXT:          "linkage": "exported",
+; CHECK-NEXT:          "name": "_OBJC_CLASS_$_C"
+; CHECK-NEXT:        },
+; CHECK-NEXT:        {
+; CHECK-NEXT:          "linkage": "exported",
+; CHECK-NEXT:          "name": "_OBJC_METACLASS_$_A"
+; CHECK-NEXT:        },
+; CHECK-NEXT:        {
+; CHECK-NEXT:          "linkage": "exported",
+; CHECK-NEXT:          "name": "_OBJC_METACLASS_$_C"
+; CHECK-NEXT:        },
+; CHECK-NEXT:        {
+; CHECK-NEXT:          "linkage": "exported",
+; CHECK-NEXT:          "name": "_public_sym1"
+; CHECK-NEXT:        },
+; CHECK-NEXT:        {
+; CHECK-NEXT:          "linkage": "external",
+; CHECK-NEXT:          "name": "__objc_empty_cache"
+; CHECK-NEXT:        },
+; CHECK-NEXT:        {
+; CHECK-NEXT:          "linkage": "external",
+; CHECK-NEXT:          "name": "dyld_stub_binder"
+; CHECK-NEXT:        }
+; CHECK-NEXT:      ],
+; CHECK-NEXT:      "interfaces": [
+; CHECK-NEXT:        {
+; CHECK-NEXT:          "instanceMethods": [
+; CHECK-NEXT:            {
+; CHECK-NEXT:              "name": "method"
+; CHECK-NEXT:            }
+; CHECK-NEXT:          ],
+; CHECK-NEXT:          "linkage": "exported",
+; CHECK-NEXT:          "name": "A",
+; CHECK-NEXT:          "super": ""
+; CHECK-NEXT:        },
+; CHECK-NEXT:        {
+; CHECK-NEXT:          "instanceMethods": [
+; CHECK-NEXT:            {
+; CHECK-NEXT:              "name": "method"
+; CHECK-NEXT:            }
+; CHECK-NEXT:          ],
+; CHECK-NEXT:          "linkage": "exported",
+; CHECK-NEXT:          "name": "B",
+; CHECK-NEXT:          "super": ""
+; CHECK-NEXT:        },
+; CHECK-NEXT:        {
+; CHECK-NEXT:          "instanceMethods": [
+; CHECK-NEXT:            {
+; CHECK-NEXT:              "name": "method"
+; CHECK-NEXT:            }
+; CHECK-NEXT:          ],
+; CHECK-NEXT:          "linkage": "exported",
+; CHECK-NEXT:          "name": "C",
+; CHECK-NEXT:          "super": "A"
+; CHECK-NEXT:        }
+; CHECK-NEXT:      ],
+; CHECK-NEXT:      "target": "x86_64-apple-macos
+; CHECK-NEXT:    },
+; CHECK-NEXT:    {
+; CHECK-NEXT:      "binaryInfo": {
+; CHECK-NEXT:        "compatibilityVersion": "1",
+; CHECK-NEXT:        "currentVersion": "1",
+; CHECK-NEXT:        "installName": "/System/Library/Frameworks/Export.framework/Versions/A/Export",
+; CHECK-NEXT:        "twoLevelNamespace": true,
+; CHECK-NEXT:        "type": "dylib"
+; CHECK-NEXT:      },
+; CHECK-NEXT:      "globals": [
+; CHECK-NEXT:        {
+; CHECK-NEXT:          "linkage": "exported",
+; CHECK-NEXT:          "name": "_OBJC_CLASS_$_A"
+; CHECK-NEXT:        },
+; CHECK-NEXT:        {
+; CHECK-NEXT:          "linkage": "exported",
+; CHECK-NEXT:          "name": "_OBJC_CLASS_$_C"
+; CHECK-NEXT:        },
+; CHECK-NEXT:        {
+; CHECK-NEXT:          "linkage": "exported",
+; CHECK-NEXT:          "name": "_OBJC_METACLASS_$_A"
+; CHECK-NEXT:        },
+; CHECK-NEXT:        {
+; CHECK-NEXT:          "linkage": "exported",
+; CHECK-NEXT:          "name": "_OBJC_METACLASS_$_C"
+; CHECK-NEXT:        },
+; CHECK-NEXT:        {
+; CHECK-NEXT:          "linkage": "exported",
+; CHECK-NEXT:          "name": "_public_sym1"
+; CHECK-NEXT:        },
+; CHECK-NEXT:        {
+; CHECK-NEXT:          "linkage": "external",
+; CHECK-NEXT:          "name": "__objc_empty_cache"
+; CHECK-NEXT:        },
+; CHECK-NEXT:        {
+; CHECK-NEXT:          "linkage": "external",
+; CHECK-NEXT:          "name": "dyld_stub_binder"
+; CHECK-NEXT:        }
+; CHECK-NEXT:      ],
+; CHECK-NEXT:      "interfaces": [
+; CHECK-NEXT:        {
+; CHECK-NEXT:          "instanceMethods": [
+; CHECK-NEXT:            {
+; CHECK-NEXT:              "name": "method"
+; CHECK-NEXT:            }
+; CHECK-NEXT:          ],
+; CHECK-NEXT:          "linkage": "exported",
+; CHECK-NEXT:          "name": "A",
+; CHECK-NEXT:          "super": ""
+; CHECK-NEXT:        },
+; CHECK-NEXT:        {
+; CHECK-NEXT:          "instanceMethods": [
+; CHECK-NEXT:            {
+; CHECK-NEXT:              "name": "method"
+; CHECK-NEXT:            }
+; CHECK-NEXT:          ],
+; CHECK-NEXT:          "linkage": "exported",
+; CHECK-NEXT:          "name": "B",
+; CHECK-NEXT:          "super": ""
+; CHECK-NEXT:        },
+; CHECK-NEXT:        {
+; CHECK-NEXT:          "instanceMethods": [
+; CHECK-NEXT:            {
+; CHECK-NEXT:              "name": "method"
+; CHECK-NEXT:            }
+; CHECK-NEXT:          ],
+; CHECK-NEXT:          "linkage": "exported",
+; CHECK-NEXT:          "name": "C",
+; CHECK-NEXT:          "super": "A"
+; CHECK-NEXT:        }
+; CHECK-NEXT:      ],
+; CHECK-NEXT:      "target": "x86_64-apple-macos
+; CHECK-NEXT:    },
+; CHECK-NEXT:    {
+; CHECK-NEXT:      "binaryInfo": {
+; CHECK-NEXT:        "compatibilityVersion": "1",
+; CHECK-NEXT:        "currentVersion": "1",
+; CHECK-NEXT:        "installName": "/System/Library/Frameworks/Export.framework/Versions/A/Export",
+; CHECK-NEXT:        "twoLevelNamespace": true,
+; CHECK-NEXT:        "type": "dylib"
+; CHECK-NEXT:      },
+; CHECK-NEXT:      "globals": [
+; CHECK-NEXT:        {
+; CHECK-NEXT:          "linkage": "exported",
+; CHECK-NEXT:          "name": "_OBJC_CLASS_$_A"
+; CHECK-NEXT:        },
+; CHECK-NEXT:        {
+; CHECK-NEXT:          "linkage": "exported",
+; CHECK-NEXT:          "name": "_OBJC_CLASS_$_C"
+; CHECK-NEXT:        },
+; CHECK-NEXT:        {
+; CHECK-NEXT:          "linkage": "exported",
+; CHECK-NEXT:          "name": "_OBJC_METACLASS_$_A"
+; CHECK-NEXT:        },
+; CHECK-NEXT:        {
+; CHECK-NEXT:          "linkage": "exported",
+; CHECK-NEXT:          "name": "_OBJC_METACLASS_$_C"
+; CHECK-NEXT:        },
+; CHECK-NEXT:        {
+; CHECK-NEXT:          "linkage": "exported",
+; CHECK-NEXT:          "name": "_public_sym1"
+; CHECK-NEXT:        },
+; CHECK-NEXT:        {
+; CHECK-NEXT:          "linkage": "external",
+; CHECK-NEXT:          "name": "__objc_empty_cache"
+; CHECK-NEXT:        },
+; CHECK-NEXT:        {
+; CHECK-NEXT:          "linkage": "external",
+; CHECK-NEXT:          "name": "dyld_stub_binder"
+; CHECK-NEXT:        }
+; CHECK-NEXT:      ],
+; CHECK-NEXT:      "interfaces": [
+; CHECK-NEXT:        {
+; CHECK-NEXT:          "instanceMethods": [
+; CHECK-NEXT:            {
+; CHECK-NEXT:              "name": "method"
+; CHECK-NEXT:            }
+; CHECK-NEXT:          ],
+; CHECK-NEXT:          "linkage": "exported",
+; CHECK-NEXT:          "name": "A",
+; CHECK-NEXT:          "super": ""
+; CHECK-NEXT:        },
+; CHECK-NEXT:        {
+; CHECK-NEXT:          "instanceMethods": [
+; CHECK-NEXT:            {
+; CHECK-NEXT:              "name": "method"
+; CHECK-NEXT:            }
+; CHECK-NEXT:          ],
+; CHECK-NEXT:          "linkage": "exported",
+; CHECK-NEXT:          "name": "B",
+; CHECK-NEXT:          "super": ""
+; CHECK-NEXT:        },
+; CHECK-NEXT:        {
+; CHECK-NEXT:          "instanceMethods": [
+; CHECK-NEXT:            {
+; CHECK-NEXT:              "name": "method"
+; CHECK-NEXT:            }
+; CHECK-NEXT:          ],
+; CHECK-NEXT:          "linkage": "exported",
+; CHECK-NEXT:          "name": "C",
+; CHECK-NEXT:          "super": "A"
+; CHECK-NEXT:        }
+; CHECK-NEXT:      ],
+; CHECK-NEXT:      "target": "x86_64-apple-macos
+; CHECK-NEXT:    }
+; CHECK-NEXT:  ],
+; CHECK-NEXT:  "SDKContentRoot": [],
+; CHECK-NEXT:  "error": true,
+; CHECK-NEXT:  "projectName": "TestError",

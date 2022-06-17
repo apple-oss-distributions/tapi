@@ -2,7 +2,7 @@
 archs:           [ i386, x86_64, x86_64h ]
 platform:        macosx
 install-name:    '/usr/lib/libfat.dylib'
-exports:         
+exports:
   - archs:           [ x86_64, x86_64h ]
     objc-ivars:      [ _A._ivar1 ]
   - archs:           [ i386, x86_64, x86_64h ]

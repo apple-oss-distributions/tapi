@@ -16,7 +16,7 @@ experimental.
 \-target <triple>
 .RS 4
 Specifies the architecture, platform, and deployment target to use for parsing
-the header files. At least one \target option must be specified. The <triple>
+the header files. At least one target option must be specified. The <triple>
 is the same as the one that is used by clang and has the general format
 <arch>-<vendor>-<system>-<abi>. The architecture <arch> specifies the
 architecture slice (for example 'x86_64' or 'arm64'). The only supported vendor
@@ -100,6 +100,14 @@ Add directory to include search path.
 .RE
 
 .PP
+\-iframework <value>
+.RS 4
+Add directory to system frameworks search path. The use of 
+-Xplatform_<platform> before the option limits the effect to the 
+provided platform.
+.RE
+
+.PP
 \-L <value>
 .RS 4
 Add directory to the library search path.
@@ -158,11 +166,28 @@ before the option limits the effect to the provided architecture <arch>.
 .RE
 
 .PP
-\-reexport_install_name <name>
+\-reexport_framework <framework_name>
 .RS 4
-Reexport the specified internal "install path" (LC_ID_DYLIB). Per default this
-option applies to all provided architectures. The use of -Xarch_<arch> before
+Specifies that all the symbols in that framework should be available to clients 
+linking to the library being created. Per default this option applies to all 
+provided architectures. The use of -Xarch_<arch> before
 the option limits the effect to the provided architecture <arch>.
+.RE
+
+.PP
+\-reexport_library <path_to_library>
+.RS 4
+Specifies that all the symbols in that library should be available to clients 
+linking to the library being created. Per default this option applies to all 
+provided architectures. The use of -Xarch_<arch> before
+the option limits the effect to the provided architecture <arch>.
+.RE
+
+.PP
+\-reexport_l<name>
+.RS 4
+Behaves the same as -reexport_library but searchs for name as libname.dylib 
+or libname.a in the library search paths.
 .RE
 
 .PP
@@ -228,6 +253,16 @@ on one line, separated by whitespace.  Lines starting with # are ignored. Per
 default this option applies to all provided architectures. The use of
 -Xarch_<arch> before the option limits the effect to the provided architecture
 <arch>.
+.RE
+
+.PP
+\-swift\-installapi\-interface <path>
+.RS 4
+The specified path is to an intermediate tapi output file used to account for 
+and ignoring symbols generated from an earlier swift invocation within a build for 
+final api verification. Multiple intermediate tapi output files can be provided 
+in the same invocation but must be for the same dylib and different targets.
+
 .RE
 
 .SH DEPRECATED OPTIONS

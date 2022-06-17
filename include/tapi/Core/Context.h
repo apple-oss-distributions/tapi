@@ -31,7 +31,14 @@ public:
 
   Context(Options &opt, DiagnosticsEngine &diag) : _fm(opt.fm), _diag(diag) {}
 
-  FileManager &getFileManager() const { return *_fm; }
+  // FileManager less init.
+  Context(DiagnosticsEngine &diag) : _fm(nullptr), _diag(diag) {}
+
+  FileManager &getFileManager() const {
+    assert(_fm.get() != nullptr);
+    return *_fm;
+  }
+
   DiagnosticsEngine &getDiag() const { return _diag; }
 
 protected:

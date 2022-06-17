@@ -57,7 +57,7 @@ TAPI_NAMESPACE_INTERNAL_BEGIN
 
 static constexpr DiagInfoRec diagInfo[] = {
 #define DIAG(ENUM, CLASS, DEFAULT_SEVERITY, DESC, GROUP, SFINAE, NOWERROR,     \
-             SHOWINSYSHEADER, CATEGORY)                                        \
+             SHOWINSYSHEADER, DEFERRABLE, CATEGORY)                                        \
   {DESC, diag::ENUM, sizeof(DESC) - 1, CLASS, DEFAULT_SEVERITY},
 #include "tapi/Diagnostics/DiagnosticTAPIKinds.inc"
 #undef DIAG
@@ -145,13 +145,22 @@ clang::DiagnosticBuilder DiagnosticsEngine::report(clang::SourceLocation loc,
   return diag->Report(loc, newID);
 }
 
+void DiagnosticsEngine::setupLogDiagnostics(
+    raw_ostream &os, std::unique_ptr<raw_ostream> streamOwner) {
+  auto logger = std::make_unique<clang::LogDiagnosticPrinter>(
+      os, diagOpts.get(), std::move(streamOwner));
+  assert(diag->ownsClient());
+  diag->setClient(new clang::ChainedDiagnosticConsumer(diag->takeClient(),
+                                                       std::move(logger)));
+}
+
 void DiagnosticsEngine::setupDiagnosticsFile(StringRef output) {
   std::error_code ec;
   std::unique_ptr<raw_ostream> streamOwner;
   raw_ostream *os = &llvm::errs();
   if (output != "-") {
     // Create the output stream.
-    auto fileOS = llvm::make_unique<llvm::raw_fd_ostream>(
+    auto fileOS = std::make_unique<llvm::raw_fd_ostream>(
         output, ec, llvm::sys::fs::F_Append | llvm::sys::fs::F_Text);
     if (ec) {
       report(diag::err_cannot_open_file)
@@ -164,12 +173,7 @@ void DiagnosticsEngine::setupDiagnosticsFile(StringRef output) {
   }
   diagOpts->DiagnosticLogFile = output.str();
 
-  // Chain in the diagnostic client which will log the diagnostics.
-  auto Logger = llvm::make_unique<clang::LogDiagnosticPrinter>(
-      *os, diagOpts.get(), std::move(streamOwner));
-  assert(diag->ownsClient());
-  diag->setClient(new clang::ChainedDiagnosticConsumer(diag->takeClient(),
-                                                       std::move(Logger)));
+  setupLogDiagnostics(*os, std::move(streamOwner));
 }
 
 TAPI_NAMESPACE_INTERNAL_END

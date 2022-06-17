@@ -15,13 +15,14 @@
 #include "tapi/Core/LLVM.h"
 #include "tapi/Core/PackedVersion.h"
 #include "tapi/Core/Path.h"
-#include "tapi/Core/Platform.h"
 #include "tapi/Defines.h"
 #include "tapi/Diagnostics/Diagnostics.h"
 #include "tapi/Driver/DriverOptions.h"
 #include "clang/Frontend/FrontendOptions.h"
 #include "llvm/ADT/Triple.h"
 #include "llvm/Option/Option.h"
+#include "llvm/TextAPI/MachO/Architecture.h"
+#include "llvm/TextAPI/MachO/Platform.h"
 #include <set>
 #include <string>
 #include <vector>
@@ -39,7 +40,9 @@ enum class TAPICommand : unsigned {
   Stubify,
   InstallAPI,
   Reexport,
+  SDKDB,
   GenerateAPITests,
+  APIVerify,
 };
 
 /// \brief A list of InstallAPI verification modes.
@@ -145,7 +148,7 @@ struct ArchiveOptions {
   ArchiveAction action = ArchiveAction::Unknown;
 
   /// \brief Specifies the archive action architecture to use (if applicable).
-  Architecture arch = AK_unknown;
+  Architecture arch = llvm::MachO::AK_unknown;
 
   /// \brief This allows merging of TBD files containing the same architecture.
   bool allowArchitectureMerges = false;
@@ -194,7 +197,7 @@ struct FrontendOptions {
   std::vector<llvm::Triple> targetVariants;
 
   /// \brief Specify the language to use for parsing.
-  clang::InputKind::Language language = clang::InputKind::Unknown;
+  clang::Language language = clang::Language::Unknown;
 
   /// \brief Language standard to use for parsing.
   std::string language_std;
@@ -206,7 +209,7 @@ struct FrontendOptions {
   std::string umbrella;
 
   /// \brief Additional SYSTEM framework search paths.
-  PathSeq systemFrameworkPaths;
+  PathToPlatformSeq systemFrameworkPaths;
 
   /// \brief Additional framework search paths.
   PathSeq frameworkPaths;
@@ -220,11 +223,17 @@ struct FrontendOptions {
   /// \brief Additional include paths.
   PathSeq includePaths;
 
+  /// \brief Additional include local paths.
+  PathSeq quotedIncludePaths;
+
   /// \brief Macros to use for for parsing.
   std::vector<Macro> macros;
 
-  /// \brief Use RTTI.
-  bool useRTTI = true;
+  /// \brief overwrite to use RTTI.
+  bool useRTTI = false;
+
+  /// \brief overwrite to use no-RTTI.
+  bool useNoRTTI = false;
 
   /// \brief Set the visibility.
   /// TODO: We should disallow this for header parsing, but we could still use
@@ -292,6 +301,12 @@ struct TAPIOptions {
   /// \brief List of excluded project header files.
   PathSeq excludeProjectHeaders;
 
+  /// \brief List of swift interface files.
+  PathSeq swiftInstallAPIInterfaces;
+
+  /// \brief All -isysroot options. For multiple sysroot support.
+  PathSeq allSysroots;
+
   /// \brief Path to dynamic library for verification.
   std::string verifyAgainst;
 
@@ -321,8 +336,10 @@ struct TAPIOptions {
 
 
   /// \brief Specify the output file type.
-  VersionedFileType fileType = TBDv3;
+  VersionedFileType fileType = TBDv4;
 
+  /// \bried Scan Bundles and Extensions for SDKDB.
+  bool scanAll = true;
 
   /// \brief Infer the include paths based on the provided/found header files.
   bool inferIncludePaths = true;
@@ -340,10 +357,48 @@ struct TAPIOptions {
   /// \brief Emit API verification errors as warning.
   bool verifyAPIErrorAsWarning = false;
 
-  /// \brief Whitelist YAML file for API verification.
-  std::string verifyAPIWhitelist; // EquivalentTypes.conf
+  /// \brief Allowlist YAML file for API verification.
+  std::string verifyAPIAllowlist; // EquivalentTypes.conf
+
+  /// \brief SDKDB output location.
+  std::string sdkdbOutputPath;
 };
 
+/// Specify the actions for SDKDB Driver.
+enum SDKDBAction : unsigned {
+  SDKDBNone = 0,
+  SDKDBInterfaceScan = 1,
+  SDKDBPublicGen = 1 << 1,
+  SDKDBPrivateGen = 1 << 2,
+  SDKDBAll = SDKDBInterfaceScan | SDKDBPublicGen | SDKDBPrivateGen,
+};
+
+struct SDKDBOptions {
+  /// SDKDB Action.
+  SDKDBAction action = SDKDBNone;
+
+  /// Scan public headers.
+  bool scanPublicHeaders = true;
+
+  /// Scan private headers.
+  bool scanPrivateHeaders = true;
+
+  /// Path to configuration file.
+  std::string configurationFile;
+
+  /// Path to diagnostics file.
+  std::string diagnosticsFile;
+
+  /// Path to all the roots.
+  std::string runtimeRoot;
+  std::string sdkContentRoot;
+  std::string publicSDKContentRoot;
+
+  /// Path to partial SDKDB file list.
+  std::string partialSDKDBFileList;
+  /// Path to partial SDKDB directory from installAPI.
+  std::string installAPISDKDBDirectory;
+};
 
 class Options {
 private:
@@ -353,6 +408,9 @@ private:
 
   bool processXarchOptions(DiagnosticsEngine &diag,
                            llvm::opt::InputArgList &args);
+
+  bool processXplatformOptions(DiagnosticsEngine &diag,
+                               llvm::opt::InputArgList &args);
 
   bool processDriverOptions(DiagnosticsEngine &diag,
                             llvm::opt::InputArgList &args);
@@ -372,6 +430,8 @@ private:
   bool processTAPIOptions(DiagnosticsEngine &diag,
                           llvm::opt::InputArgList &args);
 
+  bool processSDKDBOptions(DiagnosticsEngine &diag,
+                           llvm::opt::InputArgList &args);
 
   void initOptionsFromSnapshot(const Snapshot &snapshot);
 
@@ -387,6 +447,7 @@ public:
   FrontendOptions frontendOptions;
   DiagnosticsOptions diagnosticsOptions;
   TAPIOptions tapiOptions;
+  SDKDBOptions sdkdbOptions;
 
   Options() = delete;
 
@@ -403,6 +464,7 @@ private:
   std::unique_ptr<llvm::opt::OptTable> table;
   IntrusiveRefCntPtr<FileManager> fm;
   std::map<const llvm::opt::Arg *, Architecture> argToArchMap;
+  std::map<const llvm::opt::Arg *, PlatformKind> argToPlatformMap;
 
   friend class Snapshot;
   friend class Context;

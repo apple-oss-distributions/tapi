@@ -8,8 +8,8 @@ add_tapi_test_library(Inlining
 )
 target_link_libraries(Inlining
   PRIVATE
-  -F${TAPI_BINARY_DIR}/Inputs/System/Library/Frameworks
   -F${TAPI_BINARY_DIR}/Inputs/System/Library/Frameworks/Inlining.framework/Versions/A/Frameworks
+  -F${TAPI_BINARY_DIR}/Inputs/System/Library/Frameworks
   -Wl,-reexport_framework,Bar
   -Wl,-reexport_framework,Foo
 )

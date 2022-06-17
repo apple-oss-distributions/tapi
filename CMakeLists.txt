@@ -70,7 +70,7 @@ check_linker_flag("-Wl,-no_inits" LINKER_SUPPORTS_NO_INITS)
 # MARZIPAN RENAME: We might need to update this. This will also require an
 # update of the linker on the CI bots.
 # Check if the linker has iosmac support.
-check_linker_flag("-Wl,-iosmac_version_min,12.0" LINKER_SUPPORTS_IOSMAC)
+check_linker_flag("-Wl,-iosmac_version_min,13.0" LINKER_SUPPORTS_IOSMAC)
 # MARZIPAN RENAME
 
 # Check if i386 is supported.
@@ -213,4 +213,4 @@ if( TAPI_INCLUDE_TESTS )
 endif()
 if( TAPI_INCLUDE_DOCS )
   add_subdirectory(docs)
-endif() 
+endif()

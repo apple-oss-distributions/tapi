@@ -14,14 +14,17 @@
 
 #include "tapi/Core/Registry.h"
 #include "tapi/Core/TapiError.h"
+#include "tapi/Core/Utils.h"
 #include "tapi/Defines.h"
 #include "tapi/Diagnostics/Diagnostics.h"
 #include "tapi/Driver/Driver.h"
 #include "tapi/Driver/Options.h"
 #include "tapi/Driver/Snapshot.h"
 #include "clang/Driver/DriverDiagnostic.h"
+#include "llvm/TextAPI/MachO/Architecture.h"
 
 using namespace llvm;
+using namespace llvm::MachO;
 
 TAPI_NAMESPACE_INTERNAL_BEGIN
 
@@ -114,17 +117,17 @@ bool Driver::Archive::run(DiagnosticsEngine &diag, Options &opts) {
   case ArchiveAction::RemoveArchitecture: {
     assert(inputs.size() == 1 && "expecting exactly one input file");
     auto file = inputs.front()->remove(opts.archiveOptions.arch);
-    file = handleExpected(std::move(file),
-                          [&]() { return std::move(inputs.front()); },
-                          [&](std::unique_ptr<TapiError> error) -> Error {
-                            if (error->ec != TapiErrorCode::NoSuchArchitecture)
-                              return Error(std::move(error));
-                            diag.report(diag::warn)
-                                << ("file doesn't have architecture '" +
-                                    getArchName(opts.archiveOptions.arch) + "'")
-                                       .str();
-                            return Error::success();
-                          });
+    file = handleExpected(
+        std::move(file), [&]() { return std::move(inputs.front()); },
+        [&](std::unique_ptr<TapiError> error) -> Error {
+          if (error->ec != TapiErrorCode::NoSuchArchitecture)
+            return Error(std::move(error));
+          diag.report(diag::warn)
+              << ("file doesn't have architecture '" +
+                  getArchitectureName(opts.archiveOptions.arch) + "'")
+                     .str();
+          return Error::success();
+        });
 
     if (!file) {
       diag.report(diag::err)

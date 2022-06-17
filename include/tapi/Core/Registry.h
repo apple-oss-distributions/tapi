@@ -15,13 +15,13 @@
 #ifndef TAPI_CORE_REGISTRY_H
 #define TAPI_CORE_REGISTRY_H
 
-#include "tapi/Core/ArchitectureSet.h"
 #include "tapi/Core/InterfaceFile.h"
 #include "tapi/Core/LLVM.h"
 #include "tapi/Defines.h"
 #include "llvm/BinaryFormat/Magic.h"
 #include "llvm/Support/Error.h"
 #include "llvm/Support/MemoryBuffer.h"
+#include "llvm/TextAPI/MachO/ArchitectureSet.h"
 
 using llvm::file_magic;
 using llvm::Error;
@@ -72,7 +72,8 @@ public:
   Expected<std::unique_ptr<InterfaceFile>>
   readFile(std::unique_ptr<MemoryBuffer> memBuffer,
            ReadFlags readFlags = ReadFlags::All,
-           ArchitectureSet arches = ArchitectureSet::All()) const;
+           ArchitectureSet arches = 
+           ArchitectureSet(std::numeric_limits<uint32_t>::max()) ) const;
   Error writeFile(const std::string &path, const InterfaceFile *file,
                   VersionedFileType fileType) const;
   Error writeFile(raw_ostream &os, const InterfaceFile *file,

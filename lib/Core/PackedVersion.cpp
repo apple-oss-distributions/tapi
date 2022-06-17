@@ -114,7 +114,7 @@ void PackedVersion::print(raw_ostream &os) const {
     os << format(".%d", getSubminor());
 }
 
-const DiagnosticBuilder &operator<<(const DiagnosticBuilder &db,
+const StreamingDiagnostic &operator<<(const StreamingDiagnostic &db,
                                     const PackedVersion &version) {
   SmallString<32> string;
   raw_svector_ostream os(string);

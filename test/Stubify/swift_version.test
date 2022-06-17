@@ -1,10 +1,10 @@
 ; RUN: rm -rf %t && mkdir %t
-; RUN: xcrun clang -dynamiclib -install_name libswift1.dylib -o %t/libswift1.dylib %p/../Inputs/swift1.ll
-; RUN: xcrun clang -dynamiclib -install_name libswift2.dylib -o %t/libswift2.dylib %p/../Inputs/swift2.ll
-; RUN: xcrun clang -dynamiclib -install_name libswift3.dylib -o %t/libswift3.dylib %p/../Inputs/swift3.ll
-; RUN: xcrun clang -dynamiclib -install_name libswift4.dylib -o %t/libswift4.dylib %p/../Inputs/swift4.ll
-; RUN: xcrun clang -dynamiclib -install_name libswift5.dylib -o %t/libswift5.dylib %p/../Inputs/swift5.ll
-; RUN: xcrun clang -dynamiclib -install_name libswift99.dylib -o %t/libswift99.dylib %p/../Inputs/swift99.ll
+; RUN: xcrun clang -arch x86_64 -dynamiclib -install_name libswift1.dylib -o %t/libswift1.dylib %p/../Inputs/swift1.ll
+; RUN: xcrun clang -arch x86_64 -dynamiclib -install_name libswift2.dylib -o %t/libswift2.dylib %p/../Inputs/swift2.ll
+; RUN: xcrun clang -arch x86_64 -dynamiclib -install_name libswift3.dylib -o %t/libswift3.dylib %p/../Inputs/swift3.ll
+; RUN: xcrun clang -arch x86_64 -dynamiclib -install_name libswift4.dylib -o %t/libswift4.dylib %p/../Inputs/swift4.ll
+; RUN: xcrun clang -arch x86_64 -dynamiclib -install_name libswift5.dylib -o %t/libswift5.dylib %p/../Inputs/swift5.ll
+; RUN: xcrun clang -arch x86_64 -dynamiclib -install_name libswift99.dylib -o %t/libswift99.dylib %p/../Inputs/swift99.ll
 ; RUN: %tapi stubify --no-uuids --filetype=tbd-v2 %t/libswift1.dylib -o %t/libswift1.tbd 2>&1 | FileCheck -allow-empty %s
 ; RUN: %tapi stubify --no-uuids --filetype=tbd-v2 %t/libswift2.dylib -o %t/libswift2.tbd 2>&1 | FileCheck -allow-empty %s
 ; RUN: %tapi stubify --no-uuids --filetype=tbd-v2 %t/libswift3.dylib -o %t/libswift3.tbd 2>&1 | FileCheck -allow-empty %s

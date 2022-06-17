@@ -37,8 +37,8 @@ bool Driver::Reexport::run(DiagnosticsEngine &diag, Options &opts) {
   }
 
   // Set default language option.
-  if (opts.frontendOptions.language == clang::InputKind::Unknown)
-    opts.frontendOptions.language = clang::InputKind::ObjC;
+  if (opts.frontendOptions.language == clang::Language::Unknown)
+    opts.frontendOptions.language = clang::Language::ObjC;
 
   // Only allow one target.
   if (opts.frontendOptions.targets.size() > 1) {
@@ -67,12 +67,15 @@ bool Driver::Reexport::run(DiagnosticsEngine &diag, Options &opts) {
   job.target = target;
   job.language = opts.frontendOptions.language;
   job.language_std = opts.frontendOptions.language_std;
-  job.useRTTI = opts.frontendOptions.useRTTI;
+  job.overwriteRTTI = opts.frontendOptions.useRTTI;
+  job.overwriteNoRTTI = opts.frontendOptions.useNoRTTI;
   job.visibility = opts.frontendOptions.visibility;
   job.isysroot = opts.frontendOptions.isysroot;
   job.macros = opts.frontendOptions.macros;
-  job.systemFrameworkPaths = opts.frontendOptions.systemFrameworkPaths;
+  job.systemFrameworkPaths =
+      getAllPaths(opts.frontendOptions.systemFrameworkPaths);
   job.systemIncludePaths = opts.frontendOptions.systemIncludePaths;
+  job.quotedIncludePaths = opts.frontendOptions.quotedIncludePaths;
   job.frameworkPaths = opts.frontendOptions.frameworkPaths;
   job.includePaths = opts.frontendOptions.includePaths;
   job.clangExtraArgs = opts.frontendOptions.clangExtraArgs;
@@ -81,11 +84,12 @@ bool Driver::Reexport::run(DiagnosticsEngine &diag, Options &opts) {
   job.useObjectiveCARC = opts.frontendOptions.useObjectiveCARC;
   job.useObjectiveCWeakARC = opts.frontendOptions.useObjectiveCWeakARC;
   job.type = HeaderType::Public;
+  job.verbose = opts.frontendOptions.verbose;
 
   // Infer additional include paths.
   std::set<std::string> inferredIncludePaths;
   for (const auto &header : job.headerFiles)
-    inferredIncludePaths.insert(sys::path::parent_path(header.fullPath));
+    inferredIncludePaths.insert(sys::path::parent_path(header.fullPath).str());
 
   job.includePaths.insert(job.includePaths.end(), inferredIncludePaths.begin(),
                           inferredIncludePaths.end());

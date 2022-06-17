@@ -4,4 +4,8 @@ TAPI Documentation
 .. toctree::
    :maxdepth: 2
 
-   TBD
+   SDKDB
+   TBD_current
+   TBD_legacy
+   FileList
+   SDKDBBitcodeFormat

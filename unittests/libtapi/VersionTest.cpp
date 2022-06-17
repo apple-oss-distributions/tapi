@@ -14,23 +14,23 @@
 #define MAKE_STRING(X) MAKE_STRING2(X)
 
 // Test the basic version query methods.
-TEST(libtapi, Version_getMajor) {
+TEST(LibTapiTest, Version_getMajor) {
   EXPECT_EQ(tapi::Version::getMajor(), TAPI_VERSION_MAJOR);
 }
 
-TEST(libtapi, Version_getMinor) {
+TEST(LibTapiTest, Version_getMinor) {
   EXPECT_EQ(tapi::Version::getMinor(), TAPI_VERSION_MINOR);
 }
 
-TEST(libtapi, Version_getPatch) {
+TEST(LibTapiTest, Version_getPatch) {
   EXPECT_EQ(tapi::Version::getPatch(), TAPI_VERSION_PATCH);
 }
 
-TEST(libtapi, Version_getAsString) {
+TEST(LibTapiTest, Version_getAsString) {
   EXPECT_STREQ(tapi::Version::getAsString().c_str(), MAKE_STRING(TAPI_VERSION));
 }
 
-TEST(libtapi, Version_getFullVersionAsString) {
+TEST(LibTapiTest, Version_getFullVersionAsString) {
   std::string vendor;
 #ifdef TAPI_VENDOR
   vendor = TAPI_VENDOR;
@@ -46,7 +46,7 @@ TEST(libtapi, Version_getFullVersionAsString) {
 }
 
 // Test the version comparison method.
-TEST(libtapi, Version_isAtLeast) {
+TEST(LibTapiTest, Version_isAtLeast) {
   EXPECT_TRUE(tapi::Version::isAtLeast(TAPI_VERSION_MAJOR));
   EXPECT_TRUE(tapi::Version::isAtLeast(TAPI_VERSION_MAJOR, TAPI_VERSION_MINOR));
   EXPECT_TRUE(tapi::Version::isAtLeast(TAPI_VERSION_MAJOR, TAPI_VERSION_MINOR,

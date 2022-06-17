@@ -91,9 +91,8 @@ bool DirectoryScanner::scanDylibDirectory(
     sys::path::append(path, subDirectory);
     return _fm.getDirectory(path, /*CacheFailure=*/false);
   };
-  const DirectoryEntry *directoryEntryPublic = getDirectory("usr/include");
-  const DirectoryEntry *directoryEntryPrivate =
-      getDirectory("usr/local/include");
+  auto directoryEntryPublic = getDirectory("usr/include");
+  auto directoryEntryPrivate = getDirectory("usr/local/include");
 
   if (!directoryEntryPublic && !directoryEntryPrivate) {
     diag.report(diag::err_cannot_find_header_dir) << directory;
@@ -104,13 +103,13 @@ bool DirectoryScanner::scanDylibDirectory(
   dylib.isDynamicLibrary = true;
 
   if (directoryEntryPublic) {
-    if (!scanHeaders(dylib, directoryEntryPublic->getName(),
-                     HeaderType::Public))
+    if (!scanHeaders(dylib, (*directoryEntryPublic)->getName(),
+                     HeaderType::Public, directory, /*isDylib=*/true))
       return false;
   }
   if (directoryEntryPrivate) {
-    if (!scanHeaders(dylib, directoryEntryPrivate->getName(),
-                     HeaderType::Private))
+    if (!scanHeaders(dylib, (*directoryEntryPrivate)->getName(),
+                     HeaderType::Private, directory, /*isDylib=*/true))
       return false;
   }
 
@@ -149,7 +148,7 @@ bool DirectoryScanner::scanDirectory(StringRef directory) {
 bool DirectoryScanner::scanFrameworksDirectory(
     std::vector<Framework> &frameworks, StringRef directory) const {
   std::error_code ec;
-  auto &fs = *_fm.getVirtualFileSystem();
+  auto &fs = _fm.getVirtualFileSystem();
   for (vfs::directory_iterator i = fs.dir_begin(directory, ec), ie; i != ie;
        i.increment(ec)) {
     auto path = i->path();
@@ -208,7 +207,12 @@ bool DirectoryScanner::scanFrameworkDirectory(Framework &framework,
   // there is a Versions directory, then we have symlinks and directly proceed
   // to the Versiosn folder.
   std::error_code ec;
-  auto &fs = *_fm.getVirtualFileSystem();
+  auto &fs = _fm.getVirtualFileSystem();
+
+  // If the framework is inside Kernel or IOKit, scan headers in the different
+  // directory separately.
+  bool splitHeaderDir =
+      path.contains("Kernel.framework") || path.contains("IOKit.framework");
 
   for (vfs::directory_iterator i = fs.dir_begin(path, ec), ie;
        i != ie; i.increment(ec)) {
@@ -231,13 +235,15 @@ bool DirectoryScanner::scanFrameworkDirectory(Framework &framework,
     StringRef fileName = sys::path::filename(path);
     // Scan all "public" headers.
     if (fileName.compare("Headers") == 0) {
-      if (!scanHeaders(framework, path, HeaderType::Public))
+      if (!scanHeaders(framework, path, HeaderType::Public, path,
+                       /*isDylib=*/splitHeaderDir))
         return false;
       continue;
     }
     // Scan all "private" headers.
     else if (fileName.compare("PrivateHeaders") == 0) {
-      if (!scanHeaders(framework, path, HeaderType::Private))
+      if (!scanHeaders(framework, path, HeaderType::Private, path,
+                       /*isDylib=*/splitHeaderDir))
         return false;
       continue;
     }
@@ -284,7 +290,8 @@ bool DirectoryScanner::scanFrameworkDirectory(Framework &framework,
 }
 
 bool DirectoryScanner::scanHeaders(Framework &framework, StringRef path,
-                                   HeaderType type) const {
+                                   HeaderType type, StringRef basePath,
+                                   bool isDynamicLibrary) const {
   if (!mode.scanHeaders())
     return true;
 
@@ -292,8 +299,10 @@ bool DirectoryScanner::scanHeaders(Framework &framework, StringRef path,
     return true;
 
   std::error_code ec;
-  auto &fs = *_fm.getVirtualFileSystem();
-  for (vfs::recursive_directory_iterator i(fs, path, ec), ie; i != ie;
+  auto &fs = _fm.getVirtualFileSystem();
+  std::vector<std::string> subDirectories;
+  bool containsHeaders = false;
+  for (vfs::directory_iterator i = fs.dir_begin(path, ec), ie; i != ie;
        i.increment(ec)) {
     auto headerPath = i->path();
     if (ec) {
@@ -306,6 +315,13 @@ bool DirectoryScanner::scanHeaders(Framework &framework, StringRef path,
     if (filename.startswith("."))
       continue;
 
+    if (_fm.isSymlink(headerPath))
+      continue;
+
+    // If it is a directory, remember the subdirectory.
+    if (_fm.isDirectory(headerPath, /*CacheFailure=*/false))
+      subDirectories.push_back(headerPath.str());
+
     if (!isHeaderFile(headerPath))
       continue;
 
@@ -314,7 +330,24 @@ bool DirectoryScanner::scanHeaders(Framework &framework, StringRef path,
       continue;
 
     framework.addHeaderFile(headerPath, type,
-                            headerPath.drop_front(path.size()+1));
+                            headerPath.drop_front(basePath.size()));
+    containsHeaders = true;
+  }
+
+  // Go through the subdirectores.
+  // Sort the sub-directory first since different file system might have 
+  // different traverse order.
+  llvm::sort(subDirectories);
+  // If the current directory contains no headers, create subframework for
+  // each containing subdirectories, otherwise, just scan all headers together.
+  for (auto &dir : subDirectories) {
+    if (isDynamicLibrary && !containsHeaders) {
+      auto &sub = getOrCreateFramework(dir, framework._subFrameworks);
+      sub.isDynamicLibrary = isDynamicLibrary;
+      sub.isSysRoot = true;
+      scanHeaders(sub, dir, type, dir, isDynamicLibrary);
+    } else
+      scanHeaders(framework, dir, type, basePath, false);
   }
 
   return true;
@@ -323,8 +356,8 @@ bool DirectoryScanner::scanHeaders(Framework &framework, StringRef path,
 bool DirectoryScanner::scanModules(Framework &framework,
                                    StringRef _path) const {
   std::error_code ec;
-  auto &fs = *_fm.getVirtualFileSystem();
-  for (vfs::recursive_directory_iterator i(fs, _path, ec), ie; i != ie;
+  auto &fs = _fm.getVirtualFileSystem();
+  for (vfs::directory_iterator i = fs.dir_begin(_path, ec), ie; i != ie;
        i.increment(ec)) {
     auto path = i->path();
     if (ec) {
@@ -332,16 +365,45 @@ bool DirectoryScanner::scanModules(Framework &framework,
       return false;
     }
 
-    if (!path.endswith(".modulemap"))
-      continue;
-
     // Skip files that not exist. This usually happens for broken symlinks.
     if (fs.status(path) == std::errc::no_such_file_or_directory)
       continue;
 
-    framework.addModuleMap(path);
+    if (path.endswith(".swiftinterface")) {
+      framework._swiftModules.emplace_back(path);
+      framework._swiftModules.back().addSwiftInterface(path);
+    } else if (path.endswith(".swiftmodule"))
+      scanSwiftModules(framework, path);
+    else if (path.endswith(".modulemap"))
+      framework.addModuleMap(path);
   }
 
+  return true;
+}
+
+bool DirectoryScanner::scanSwiftModules(Framework &framework,
+                                        StringRef path) const {
+  if (!_fm.isDirectory(path, /*CacheFailure=*/false))
+    return false;
+
+  framework._swiftModules.emplace_back(path);
+  auto &module = framework._swiftModules.back();
+  std::error_code ec;
+  auto &fs = _fm.getVirtualFileSystem();
+  for (vfs::recursive_directory_iterator i(fs, path, ec), ie; i != ie;
+       i.increment(ec)) {
+    auto f = i->path();
+    if (ec) {
+      diag.report(diag::err) << f << ec.message();
+      return false;
+    }
+
+    if (fs.status(f) == std::errc::no_such_file_or_directory)
+      continue;
+
+    if (f.endswith(".swiftinterface") || f.endswith(".swiftmodule"))
+      module.addSwiftInterface(f);
+  }
   return true;
 }
 
@@ -350,7 +412,7 @@ bool DirectoryScanner::scanModules(Framework &framework,
 bool DirectoryScanner::scanFrameworkVersionsDirectory(Framework &framework,
                                                       StringRef path) const {
   std::error_code ec;
-  auto &fs = *_fm.getVirtualFileSystem();
+  auto &fs = _fm.getVirtualFileSystem();
   for (vfs::directory_iterator i = fs.dir_begin(path, ec), ie; i != ie;
        i.increment(ec)) {
     auto path = i->path();
@@ -384,7 +446,7 @@ bool DirectoryScanner::scanFrameworkVersionsDirectory(Framework &framework,
 bool DirectoryScanner::scanLibraryDirectory(Framework &framework,
                                             StringRef path) const {
   std::error_code ec;
-  auto &fs = *_fm.getVirtualFileSystem();
+  auto &fs = _fm.getVirtualFileSystem();
   for (vfs::directory_iterator i = fs.dir_begin(path, ec), ie; i != ie;
        i.increment(ec)) {
     auto path = i->path();
@@ -427,8 +489,13 @@ bool DirectoryScanner::scanLibraryDirectory(Framework &framework,
 
 Expected<bool> DirectoryScanner::isDynamicLibrary(StringRef path) const {
   auto bufferOrErr = _fm.getBufferForFile(path);
-  if (auto ec = bufferOrErr.getError())
+  if (auto ec = bufferOrErr.getError()) {
+    if (ec == std::errc::permission_denied) {
+      diag.report(diag::warn_sdkdb_skip_file) << path << ec.message();
+      return false;
+    }
     return errorCodeToError(ec);
+  }
 
   auto fileType = _registry.getFileType(*bufferOrErr.get());
   if (!fileType)
@@ -461,10 +528,10 @@ bool DirectoryScanner::scanSDKContent(StringRef directory) {
 
     // Scan headers.
     if (!scanHeaders(SDKFramework, getDirectory("usr/include", root),
-                     HeaderType::Public))
+                     HeaderType::Public, rootPath, /*isDylib=*/true))
       return false;
     if (!scanHeaders(SDKFramework, getDirectory("usr/local/include", root),
-                     HeaderType::Private))
+                     HeaderType::Private, rootPath, /*isDylib=*/true))
       return false;
     // Scan dylibs.
     if (!scanLibraryDirectory(SDKFramework, getDirectory("usr/lib", root)))
@@ -485,6 +552,10 @@ bool DirectoryScanner::scanSDKContent(StringRef directory) {
             getDirectory("System/Library/PrivateFrameworks", root)))
       return false;
 
+    // scan swift modules.
+    if (!scanModules(SDKFramework, getDirectory("usr/lib/swift", root)))
+      return false;
+
     return true;
   };
 
@@ -500,9 +571,13 @@ bool DirectoryScanner::scanSDKContent(StringRef directory) {
   if (!scanHeaderAndLibrary("System/DriverKit"))
     return false;
 
+  // On macOS, there is a special path for frameworks excluded from ROSP.
+  if (!scanHeaderAndLibrary("Library/Apple"))
+    return false;
+
   // Scan the bundles and extensions in /System/Library.
   std::error_code ec;
-  auto &fs = *_fm.getVirtualFileSystem();
+  auto &fs = _fm.getVirtualFileSystem();
   for (auto i = fs.dir_begin(getDirectory("System/Library", rootPath), ec);
        i != vfs::directory_iterator(); i.increment(ec)) {
     auto path = i->path();
@@ -539,6 +614,58 @@ bool DirectoryScanner::scan(StringRef directory) {
     return scanDylibDirectory(directory, frameworks);
 
   return scanSDKContent(directory);
+}
+
+static std::string removeVersionsFromPath(StringRef path) {
+  // Search for /Versions in the path.
+  auto components = path.split("/Versions/");
+  // Return the original path if there is no Versions component.
+  if (components.second.empty())
+    return path.str();
+
+  // Construct new path by combining the path component without Versions/A.
+  SmallString<PATH_MAX> newPath(components.first);
+  auto second = components.second.split("/").second;
+  sys::path::append(newPath, removeVersionsFromPath(second));
+
+  return newPath.str().str();
+}
+
+void DirectoryScanner::addVFSForFramework(FileMap &output, StringRef sysroot,
+                                          const Framework &framework) const {
+  auto computeAndAddPath = [&](StringRef path) {
+    StringRef relativePath = path;
+    relativePath.consume_front(rootPath);
+    SmallString<PATH_MAX> mappedPath(sysroot);
+    sys::path::append(mappedPath, relativePath);
+    output.emplace_back(mappedPath, path);
+    auto altPath = removeVersionsFromPath(mappedPath);
+    if (altPath != mappedPath)
+      output.emplace_back(altPath, path);
+  };
+
+  for (auto &header : framework._headerFiles)
+    computeAndAddPath(header.fullPath);
+  for (auto &module : framework._moduleMaps)
+    computeAndAddPath(module);
+  for (auto &module : framework._swiftModules) {
+    for (auto &interface : module.swiftInterfaces)
+      computeAndAddPath(interface);
+  }
+
+  for (auto &ver : framework._versions)
+    addVFSForFramework(output, sysroot, ver);
+  for (auto &sub : framework._subFrameworks)
+    addVFSForFramework(output, sysroot, sub);
+}
+
+DirectoryScanner::FileMap
+DirectoryScanner::getVFSFileMap(StringRef sysroot) const {
+  DirectoryScanner::FileMap output;
+  for (auto &framework : frameworks)
+    addVFSForFramework(output, sysroot, framework);
+
+  return output;
 }
 
 TAPI_NAMESPACE_INTERNAL_END

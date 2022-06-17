@@ -13,6 +13,7 @@ add_tapi_library(tapiDriver
   InstallAPIDriver.cpp
   Options.cpp
   ReexportDriver.cpp
+  SDKDBDriver.cpp
   StubDriver.cpp
   Snapshot.cpp
   SnapshotFileSystem.cpp
@@ -26,4 +27,5 @@ add_tapi_library(tapiDriver
   tapiCore
   tapiDiagnostics
   tapiFrontend
+  tapiSDKDB
   )

@@ -12,7 +12,8 @@
 ///
 //===----------------------------------------------------------------------===//
 
-#include "ConfigurationFileReader.h"
+#include "tapi/Driver/ConfigurationFileReader.h"
+
 #include "tapi/Core/LLVM.h"
 #include "tapi/Core/TextStubCommon.h"
 #include "tapi/Driver/ConfigurationFile.h"
@@ -41,12 +42,12 @@ template <> struct ScalarTraits<Macro> {
 
   static StringRef input(StringRef scalar, void * /*unused*/, Macro &value) {
     if (scalar.startswith("-D")) {
-      value = std::make_pair(scalar.drop_front(2), false);
+      value = std::make_pair(scalar.drop_front(2).str(), false);
       return {};
     }
 
     if (scalar.startswith("-U")) {
-      value = std::make_pair(scalar.drop_front(2), true);
+      value = std::make_pair(scalar.drop_front(2).str(), true);
       return {};
     }
 
@@ -78,6 +79,7 @@ template <> struct MappingTraits<FrameworkConfiguration> {
     io.mapOptional("macros", config.macros);
     io.mapOptional("public-header", config.publicHeaderConfiguration);
     io.mapOptional("private-header", config.privateHeaderConfiguration);
+    io.mapOptional("use-overlay", config.useOverlay);
   }
 };
 
@@ -91,6 +93,7 @@ template <> struct MappingTraits<ProjectConfiguration> {
     io.mapOptional("iosmac", config.isiOSMac);
     io.mapOptional("use-overlay", config.useOverlay);
     io.mapOptional("iosmac-umbrella-only", config.useUmbrellaOnly);
+    io.mapOptional("mask-paths", config.maskPaths);
     io.mapOptional("public-header", config.publicHeaderConfiguration);
     io.mapOptional("private-header", config.privateHeaderConfiguration);
   }
@@ -99,10 +102,10 @@ template <> struct MappingTraits<ProjectConfiguration> {
 template <> struct MappingTraits<ConfigurationFile> {
   static void mapping(IO &io, ConfigurationFile &file) {
     io.mapTag("tapi-configuration-v1", true);
-    io.mapOptional("sdk-platform", file.platform, Platform::unknown);
+    io.mapOptional("sdk-platform", file.platform, PlatformKind::unknown);
     io.mapOptional("sdk-version", file.version);
     io.mapOptional("sdk-root", file.isysroot);
-    io.mapOptional("language", file.language, clang::InputKind::ObjC);
+    io.mapOptional("language", file.language, clang::Language::ObjC);
     io.mapOptional("include-paths", file.includePaths);
     io.mapOptional("framework-paths", file.frameworkPaths);
     io.mapOptional("public-dylibs", file.publicDylibs);
@@ -119,7 +122,7 @@ TAPI_NAMESPACE_INTERNAL_BEGIN
 
 class ConfigurationFileReader::Implementation {
 public:
-  std::unique_ptr<MemoryBuffer> inputBuffer;
+  MemoryBufferRef inputBuffer;
   ConfigurationFile configFile;
   Error parse(StringRef input);
 };
@@ -140,20 +143,20 @@ Error ConfigurationFileReader::Implementation::parse(StringRef input) {
   return Error::success();
 }
 
-ConfigurationFileReader::ConfigurationFileReader(
-    std::unique_ptr<MemoryBuffer> inputBuffer, Error &error)
+ConfigurationFileReader::ConfigurationFileReader(MemoryBufferRef inputBuffer,
+                                                 Error &error)
     : impl(*new ConfigurationFileReader::Implementation()) {
   ErrorAsOutParameter errorAsOutParam(&error);
   impl.inputBuffer = std::move(inputBuffer);
 
-  error = impl.parse(impl.inputBuffer->getBuffer());
+  error = impl.parse(impl.inputBuffer.getBuffer());
 }
 
 Expected<std::unique_ptr<ConfigurationFileReader>>
-ConfigurationFileReader::get(std::unique_ptr<MemoryBuffer> inputBuffer) {
+ConfigurationFileReader::get(MemoryBufferRef inputBuffer) {
   Error error = Error::success();
   std::unique_ptr<ConfigurationFileReader> reader(
-      new ConfigurationFileReader(std::move(inputBuffer), error));
+      new ConfigurationFileReader(inputBuffer, error));
   if (error)
     return std::move(error);
 

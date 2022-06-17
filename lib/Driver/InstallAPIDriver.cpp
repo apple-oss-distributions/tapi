@@ -13,8 +13,8 @@
 //===----------------------------------------------------------------------===//
 
 #include "API2XPIConverter.h"
-#include "tapi/APIVerifier/APIVerifier.h"
 #include "tapi/Core/APIPrinter.h"
+#include "tapi/Core/ClangDiagnostics.h"
 #include "tapi/Core/FileListReader.h"
 #include "tapi/Core/HeaderFile.h"
 #include "tapi/Core/InterfaceFile.h"
@@ -33,12 +33,16 @@
 #include "tapi/Driver/StatRecorder.h"
 #include "tapi/Frontend/Frontend.h"
 #include "tapi/LinkerInterfaceFile.h"
+#include "tapi/SDKDB/PartialSDKDB.h"
 #include "clang/Basic/Diagnostic.h"
 #include "clang/Basic/FileManager.h"
 #include "clang/Driver/DriverDiagnostic.h"
+#include "llvm/ADT/StringExtras.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/Support/ErrorHandling.h"
+#include "llvm/Support/FileSystem.h"
 #include "llvm/Support/FileUtilities.h"
+#include "llvm/Support/Process.h"
 #include "llvm/Support/Program.h"
 #include "llvm/Support/Regex.h"
 #include "llvm/Support/raw_ostream.h"
@@ -47,12 +51,110 @@
 
 using namespace llvm;
 using namespace llvm::opt;
+using namespace llvm::MachO;
 using namespace clang;
+
+namespace {
+
+// Helper to normalize APILoc.
+class APINormalizer : public APIMutator {
+public:
+  void visitGlobal(GlobalRecord &record) override {
+    updateAPIRecord(record);
+  }
+
+  void visitEnumConstant(EnumConstantRecord &record) override {
+    updateAPIRecord(record);
+  }
+
+  void visitObjCInterface(ObjCInterfaceRecord &record) override {
+    updateAPIRecord(record);
+    updateContainer(record);
+  }
+
+  void visitObjCCategory(ObjCCategoryRecord &record) override {
+    updateAPIRecord(record);
+    updateContainer(record);
+  }
+
+  void visitObjCProtocol(ObjCProtocolRecord &record) override {
+    updateAPIRecord(record);
+    updateContainer(record);
+  }
+
+  void visitTypeDef(APIRecord & record) override {
+    updateAPIRecord(record);
+  }
+
+private:
+  static bool isPublicHeader(StringRef path) {
+    path.consume_front("/System/iOSSupport");
+    path.consume_front("/System/DriverKit");
+    // Headers in /usr/include are public location.
+    if (path.startswith("/usr/include/"))
+      return true;
+
+    // Headers in /System/Library/Frameworks are public locations.
+    // PrivateHeaders are handled by frontend and marked as Private in access.
+    if (path.startswith("/System/Library/Frameworks/"))
+      return true;
+
+    return false;
+  }
+
+  void updateAPIRecord(APIRecord &record) {
+    updateAPILoc(record);
+
+    // If the header is not in a public location, sets the APIAccess to private.
+    if (record.access == APIAccess::Public &&
+        record.loc.getFilename().startswith("/") &&
+        !isPublicHeader(record.loc.getFilename()))
+      record.access = APIAccess::Private;
+  }
+
+  void updateAPILoc(APIRecord &record) {
+    auto path = record.loc.getFilename();
+    auto cachedPath = fileMap.find(path);
+    // If the realPath is cached, update the path if needed, and return.
+    if (cachedPath != fileMap.end()) {
+      if (path != cachedPath->getValue())
+        record.loc = APILoc(cachedPath->getValue(), record.loc.getLine(),
+                            record.loc.getColumn());
+      return;
+    }
+    // Compute the realPath.
+    SmallString<PATH_MAX> realPath;
+    auto ec = sys::fs::real_path(path, realPath);
+    if (!ec)
+      path = realPath;
+    auto hasRoot = path.find("/Root/");
+    auto filename = hasRoot != StringRef::npos
+                        ? path.drop_front(hasRoot + sizeof("Root"))
+                        : sys::path::filename(path);
+    auto entry = fileMap.try_emplace(record.loc.getFilename(), filename);
+    record.loc = APILoc(entry.first->getValue(), record.loc.getLine(),
+                        record.loc.getColumn());
+  }
+
+  void updateContainer(ObjCContainerRecord &record) {
+    for (auto *method : record.methods)
+      updateAPIRecord(*method);
+    for (auto *prop : record.properties)
+      updateAPIRecord(*prop);
+    for (auto *ivar : record.ivars)
+      updateAPIRecord(*ivar);
+  }
+
+  StringMap<std::string> fileMap;
+};
+
+} // anonymous namespace
 
 TAPI_NAMESPACE_INTERNAL_BEGIN
 
 static bool verifySymbols(const InterfaceFile *apiFile,
                           const InterfaceFile *dylibFile,
+                          const InterfaceFile *swiftFile,
                           DiagnosticsEngine &diag,
                           VerificationMode verificationMode, bool demangle) {
   diag.setWarningsAsErrors(verificationMode == VerificationMode::Pedantic);
@@ -122,12 +224,17 @@ static bool verifySymbols(const InterfaceFile *apiFile,
         << (*dsymbol)->getArchitectures();
   }
 
+  symbols.clear();
+  for (const auto *symbol : dylibFile->exports()) {
+    // Ignore any symbol contained in specified file.
+    if (swiftFile && swiftFile->contains(symbol->getKind(), symbol->getName()))
+      continue;
+    symbols.emplace_back(symbol);
+  }
+  sort(symbols, xpiCmp);
+
   // Check for all special linker symbols. They can affect the runtime behavior
   // and are always required to match even for ErrorsOnly mode.
-  symbols.clear();
-  for (const auto *symbol : dylibFile->exports())
-    symbols.emplace_back(symbol);
-  sort(symbols, xpiCmp);
   for (const auto *dsymbol : symbols) {
     // Skip normal symbols. We only care about special linker symbols here.
     if (!dsymbol->getName().startswith("$ld$"))
@@ -148,9 +255,9 @@ static bool verifySymbols(const InterfaceFile *apiFile,
     if (dsymbol->getName().startswith("$ld$"))
       continue;
 
-    // Ignore Swift symbols.
-    if (dsymbol->getName().startswith("_$s") ||
-        dsymbol->getName().startswith("_$S"))
+    // Ignore Swift symbols if not passed input for swift generated symbols.
+    if (!swiftFile && (dsymbol->getName().startswith("_$s") ||
+                       dsymbol->getName().startswith("_$S")))
       continue;
 
     if (apiFile->contains(dsymbol->getKind(), dsymbol->getName()))
@@ -307,22 +414,36 @@ static bool verifyFramework(const InterfaceFile *apiFile,
         return true;
       };
 
-  compareUmbrellas(apiFile->umbrellas(), dylibFile->umbrellas(),
-                   diag::warn_parent_umbrella_mismatch);
+  if (!compareUmbrellas(apiFile->umbrellas(), dylibFile->umbrellas(),
+                        diag::err_parent_umbrella_mismatch))
+    return false;
 
   if (dylibFile->isTwoLevelNamespace() == false) {
     diag.report(diag::err_no_twolevel_namespace);
     return false;
   }
-
-  return verifySymbols(apiFile, dylibFile, diag, verificationMode, demangle);
+  return true;
 }
 
-static Expected<std::unique_ptr<InterfaceFile>>
-getCodeCoverageSymbols(DiagnosticsEngine &diag,
-                       const std::vector<Triple> &targets,
-                       const std::string &isysroot) {
+static bool verifyFramework(const InterfaceFile *apiFile,
+                            const InterfaceFile *dylibFile,
+                            const InterfaceFile *swiftFile,
+                            DiagnosticsEngine &diag,
+                            VerificationMode verificationMode, bool demangle,
+                            bool autoZippered) {
+  if (!verifyFramework(apiFile, dylibFile, diag, verificationMode, demangle,
+                       autoZippered))
+    return false;
+
+  return verifySymbols(apiFile, dylibFile, swiftFile, diag, verificationMode,
+                       demangle);
+}
+
+static Expected<std::string> findClangExecutable(DiagnosticsEngine &diag) {
   static int staticSymbol;
+  // If environmental variable "_TAPI_TEST_CLANG" is set, just return that.
+  if (auto clangFromEnv = sys::Process::GetEnv("_TAPI_TEST_CLANG"))
+    return *clangFromEnv;
   // Try to find clang first in the toolchain. If that fails, then fall-back to
   // the default search PATH.
   auto mainExecutable = sys::fs::getMainExecutable("tapi", &staticSymbol);
@@ -335,6 +456,22 @@ getCodeCoverageSymbols(DiagnosticsEngine &diag,
     clangBinary = sys::findProgramByName("clang");
     if (auto ec = clangBinary.getError())
       return make_error<StringError>("unable to find 'clang' in PATH", ec);
+  }
+  return clangBinary.get();
+}
+
+static Expected<std::unique_ptr<InterfaceFile>>
+getCodeCoverageSymbols(DiagnosticsEngine &diag,
+                       const std::vector<Triple> &targets,
+                       const std::string &isysroot) {
+  static int staticSymbol;
+  // Try to find clang first in the toolchain. If that fails, then fall-back to
+  // the default search PATH.
+  auto mainExecutable = sys::fs::getMainExecutable("tapi", &staticSymbol);
+  StringRef toolchainBinDir = sys::path::parent_path(mainExecutable);
+  auto clangBinary = findClangExecutable(diag);
+  if (!clangBinary) {
+    return clangBinary.takeError();
   }
 
   // Create temporary input and output files.
@@ -360,10 +497,10 @@ getCodeCoverageSymbols(DiagnosticsEngine &diag,
   Registry registry;
   registry.addBinaryReaders();
 
-  std::string installDir = toolchainBinDir;
+  std::string installDir = toolchainBinDir.str();
   std::vector<std::unique_ptr<InterfaceFile>> files;
   for (const auto &target : targets) {
-    const StringRef clangArgs[] = {clangBinary.get(),
+    const StringRef clangArgs[] = {*clangBinary,
                                    "-target",
                                    target.str(),
                                    "-dynamiclib",
@@ -398,10 +535,10 @@ getCodeCoverageSymbols(DiagnosticsEngine &diag,
       for (auto arg : clangArgs) {
         if (arg.empty())
           continue;
-        message.append(arg).append(1, ' ');
+        message.append(arg.str()).append(1, ' ');
       }
       message.append(1, '\n');
-      message.append(bufferOr.get()->getBuffer());
+      message.append(bufferOr.get()->getBuffer().str());
 
       return make_error<StringError>(
           message, std::make_error_code(std::errc::not_supported));
@@ -446,7 +583,7 @@ static Expected<std::vector<SymbolAlias>> parseAliasList(FileManager &fm,
     return errorCodeToError(
         std::make_error_code(std::errc::no_such_file_or_directory));
 
-  auto bufferOrErr = fm.getBufferForFile(file);
+  auto bufferOrErr = fm.getBufferForFile(*file);
   if (!bufferOrErr)
     return errorCodeToError(bufferOrErr.getError());
 
@@ -463,8 +600,12 @@ static Expected<std::vector<SymbolAlias>> parseAliasList(FileManager &fm,
     if (l.startswith("#"))
       continue;
 
-    StringRef symbol, alias;
-    std::tie(symbol, alias) = l.split(' ');
+    StringRef symbol, remain, alias;
+    // The original symbol ends at a whitespace
+    std::tie(symbol, remain) = getToken(l);
+    // The alias ends before a comment or EOL
+    std::tie(alias, remain) = getToken(remain, "#");
+    alias = alias.trim();
     if (alias.empty())
       return make_error<StringError>("invalid alias list",
                                      inconvertibleErrorCode());
@@ -510,7 +651,7 @@ static bool handleAutoZipperList(DiagnosticsEngine &diag, Options &opts,
   if (!file)
     return false;
 
-  auto bufferOrErr = opts.getFileManager().getBufferForFile(file);
+  auto bufferOrErr = opts.getFileManager().getBufferForFile(*file);
   if (!bufferOrErr)
     return false;
 
@@ -526,9 +667,12 @@ static bool handleAutoZipperList(DiagnosticsEngine &diag, Options &opts,
       continue;
     // If found matching installName, add target variant.
     if (l == opts.linkerOptions.installName) {
+      ArchitectureSet arches = 
+           ArchitectureSet(std::numeric_limits<uint32_t>::max());
+      arches.clear(AK_i386);
       for (const auto &target :
-           interface.targets(ArchitectureSet::All().clear(AK_i386)))
-        interface.addTarget({target.architecture, Platform::macCatalyst});
+           interface.targets(arches))
+        interface.addTarget({target.Arch, PlatformKind::macCatalyst});
       diag.report(diag::warn_auto_zippered);
       return true;
     }
@@ -555,6 +699,22 @@ public:
     headerFiles.emplace_back(path, type);
   }
 };
+
+bool collectHeadersFromFramework(DiagnosticsEngine &diag, FileManager &fm,
+                                 const Framework &framework,
+                                 HeaderSeq &headerFiles) {
+  for (const auto &header : framework._headerFiles) {
+    if (!fm.getFile(header.fullPath)) {
+      diag.report(diag::err_no_such_header_file)
+          << header.fullPath << (unsigned)header.type;
+      return false;
+    }
+    headerFiles.emplace_back(header);
+  }
+
+  return true;
+}
+
 } // end anonymous namespace.
 
 /// \brief Parses the headers and generate a text-based stub file.
@@ -568,8 +728,8 @@ bool Driver::InstallAPI::run(DiagnosticsEngine &diag, Options &opts) {
   }
 
   // Set default language option.
-  if (opts.frontendOptions.language == clang::InputKind::Unknown)
-    opts.frontendOptions.language = clang::InputKind::ObjC;
+  if (opts.frontendOptions.language == clang::Language::Unknown)
+    opts.frontendOptions.language = clang::Language::ObjC;
 
   // Handle install name.
   if (opts.linkerOptions.installName.empty()) {
@@ -583,7 +743,8 @@ bool Driver::InstallAPI::run(DiagnosticsEngine &diag, Options &opts) {
   globalSnapshot->setName(name);
 
   // Handle platform.
-  if (mapToPlatformSet(opts.frontendOptions.targets).count(Platform::unknown)) {
+  if (mapToPlatformSet(opts.frontendOptions.targets)
+          .count(PlatformKind::unknown)) {
     diag.report(diag::err_no_deployment_target);
     return false;
   }
@@ -595,8 +756,7 @@ bool Driver::InstallAPI::run(DiagnosticsEngine &diag, Options &opts) {
   PathSeq frameworkSearchPaths;
   std::vector<std::pair<std::string, ArchitectureSet>> reexportedLibraries;
   std::vector<const InterfaceFile *> reexportedLibraryFiles;
-  for (auto &path : opts.frontendOptions.systemFrameworkPaths)
-    frameworkSearchPaths.emplace_back(path);
+  // Search user framework paths before searching system framework paths.
   for (auto &path : opts.frontendOptions.frameworkPaths)
     frameworkSearchPaths.emplace_back(path);
 
@@ -632,25 +792,6 @@ bool Driver::InstallAPI::run(DiagnosticsEngine &diag, Options &opts) {
     reexportedLibraryFiles.emplace_back(file.get());
   }
 
-  for (auto &it : opts.linkerOptions.reexportedFrameworks) {
-    auto name = it.first + ".framework/" + it.first;
-    auto path = findLibrary(name, fm, frameworkSearchPaths, {}, {});
-    if (path.empty()) {
-      diag.report(diag::err_cannot_find) << "re-exported framework" << it.first;
-      return false;
-    }
-
-    auto file = manager.readFile(path);
-    if (!file) {
-      diag.report(diag::err_cannot_read_file)
-          << path << toString(file.takeError());
-      return false;
-    }
-
-    reexportedLibraries.emplace_back(file.get()->getInstallName(), it.second);
-    reexportedLibraryFiles.emplace_back(file.get());
-  }
-
   if (opts.driverOptions.inputs.empty() && opts.tapiOptions.fileList.empty()) {
     diag.report(clang::diag::err_drv_no_input_files);
     return false;
@@ -666,17 +807,18 @@ bool Driver::InstallAPI::run(DiagnosticsEngine &diag, Options &opts) {
   }
 
   FrontendJob job;
-  job.workingDirectory = globalSnapshot->getWorkingDirectory();
+  job.workingDirectory = globalSnapshot->getWorkingDirectory().str();
   job.cacheFactory = newFileSystemStatCacheFactory<StatRecorder>();
-  job.vfs = fm.getVirtualFileSystem();
+  job.vfs = &fm.getVirtualFileSystem();
   job.language = opts.frontendOptions.language;
   job.language_std = opts.frontendOptions.language_std;
-  job.useRTTI = opts.frontendOptions.useRTTI;
+  job.overwriteRTTI = opts.frontendOptions.useRTTI;
+  job.overwriteNoRTTI = opts.frontendOptions.useNoRTTI;
   job.visibility = opts.frontendOptions.visibility;
   job.isysroot = opts.frontendOptions.isysroot;
   job.macros = opts.frontendOptions.macros;
-  job.systemFrameworkPaths = opts.frontendOptions.systemFrameworkPaths;
   job.systemIncludePaths = opts.frontendOptions.systemIncludePaths;
+  job.quotedIncludePaths = opts.frontendOptions.quotedIncludePaths;
   job.frameworkPaths = opts.frontendOptions.frameworkPaths;
   job.includePaths = opts.frontendOptions.includePaths;
   job.clangExtraArgs = opts.frontendOptions.clangExtraArgs;
@@ -694,6 +836,7 @@ bool Driver::InstallAPI::run(DiagnosticsEngine &diag, Options &opts) {
   //
   HeaderSeq headerFiles;
   std::string frameworkName;
+  bool customModuleCache = false;
 
   if (!inputPaths.empty()) {
     DirectoryScanner scanner(fm, diag,
@@ -704,7 +847,7 @@ bool Driver::InstallAPI::run(DiagnosticsEngine &diag, Options &opts) {
     for (const auto &path : inputPaths) {
       if (fm.isDirectory(path, /*CacheFailure=*/false)) {
         SmallString<PATH_MAX> normalizedPath(path);
-        fm.getVirtualFileSystem()->makeAbsolute(normalizedPath);
+        fm.getVirtualFileSystem().makeAbsolute(normalizedPath);
         sys::path::remove_dots(normalizedPath, /*remove_dot_dot=*/true);
         if (!scanner.scan(normalizedPath))
           return false;
@@ -727,26 +870,47 @@ bool Driver::InstallAPI::run(DiagnosticsEngine &diag, Options &opts) {
 
     auto *framework = &frameworks.back();
 
-    // Only infer framework path when modules are enabled.
     if (opts.frontendOptions.enableModules) {
-      job.frameworkPaths.insert(job.frameworkPaths.begin(),
-                                sys::path::parent_path(framework->getPath()));
-    }
+      // Only infer framework path when modules are enabled.
+      job.frameworkPaths.insert(
+          job.frameworkPaths.begin(),
+          sys::path::parent_path(framework->getPath()).str());
 
-    if (!framework->_versions.empty())
-      framework = &framework->_versions.back();
-
-    frameworkName = sys::path::stem(framework->getName());
-    for (const auto &header : framework->_headerFiles) {
-      auto *file = fm.getFile(header.fullPath);
-      if (!file) {
-        diag.report(diag::err_no_such_header_file)
-            << header.fullPath << (unsigned)header.type;
-        return false;
+      // Generate specific module cache if one was not provided.
+      if (job.moduleCachePath.empty()) {
+        SmallString<1024> moduleCachePath;
+        llvm::sys::path::system_temp_directory(/*erasedOnReboot=*/true,
+                                               moduleCachePath);
+        std::error_code ec = llvm::sys::fs::createUniqueDirectory(
+            moduleCachePath, moduleCachePath);
+        if (ec) {
+          diag.report(clang::diag::err_unable_to_make_temp) << ec.message();
+          return false;
+        }
+        job.moduleCachePath =
+            std::string(moduleCachePath) + "/org.llvm.clang.tapi/ModuleCache";
+        customModuleCache = true;
       }
-      headerFiles.emplace_back(header);
     }
 
+    if (!framework->_versions.empty()) {
+      if (framework->_versions.back().empty()) {
+        diag.report(diag::warn_empty_versions_directory)
+            << framework->_versions.back()._baseDirectory;
+      } else {
+        framework = &framework->_versions.back();
+      }
+    }
+
+    frameworkName = sys::path::stem(framework->getName()).str();
+    if (!collectHeadersFromFramework(diag, fm, *framework, headerFiles))
+      return false;
+    for (const auto &sub : framework->_subFrameworks) {
+      if (!sub.isDynamicLibrary)
+        continue;
+      if (!collectHeadersFromFramework(diag, fm, sub, headerFiles))
+        return false;
+    }
     // Only use system style includes when modules are enabled.
     if (opts.frontendOptions.enableModules) {
       if (!framework->isDynamicLibrary) {
@@ -758,22 +922,22 @@ bool Driver::InstallAPI::run(DiagnosticsEngine &diag, Options &opts) {
   }
 
   if (!opts.tapiOptions.fileList.empty()) {
-    auto *file = fm.getFile(opts.tapiOptions.fileList);
+    auto file = fm.getFile(opts.tapiOptions.fileList);
     if (!file) {
       diag.report(clang::diag::err_drv_no_such_file)
           << opts.tapiOptions.fileList;
       return false;
     }
-    auto bufferOr = fm.getBufferForFile(file);
+    auto bufferOr = fm.getBufferForFile(*file);
     if (auto ec = bufferOr.getError()) {
       diag.report(diag::err_cannot_read_file)
-          << file->getName() << ec.message();
+          << (*file)->getName() << ec.message();
       return false;
     }
     auto reader = FileListReader::get(std::move(bufferOr.get()));
     if (!reader) {
       diag.report(diag::err_cannot_read_file)
-          << file->getName() << toString(reader.takeError());
+          << (*file)->getName() << toString(reader.takeError());
       return false;
     }
 
@@ -832,7 +996,7 @@ bool Driver::InstallAPI::run(DiagnosticsEngine &diag, Options &opts) {
       else {
         consumeError(glob.takeError());
         if (auto file = fm.getFile(str))
-          excludeHeaderFiles.emplace(file);
+          excludeHeaderFiles.emplace(*file);
         else {
           diag.report(diag::err_no_such_header_file) << str << (unsigned)type;
           return false;
@@ -859,8 +1023,10 @@ bool Driver::InstallAPI::run(DiagnosticsEngine &diag, Options &opts) {
 
   if (!excludeHeaderFiles.empty()) {
     for (auto &header : headerFiles) {
-      const auto *file = fm.getFile(header.fullPath);
-      if (excludeHeaderFiles.count(file))
+      auto file = fm.getFile(header.fullPath);
+      if (!file)
+        continue;
+      if (excludeHeaderFiles.count(*file))
         header.isExcluded = true;
     }
   }
@@ -930,7 +1096,8 @@ bool Driver::InstallAPI::run(DiagnosticsEngine &diag, Options &opts) {
         continue;
       if (header.isExcluded)
         continue;
-      inferredIncludePaths.insert(sys::path::parent_path(header.fullPath));
+      inferredIncludePaths.insert(
+          sys::path::parent_path(header.fullPath).str());
 
       auto n = header.fullPath.rfind("/include/");
       if (n == std::string::npos)
@@ -959,6 +1126,33 @@ bool Driver::InstallAPI::run(DiagnosticsEngine &diag, Options &opts) {
 
   std::vector<FrontendContext> frontendResults;
   for (auto &target : allTargets) {
+    auto systemFrameworkPaths = getPathsForPlatform(
+        opts.frontendOptions.systemFrameworkPaths, mapToPlatformKind(target));
+
+    for (auto &path : systemFrameworkPaths)
+      frameworkSearchPaths.emplace_back(path);
+    for (auto &it : opts.linkerOptions.reexportedFrameworks) {
+      auto name = it.first + ".framework/" + it.first;
+      auto path = findLibrary(name, fm, frameworkSearchPaths, {}, {});
+      if (path.empty()) {
+        diag.report(diag::err_cannot_find)
+            << "re-exported framework" << it.first;
+        return false;
+      }
+
+      auto file = manager.readFile(path);
+      if (!file) {
+        diag.report(diag::err_cannot_read_file)
+            << path << toString(file.takeError());
+        return false;
+      }
+
+      reexportedLibraries.emplace_back(file.get()->getInstallName(), it.second);
+      reexportedLibraryFiles.emplace_back(file.get());
+    }
+    frameworkSearchPaths.resize(frameworkSearchPaths.size() -
+                                systemFrameworkPaths.size());
+    job.systemFrameworkPaths = systemFrameworkPaths;
     job.target = target;
     for (auto type :
          {HeaderType::Public, HeaderType::Private, HeaderType::Project}) {
@@ -970,6 +1164,11 @@ bool Driver::InstallAPI::run(DiagnosticsEngine &diag, Options &opts) {
     }
   }
 
+  // Clean up module cache after clang invocations have fun.
+  if (customModuleCache)
+    llvm::sys::fs::remove_directories(job.moduleCachePath,
+                                      /*IgnoreErrors=*/true);
+
   if (opts.tapiOptions.printAfter == "frontend") {
     APIPrinter printer(errs());
     for (auto &result : frontendResults) {
@@ -980,13 +1179,13 @@ bool Driver::InstallAPI::run(DiagnosticsEngine &diag, Options &opts) {
   }
 
 
-  auto headerSymbols = make_unique<XPISet>();
+  auto headerSymbols = std::make_unique<XPISet>();
   for (auto &result : frontendResults) {
     API2XPIConverter converter(headerSymbols.get(), result.target);
     result.visit(converter);
   }
 
-  auto scanFile = make_unique<InterfaceFile>(std::move(headerSymbols));
+  auto scanFile = std::make_unique<InterfaceFile>(std::move(headerSymbols));
   scanFile->addTargets(allTargets);
   scanFile->setInstallName(opts.linkerOptions.installName);
   scanFile->setCurrentVersion(opts.linkerOptions.currentVersion);
@@ -1040,7 +1239,7 @@ bool Driver::InstallAPI::run(DiagnosticsEngine &diag, Options &opts) {
 
   // Remove symbols that come from re-exported frameworks.
   for (const auto &file : reexportedLibraryFiles)
-    for (const auto &sym : file->exports())
+    for (const auto sym : file->exports())
       scanFile->removeSymbol(sym->getKind(), sym->getName());
 
   if (opts.tapiOptions.printAfter == "reexport_framework")
@@ -1049,8 +1248,8 @@ bool Driver::InstallAPI::run(DiagnosticsEngine &diag, Options &opts) {
   // Check to see if we need to AutoZipper the output.
   // If auto zippered, add ios mac to the platform.
   bool autoZippered = false;
-  if (scanFile->getPlatforms().count(Platform::macOS) &&
-      !scanFile->getPlatforms().count(Platform::macCatalyst))
+  if (scanFile->getPlatforms().count(PlatformKind::macOS) &&
+      !scanFile->getPlatforms().count(PlatformKind::macCatalyst))
     autoZippered = handleAutoZipperList(diag, opts, *scanFile);
 
   // When code coverage is enabled we need to generate extra symbols manually.
@@ -1076,15 +1275,59 @@ bool Driver::InstallAPI::run(DiagnosticsEngine &diag, Options &opts) {
   if (opts.tapiOptions.printAfter == "code_coverage")
     scanFile->printSymbols();
 
-  if (!opts.tapiOptions.verifyAgainst.empty()) {
-    auto dylib = manager.readFile(opts.tapiOptions.verifyAgainst);
-    if (!dylib) {
+  auto readFileFromInvocation = [&manager,
+                                 &diag](const auto &path) -> InterfaceFile * {
+    auto file = manager.readFile(path);
+    if (!file) {
       diag.report(diag::err_cannot_read_file)
-          << opts.tapiOptions.verifyAgainst << toString(dylib.takeError());
+          << path << toString(file.takeError());
+      return nullptr;
+    }
+    return file.get();
+  };
+
+  auto mergeInterfaces = [&diag](std::unique_ptr<InterfaceFile> &primary,
+                                 const InterfaceFile *secondary) -> bool {
+    auto mergedContent = primary->merge(secondary);
+    if (!mergedContent) {
+      diag.report(diag::err_merge_file)
+          << secondary->getPath() << toString(mergedContent.takeError());
       return false;
     }
+    primary = std::move(mergedContent.get());
+    return true;
+  };
 
-    if (!verifyFramework(scanFile.get(), dylib.get(), diag,
+  std::unique_ptr<InterfaceFile> swiftFile = nullptr;
+  if (!opts.tapiOptions.swiftInstallAPIInterfaces.empty()) {
+    // Assign necessary content to be able to merge.
+    swiftFile = std::make_unique<InterfaceFile>(InterfaceFile());
+    swiftFile->addTargets(allTargets);
+    swiftFile->setInstallName(opts.linkerOptions.installName);
+    swiftFile->setCurrentVersion(opts.linkerOptions.currentVersion);
+    swiftFile->setCompatibilityVersion(opts.linkerOptions.compatibilityVersion);
+    swiftFile->setTwoLevelNamespace();
+    swiftFile->setApplicationExtensionSafe(
+        opts.linkerOptions.isApplicationExtensionSafe);
+    swiftFile->setInstallAPI(opts.tapiOptions.verifyAgainst.empty());
+
+    // Merge all the swift interfaces together before verifying against
+    // dylib content.
+    for (const auto &path : opts.tapiOptions.swiftInstallAPIInterfaces) {
+      auto file = readFileFromInvocation(path);
+      if (!file)
+        return false;
+      if (!mergeInterfaces(swiftFile, file))
+        return false;
+    }
+  }
+
+  if (!opts.tapiOptions.verifyAgainst.empty()) {
+    auto dylib = readFileFromInvocation(opts.tapiOptions.verifyAgainst);
+    if (!dylib)
+      return false;
+
+    if (!verifyFramework(scanFile.get(), dylib, swiftFile.get(), diag,
                          opts.tapiOptions.verificationMode,
                          opts.tapiOptions.demangle, autoZippered))
       return false;
@@ -1094,8 +1337,15 @@ bool Driver::InstallAPI::run(DiagnosticsEngine &diag, Options &opts) {
 
     // Record the UUIDs from the dynamic library.
     if (opts.tapiOptions.recordUUIDs)
-      for (auto &uuid : dylib.get()->uuids())
+      for (auto &uuid : dylib->uuids())
         scanFile->addUUID(uuid.first, uuid.second);
+  }
+
+  if (swiftFile) {
+    // After verification has passed, merge back in swift content for final
+    // output.
+    if (!mergeInterfaces(scanFile, swiftFile.get()))
+      return false;
   }
 
   if (opts.driverOptions.outputPath.empty()) {
@@ -1107,7 +1357,7 @@ bool Driver::InstallAPI::run(DiagnosticsEngine &diag, Options &opts) {
     auto targetName = sys::path::stem(opts.linkerOptions.installName);
     sys::path::append(path, targetName);
     TAPI_INTERNAL::replace_extension(path, ".tbd");
-    opts.driverOptions.outputPath = path.str();
+    opts.driverOptions.outputPath = path.str().str();
   }
 
   SmallString<PATH_MAX> outputDir(opts.driverOptions.outputPath);
@@ -1126,6 +1376,41 @@ bool Driver::InstallAPI::run(DiagnosticsEngine &diag, Options &opts) {
     return false;
   }
   globalSnapshot->recordFile(opts.driverOptions.outputPath);
+
+  if (opts.tapiOptions.sdkdbOutputPath.empty())
+    return true;
+
+  // Write SDKDB output.
+  SmallString<PATH_MAX> outputPath(opts.tapiOptions.sdkdbOutputPath);
+  ec = sys::fs::create_directories(outputPath);
+  if (ec) {
+    diag.report(diag::err_cannot_create_directory)
+        << outputPath << ec.message();
+    return false;
+  }
+  auto filename = sys::path::filename(opts.driverOptions.outputPath);
+  sys::path::append(outputPath, filename);
+  sys::path::replace_extension(outputPath, ".partial.sdkdb");
+
+  std::error_code errorCode;
+  raw_fd_ostream fs(outputPath, errorCode);
+  if (errorCode) {
+    diag.report(diag::err_cannot_open_file) << errorCode.message();
+    return false;
+  }
+
+  APINormalizer normalizer;
+  for (auto &result : frontendResults) {
+    result.api.visit(normalizer);
+  }
+
+  if (auto err = PartialSDKDB::serialize(
+          fs, /*omit name*/ "", std::vector<API>(),
+          std::vector<FrontendContext>(), std::vector<API>(), frontendResults,
+          std::vector<API>(), /*hasError*/ false)) {
+    diag.report(diag::err_cannot_generate_sdkdb) << toString(std::move(err));
+    return false;
+  }
 
   return true;
 }

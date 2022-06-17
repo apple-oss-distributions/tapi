@@ -2,7 +2,7 @@
 archs:           [ i386 ]
 platform:        macosx
 install-name:    '/usr/lib/libfat.dylib'
-exports:         
+exports:
   - archs:           [ i386 ]
     allowable-clients: [ ClientA, ClientAll ]
     re-exports:      [ '/usr/lib/liba.dylib', '/usr/lib/liball.dylib' ]

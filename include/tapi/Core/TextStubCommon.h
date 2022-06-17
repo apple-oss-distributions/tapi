@@ -15,17 +15,18 @@
 #ifndef TAPI_CORE_TEXT_STUB_COMMON_H
 #define TAPI_CORE_TEXT_STUB_COMMON_H
 
-#include "tapi/Core/Architecture.h"
-#include "tapi/Core/ArchitectureSet.h"
 #include "tapi/Core/AvailabilityInfo.h"
 #include "tapi/Core/PackedVersion.h"
-#include "tapi/Core/Platform.h"
 #include "tapi/Core/YAMLReaderWriter.h"
-#include "clang/Frontend/FrontendOptions.h"
+#include "clang/Basic/LangStandard.h"
 #include "llvm/ADT/StringSwitch.h"
 #include "llvm/Support/YAMLTraits.h"
+#include "llvm/TextAPI/MachO/Architecture.h"
+#include "llvm/TextAPI/MachO/ArchitectureSet.h"
+#include "llvm/TextAPI/MachO/Platform.h"
+#include "llvm/TextAPI/MachO/Target.h"
 
-using UUID = std::pair<TAPI_INTERNAL::Target, std::string>;
+using UUID = std::pair<llvm::MachO::Target, std::string>;
 
 LLVM_YAML_STRONG_TYPEDEF(llvm::StringRef, FlowStringRef)
 LLVM_YAML_STRONG_TYPEDEF(uint8_t, SwiftVersion)
@@ -46,18 +47,17 @@ template <> struct ScalarEnumerationTraits<ObjCConstraint> {
   static void enumeration(IO &io, ObjCConstraint &constraint);
 };
 
-using TAPI_INTERNAL::Platform;
-template <> struct ScalarEnumerationTraits<Platform> {
-  static void enumeration(IO &io, Platform &platform);
+using llvm::MachO::PlatformKind;
+template <> struct ScalarEnumerationTraits<PlatformKind> {
+  static void enumeration(IO &io, PlatformKind &platform);
 };
 
-using TAPI_INTERNAL::Architecture;
-using TAPI_INTERNAL::ArchitectureSet;
+using llvm::MachO::Architecture;
+using llvm::MachO::ArchitectureSet;
 template <> struct ScalarBitSetTraits<ArchitectureSet> {
   static void bitset(IO &io, ArchitectureSet &archs);
 };
 
-using TAPI_INTERNAL::getArchType;
 template <> struct ScalarTraits<Architecture> {
   static void output(const Architecture &value, void *, raw_ostream &os);
   static StringRef input(StringRef scalar, void *, Architecture &value);
@@ -90,9 +90,8 @@ template <> struct ScalarTraits<UUID> {
   static QuotingType mustQuote(StringRef);
 };
 
-using clang::InputKind;
-template <> struct ScalarEnumerationTraits<InputKind::Language> {
-  static void enumeration(IO &io, InputKind::Language &kind);
+template <> struct ScalarEnumerationTraits<clang::Language> {
+  static void enumeration(IO &io, clang::Language &kind);
 };
 
 } // end namespace yaml.

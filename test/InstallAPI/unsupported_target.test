@@ -1,0 +1,6 @@
+; RUN: not %tapi installapi -target  arm-apple-ios10.0  --filetype=tbd-v3  -install_name /System/Library/Frameworks/Simple.framework/Versions/A/Simple -isysroot %sysroot  %inputs/System/Library/Frameworks/Simple.framework 2>&1 | Filecheck -allow-empty %s
+
+
+; CHECK: error: architecture 'arm' is not supported: '-target arm-apple-ios10.0'
+
+

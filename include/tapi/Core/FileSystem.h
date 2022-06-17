@@ -19,6 +19,7 @@
 #include "tapi/Defines.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/ADT/Twine.h"
+#include "llvm/Support/VirtualFileSystem.h"
 #include <system_error>
 
 TAPI_NAMESPACE_INTERNAL_BEGIN
@@ -31,6 +32,27 @@ std::error_code shouldSkipSymlink(const Twine &path, bool &result);
 
 std::error_code make_relative(StringRef from, StringRef to,
                               SmallVectorImpl<char> &relativePath);
+
+
+// MaskingOverlayFileSystem.
+// OverlayFileSystem that is capable of masking some directories so that
+// it appears to be not existing. Only works as the top layer of overlay
+// file system.
+class MaskingOverlayFileSystem : public llvm::vfs::OverlayFileSystem {
+public:
+  MaskingOverlayFileSystem(IntrusiveRefCntPtr<FileSystem> base,
+                           StringRef sysroot);
+
+  llvm::ErrorOr<llvm::vfs::Status> status(const Twine &path) override;
+
+  void addExtraMaskingDirectory(StringRef path) {
+    extraMaskingPath.emplace_back(path.str());
+  }
+
+private:
+  std::string sysroot;
+  std::vector<std::string> extraMaskingPath;
+};
 
 TAPI_NAMESPACE_INTERNAL_END
 

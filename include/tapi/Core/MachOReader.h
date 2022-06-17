@@ -16,18 +16,20 @@
 #define TAPI_BINARY_MACHO_READER_H
 
 #include "tapi/Core/API.h"
-#include "tapi/Core/ArchitectureSet.h"
 #include "llvm/BinaryFormat/Magic.h"
+#include "llvm/Object/MachO.h"
+#include "llvm/Object/MachOUniversal.h"
 #include "llvm/Support/Error.h"
 #include "llvm/Support/MemoryBuffer.h"
+#include "llvm/TextAPI/MachO/ArchitectureSet.h"
 
 TAPI_NAMESPACE_INTERNAL_BEGIN
 
 struct MachOParseOption {
-  ArchitectureSet arches = ArchitectureSet::All();
+  ArchitectureSet arches = ArchitectureSet(std::numeric_limits<uint32_t>::max());
   bool parseMachOHeader = true;
   bool parseSymbolTable = true;
-  bool parseObjCMetadata = false;
+  bool parseObjCMetadata = true;
   bool parseUndefined = true;
 };
 
@@ -39,6 +41,9 @@ using MachOParseResult = std::vector<std::pair<Architecture, API>>;
 /// Read APIs from the macho buffer.
 llvm::Expected<MachOParseResult> readMachOFile(llvm::MemoryBufferRef memBuffer,
                                                MachOParseOption &option);
+
+std::vector<llvm::Triple>
+constructTripleFromMachO(llvm::object::MachOObjectFile *object);
 
 TAPI_NAMESPACE_INTERNAL_END
 

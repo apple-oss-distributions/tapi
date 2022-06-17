@@ -1,0 +1,12 @@
+; RUN: rm -rf %t && mkdir -p %t/SDKContentRoot
+; RUN: cp -R %inputs/symlinktest/* %t/SDKContentRoot/
+; RUN: mkdir -p %t/SDKContentRoot/System/Library/Frameworks/System.framework
+; RUN: ln -s /usr/lib/libSystem.1.dylib %t/SDKContentRoot/System/Library/Frameworks/System.framework/System
+; RUN: %tapi stubify %t/SDKContentRoot 2>&1 | FileCheck -allow-empty %s  --check-prefix=CHECK-STUBIFY
+; RUN: file %t/SDKContentRoot/System/Library/Frameworks/System.framework/System.tbd 2>&1 | FileCheck %s --check-prefix=CHECK-TBD
+
+; CHECK-STUBIFY-NOT: error
+; CHECK-STUBIFY-NOT: warning 
+
+; CHECK-TBD-NOT: error
+; CHECK-TBD-NOT: warning 

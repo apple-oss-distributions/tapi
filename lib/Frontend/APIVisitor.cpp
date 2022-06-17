@@ -15,7 +15,9 @@
 #include "APIVisitor.h"
 #include "tapi/Defines.h"
 #include "clang/AST/ASTContext.h"
+#include "clang/AST/ParentMapContext.h"
 #include "clang/AST/VTableBuilder.h"
+#include "clang/Basic/TargetInfo.h"
 #include "llvm/IR/Mangler.h"
 #include "llvm/Support/raw_ostream.h"
 
@@ -265,7 +267,7 @@ std::string APIVisitor::getMangledName(const NamedDecl *decl) const {
 std::string APIVisitor::getBackendMangledName(Twine name) const {
   SmallString<256> finalName;
   Mangler::getNameWithPrefix(finalName, name, dataLayout);
-  return finalName.str();
+  return finalName.str().str();
 }
 
 std::string
@@ -294,12 +296,14 @@ std::string APIVisitor::getMangledCXXRTTIName(const CXXRecordDecl *decl) const {
 }
 
 std::string APIVisitor::getMangledCXXThunk(const GlobalDecl &decl,
-                                           const ThunkInfo &thunk) const {
+                                           const ThunkInfo &thunk,
+                                           bool elideOverrideInfo) const {
   SmallString<256> name;
   raw_svector_ostream nameStream(name);
   const auto *method = cast<CXXMethodDecl>(decl.getDecl());
   if (const auto *dtor = dyn_cast<CXXDestructorDecl>(method))
-    mc->mangleCXXDtorThunk(dtor, decl.getDtorType(), thunk.This, nameStream);
+    mc->mangleCXXDtorThunk(dtor, decl.getDtorType(), thunk.This, 
+                           nameStream);
   else
     mc->mangleThunk(method, thunk, nameStream);
 
@@ -310,13 +314,14 @@ std::string APIVisitor::getMangledCtorDtor(const CXXMethodDecl *decl,
                                            int type) const {
   SmallString<256> name;
   raw_svector_ostream nameStream(name);
+  GlobalDecl gd;
   if (const auto *ctor = dyn_cast<CXXConstructorDecl>(decl))
-    mc->mangleCXXCtor(ctor, CXXCtorType(type), nameStream);
+    gd = GlobalDecl(ctor, CXXCtorType(type));
   else {
     const auto *dtor = cast<CXXDestructorDecl>(decl);
-    mc->mangleCXXDtor(dtor, CXXDtorType(type), nameStream);
+    gd = GlobalDecl(dtor, CXXDtorType(type));
   }
-
+  mc->mangleName(gd, nameStream);
   return getBackendMangledName(name);
 }
 
@@ -329,8 +334,9 @@ AvailabilityInfo APIVisitor::getAvailabilityInfo(const Decl *decl) const {
       if (A->getPlatform()->getName() != platformName)
         continue;
 
-      availability = AvailabilityInfo(A->getIntroduced(), A->getObsoleted(),
-                                      A->getUnavailable());
+      availability =
+          AvailabilityInfo(A->getIntroduced(), A->getObsoleted(),
+                           A->getUnavailable(), isAvailabilitySPI(A->getLoc()));
       break;
     }
 
@@ -341,6 +347,21 @@ AvailabilityInfo APIVisitor::getAvailabilityInfo(const Decl *decl) const {
 
   // Return default availability.
   return availability;
+}
+
+bool APIVisitor::isAvailabilitySPI(SourceLocation loc) const {
+  // Check to see if spelling location is in AvailabilityInternalPrivate.h.
+  auto &sm = context.getSourceManager();
+  auto spellingLoc = sm.getSpellingLoc(loc);
+  auto *file = sm.getFileEntryForID(sm.getFileID(spellingLoc));
+  if (file && file->getName().endswith("AvailabilityInternalPrivate.h")) 
+    return true;
+  // If not, search up the macro expansion see if the previous expansion
+  // satisfy the requirement.
+  if (!loc.isMacroID())
+    return false;
+  auto &expansion = sm.getSLocEntry(sm.getFileID(loc)).getExpansion();
+  return isAvailabilitySPI(expansion.getExpansionLocStart());
 }
 
 /// Collect all global variables.
@@ -365,9 +386,11 @@ bool APIVisitor::VisitVarDecl(const VarDecl *decl) {
   auto name = getMangledName(decl);
   auto avail = getAvailabilityInfo(decl);
   bool isWeakDef = decl->hasAttr<WeakAttr>();
+  bool isThreadLocal = decl->getTLSKind() != VarDecl::TLS_None;
 
   frontend.api.addGlobalVariable(name, loc, avail, access, decl,
-                                 APILinkage::Exported, isWeakDef);
+                                 APILinkage::Exported, isWeakDef,
+                                 isThreadLocal);
 
   return true;
 }
@@ -592,9 +615,10 @@ void APIVisitor::recordObjCProperties(
     auto avail = getAvailabilityInfo(property);
     // Get the attributes for property.
     unsigned attr = ObjCPropertyRecord::NoAttr;
-    if (property->getPropertyAttributes() & ObjCPropertyDecl::OBJC_PR_readonly)
+    if (property->getPropertyAttributes() &
+        ObjCPropertyAttribute::kind_readonly)
       attr |= ObjCPropertyRecord::ReadOnly;
-    if (property->getPropertyAttributes() & ObjCPropertyDecl::OBJC_PR_class)
+    if (property->getPropertyAttributes() & ObjCPropertyAttribute::kind_class)
       attr |= ObjCPropertyRecord::Class;
 
     frontend.api.addObjCProperty(record, name, getter, setter, loc, avail,
@@ -653,7 +677,8 @@ void APIVisitor::emitVTableSymbols(const CXXRecordDecl *decl, PresumedLoc loc,
             return;
 
           for (auto &thunk : *thunks) {
-            auto name = getMangledCXXThunk(decl, thunk);
+            auto name =
+                getMangledCXXThunk(decl, thunk, /*elideOverrideInfo*/ true);
             frontend.api.addFunction(name, loc, avail, access, nullptr,
                                      APILinkage::Exported);
           }

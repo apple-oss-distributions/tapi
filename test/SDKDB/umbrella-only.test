@@ -1,0 +1,14 @@
+--- !tapi-configuration-v1
+sdk-platform: ios
+sdk-version: 10.0
+projects:
+  - name: umbrella_only
+    iosmac-umbrella-only: true
+
+# REQUIRES: iosmac
+# RUN: rm -rf %t && mkdir -p %t/Input/System/Library/Frameworks/Zippered.framework
+# RUN: cp -a %inputs/System/Library/Frameworks/ZipperedAPI.framework %t/Input/System/Library/Frameworks
+# RUN: cp %p/Inputs/ios_incompatible.h %t/Input/System/Library/Frameworks/ZipperedAPI.framework/Headers
+# RUN: RC_ProjectName=umbrella_only %tapi sdkdb --action=all --private-headers -o - --config-file=%s -isysroot %sysroot --runtime-root %t/Input --sdk-content-root %t/Input 2>&1 | FileCheck %s
+# CHECK-NOT: error:
+...

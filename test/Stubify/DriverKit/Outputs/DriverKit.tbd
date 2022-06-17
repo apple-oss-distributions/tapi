@@ -6,7 +6,7 @@ flags:           [ not_app_extension_safe ]
 install-name:    DriverKit
 current-version: 0
 compatibility-version: 0
-exports:         
+exports:
   - archs:           [ x86_64 ]
     symbols:         [ _load_driver ]
 ...

@@ -1,6 +1,9 @@
 # Reset flags
 set(CMAKE_C_FLAGS "")
 set(CMAKE_CXX_FLAGS "")
+# Remember the old CMAKE_OSX_ARCHITECTURES and always built test with x86_64
+set(OLD_CMAKE_OSX_ARCHITECTURES ${CMAKE_OSX_ARCHITECTURES})
+set(CMAKE_OSX_ARCHITECTURES x86_64)
 # Force release build
 set(CMAKE_BUILD_TYPE "Release")
 # Disable LTO for test input
@@ -140,3 +143,6 @@ add_subdirectory(Zippered)
 add_subdirectory(ZipperedAPI)
 add_subdirectory(IOSMac)
 endif()
+
+# Reset CMAKE_OSX_ARCHITECTURES
+set(CMAKE_OSX_ARCHITECTURES ${OLD_CMAKE_OSX_ARCHITECTURES})

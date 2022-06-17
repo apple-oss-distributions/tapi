@@ -28,12 +28,14 @@
 #include <string>
 
 using namespace llvm;
+using namespace llvm::MachO;
 using namespace clang;
 
 TAPI_NAMESPACE_INTERNAL_BEGIN
 
 // Stub Driver Context.
 namespace {
+
 struct Context {
   Context(FileManager &fm, DiagnosticsEngine &diag) : fm(fm), diag(diag) {
     registry.addBinaryReaders();
@@ -50,7 +52,7 @@ struct Context {
   bool setInstallAPIFlag = false;
 
 
-  std::string sysroot;
+  PathSeq sysroots;
   std::string inputPath;
   std::string outputPath;
   PathSeq searchPaths;
@@ -61,23 +63,58 @@ struct Context {
   DiagnosticsEngine &diag;
   VersionedFileType fileType;
 };
-} // namespace
 
-namespace detail {
 struct SymlinkInfo {
   std::string srcPath;
   std::string symlinkContent;
 
   SymlinkInfo(std::string path, std::string link)
       : srcPath(std::move(path)), symlinkContent(std::move(link)) {}
+
+  SymlinkInfo(StringRef path, StringRef link)
+      : srcPath(std::string(path)), symlinkContent(std::string(link)) {}
 };
-} // end namespace detail.
+
+
+} // namespace
+
+static std::shared_ptr<InterfaceFile>
+findAndGetReexportedLibrary(const StringRef reexportName, Context &ctx,
+                            bool printErrors = false) {
+  /* given the install name of a reexported library and search paths, try to
+   * find a framework on disk, and retrieve its contents with the intent to
+   * inline into umbrella framework */
+  auto path = findLibrary(reexportName, ctx.fm, ctx.frameworkSearchPaths,
+                          ctx.librarySearchPaths, ctx.searchPaths);
+  if (path.empty()) {
+    if (printErrors)
+      ctx.diag.report(diag::err_cannot_find_reexport) << reexportName;
+    return nullptr;
+  }
+  auto bufferOrError = ctx.fm.getBufferForFile(path);
+  if (auto ec = bufferOrError.getError()) {
+    if (printErrors)
+      ctx.diag.report(diag::err_cannot_read_file) << path << ec.message();
+    return nullptr;
+  }
+  auto file =
+      ctx.registry.readFile(std::move(bufferOrError.get()), ReadFlags::Symbols);
+  if (!file) {
+    if (printErrors)
+      ctx.diag.report(diag::err_cannot_read_file)
+          << path << toString(file.takeError());
+    return nullptr;
+  }
+  return std::move(file.get());
+}
 
 static bool isPrivatePath(StringRef path, bool isSymlink = false) {
   // Remove the iOSSupport/DriverKit prefix to identify public locations inside
   // the iOSSupport/DriverKit directory.
   path.consume_front("/System/iOSSupport");
   path.consume_front("/System/DriverKit");
+  // Also /Library/Apple prefix for ROSP.
+  path.consume_front("/Library/Apple");
 
   if (path.startswith("/usr/local/lib"))
     return true;
@@ -129,39 +166,20 @@ static bool inlineFrameworks(Context &ctx, InterfaceFile *dylib) {
          "inlining is not supported for earlier TBD versions");
   auto &reexports = dylib->reexportedLibraries();
   for (auto &lib : reexports) {
-    if (isPublicLocation(lib.getInstallName()))
+    if (isPublicDylib(lib.getInstallName()))
       continue;
 
     if (lib.getInstallName().startswith("@"))
       continue;
 
-    auto path =
-        findLibrary(lib.getInstallName(), ctx.fm, ctx.frameworkSearchPaths,
-                    ctx.librarySearchPaths, ctx.searchPaths);
-    if (path.empty()) {
-      ctx.diag.report(diag::err_cannot_find_reexport) << lib.getInstallName();
+    auto reexportedDylib =
+        findAndGetReexportedLibrary(lib.getInstallName(), ctx,
+                                    /*printErrors = */ true);
+    if (!reexportedDylib)
       return false;
-    }
-
-    auto bufferOrError = ctx.fm.getBufferForFile(path);
-    if (auto ec = bufferOrError.getError()) {
-      ctx.diag.report(diag::err_cannot_read_file) << path << ec.message();
-      return false;
-    }
-
-    auto file = ctx.registry.readFile(std::move(bufferOrError.get()),
-                                      ReadFlags::Symbols);
-    if (!file) {
-      ctx.diag.report(diag::err_cannot_read_file)
-          << path << toString(file.takeError());
-      return false;
-    }
-
-    std::shared_ptr<InterfaceFile> reexportedDylib = std::move(file.get());
-
-
     if (!inlineFrameworks(ctx, reexportedDylib.get()))
       return false;
+    auto overwriteFramework = false;
 
     if (!ctx.registry.canWrite(reexportedDylib.get(), ctx.fileType)) {
       ctx.diag.report(diag::err_cannot_convert_dylib)
@@ -170,18 +188,19 @@ static bool inlineFrameworks(Context &ctx, InterfaceFile *dylib) {
     }
     // Clear InstallAPI flag.
     reexportedDylib->setInstallAPI(false);
-    dylib->inlineFramework(reexportedDylib);
+    dylib->inlineFramework(reexportedDylib, overwriteFramework);
   }
 
   return true;
 }
 
 static bool stubifyDynamicLibrary(Context &ctx) {
-  const auto *inputFile = ctx.fm.getFile(ctx.inputPath);
-  if (!inputFile) {
+  auto input = ctx.fm.getFile(ctx.inputPath);
+  if (!input) {
     ctx.diag.report(clang::diag::err_drv_no_such_file) << ctx.inputPath;
     return false;
   }
+  auto *inputFile = *input;
   auto bufferOrErr = ctx.fm.getBufferForFile(inputFile);
   if (auto ec = bufferOrErr.getError()) {
     ctx.diag.report(diag::err_cannot_read_file)
@@ -232,7 +251,6 @@ static bool stubifyDynamicLibrary(Context &ctx) {
 
   if (ctx.deleteInputFile) {
     inputFile->closeFile();
-    ctx.fm.invalidateCache(inputFile);
     if (auto ec = sys::fs::remove(ctx.inputPath)) {
       ctx.diag.report(diag::err) << ctx.inputPath << ec.message();
       return false;
@@ -250,7 +268,7 @@ static bool stubifyDynamicLibrary(Context &ctx) {
 static bool stubifyDirectory(Context &ctx) {
   assert(ctx.inputPath.back() != '/' && "Unexpected / at end of input path.");
 
-  std::map<std::string, std::vector<detail::SymlinkInfo>> symlinks;
+  std::map<std::string, std::vector<SymlinkInfo>> symlinks;
   std::map<std::string, std::unique_ptr<InterfaceFile>> dylibs;
   std::map<std::string, std::string> originalNames;
   std::set<std::pair<std::string, bool>> toDelete;
@@ -292,17 +310,10 @@ static bool stubifyDirectory(Context &ctx) {
 
       bool shouldSkip;
       auto ec2 = shouldSkipSymlink(path, shouldSkip);
-      if (ec2 == std::errc::no_such_file_or_directory) {
-        ctx.diag.report(diag::warn_broken_symlink) << path;
-        continue;
-      }
 
-      if (ec2) {
-        ctx.diag.report(diag::err) << path << ec2.message();
-        return false;
-      }
-
-      if (shouldSkip)
+      // if assessing symlink is broken for some reason, we should continue
+      // trying to repair it before quitting on recording the file.
+      if (!ec2 && shouldSkip)
         continue;
 
       if (ctx.deletePrivateFrameworks &&
@@ -317,7 +328,7 @@ static bool stubifyDirectory(Context &ctx) {
         return false;
       }
 
-      // Some projects use broken symlinks that are absulte paths, which are
+      // Some projects use broken symlinks that are absolute paths, which are
       // invalid during build time, but would be correct during runtime. In the
       // case of an absolute path we should check first if the path exist with
       // the SDKContentRoot as prefix.
@@ -328,7 +339,7 @@ static bool stubifyDirectory(Context &ctx) {
         sys::path::append(linkTarget, symlinkPath);
 
         if (ctx.fm.exists(linkTarget)) {
-          // Convert the aboslute path to an relative path.
+          // Convert the absolute path to an relative path.
           if (auto ec = make_relative(linkSrc, linkTarget, symlinkPath)) {
             ctx.diag.report(diag::err) << linkTarget << ec.message();
             return false;
@@ -345,24 +356,24 @@ static bool stubifyDirectory(Context &ctx) {
         sys::path::append(linkTarget, symlinkPath);
       }
 
-      // The symlink src is garantueed to be a canonical path, because we don't
+      // The symlink src is guarenteed to be a canonical path, because we don't
       // follow symlinks when scanning the SDK. The symlink target is
       // constructed from the symlink path and need to be canonicalized.
       if (auto ec = realpath(linkTarget)) {
-        ctx.diag.report(diag::err) << linkTarget << ec.message();
-        return false;
+        ctx.diag.report(diag::warn) << linkTarget << ec.message();
+        continue;
       }
 
       auto itr = symlinks.emplace(
           std::piecewise_construct, std::forward_as_tuple(linkTarget.c_str()),
-          std::forward_as_tuple(std::vector<detail::SymlinkInfo>()));
-      itr.first->second.emplace_back(linkSrc.str(), symlinkPath.c_str());
+          std::forward_as_tuple(std::vector<SymlinkInfo>()));
+      itr.first->second.emplace_back(linkSrc.str(), symlinkPath.str().str());
 
       continue;
     }
 
     // We only have to look at files.
-    auto *file = ctx.fm.getFile(path);
+    auto file = ctx.fm.getFile(path);
     if (!file)
       continue;
 
@@ -373,7 +384,7 @@ static bool stubifyDirectory(Context &ctx) {
       continue;
     }
 
-    auto bufferOrErr = ctx.fm.getBufferForFile(file);
+    auto bufferOrErr = ctx.fm.getBufferForFile(*file);
     if (auto ec = bufferOrErr.getError()) {
       ctx.diag.report(diag::err_cannot_read_file) << path << ec.message();
       return false;
@@ -426,7 +437,6 @@ static bool stubifyDirectory(Context &ctx) {
     SmallString<PATH_MAX> output = input;
     TAPI_INTERNAL::replace_extension(output, ".tbd");
 
-
     if (!ctx.registry.canWrite(dylib.get(), ctx.fileType)) {
       ctx.diag.report(diag::err_cannot_convert_dylib) << dylib->getPath();
       return false;
@@ -437,6 +447,7 @@ static bool stubifyDirectory(Context &ctx) {
       if (!inlineFrameworks(ctx, dylib.get()))
         return false;
 
+
     if (!ctx.recordUUIDs)
       dylib->clearUUIDs();
 
@@ -444,7 +455,7 @@ static bool stubifyDirectory(Context &ctx) {
       dylib->setInstallAPI();
 
     auto result =
-        ctx.registry.writeFile(output.str(), dylib.get(), ctx.fileType);
+        ctx.registry.writeFile(output.str().str(), dylib.get(), ctx.fileType);
     if (result) {
       ctx.diag.report(diag::err_cannot_write_file)
           << output << toString(std::move(result));
@@ -465,7 +476,7 @@ static bool stubifyDirectory(Context &ctx) {
     // Don't allow for more than 20 levels of symlinks.
     StringRef toCheck = originalName;
     for (int i = 0; i < 20; ++i) {
-      auto itr = symlinks.find(toCheck);
+      auto itr = symlinks.find(toCheck.str());
       if (itr != symlinks.end()) {
         for (auto &symInfo : itr->second) {
           SmallString<PATH_MAX> linkSrc(symInfo.srcPath);
@@ -541,8 +552,18 @@ bool Driver::Stub::run(DiagnosticsEngine &diag, Options &opts) {
   ctx.setInstallAPIFlag = opts.tapiOptions.setInstallAPIFlag;
 
   // Handle isysroot.
-  ctx.sysroot = opts.frontendOptions.isysroot;
-  ctx.frameworkSearchPaths = opts.frontendOptions.systemFrameworkPaths;
+  for (auto &root : opts.tapiOptions.allSysroots) {
+    SmallString<PATH_MAX> path(root);
+    ctx.fm.makeAbsolutePath(path);
+    if (!ctx.fm.exists(path)) {
+      diag.report(diag::err_missing_sysroot) << path;
+      return false;
+    }
+    ctx.sysroots.emplace_back(path.str());
+  }
+
+  ctx.frameworkSearchPaths =
+      getAllPaths(opts.frontendOptions.systemFrameworkPaths);
   ctx.frameworkSearchPaths.insert(ctx.frameworkSearchPaths.end(),
                                   opts.frontendOptions.frameworkPaths.begin(),
                                   opts.frontendOptions.frameworkPaths.end());
@@ -564,7 +585,7 @@ bool Driver::Stub::run(DiagnosticsEngine &diag, Options &opts) {
     diag.report(diag::err) << input << ec.message();
     return false;
   }
-  ctx.inputPath = input.str();
+  ctx.inputPath = input.str().str();
 
   bool isDirectory = false;
   bool isFile = false;
@@ -591,7 +612,7 @@ bool Driver::Stub::run(DiagnosticsEngine &diag, Options &opts) {
   else if (isFile) {
     SmallString<PATH_MAX> outputPath(ctx.inputPath);
     TAPI_INTERNAL::replace_extension(outputPath, ".tbd");
-    ctx.outputPath = outputPath.str();
+    ctx.outputPath = outputPath.str().str();
   } else {
     assert(isDirectory && "Expected a directory.");
     ctx.outputPath = ctx.inputPath;
@@ -600,8 +621,8 @@ bool Driver::Stub::run(DiagnosticsEngine &diag, Options &opts) {
   if (isDirectory)
     ctx.searchPaths.emplace_back(ctx.inputPath);
 
-  if (!ctx.sysroot.empty())
-    ctx.searchPaths.emplace_back(ctx.sysroot);
+  for (auto &path : ctx.sysroots)
+    ctx.searchPaths.emplace_back(path);
 
   if (isFile)
     return stubifyDynamicLibrary(ctx);

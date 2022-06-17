@@ -30,8 +30,9 @@ struct FrontendJob {
   IntrusiveRefCntPtr<FileSystemStatCacheFactory> cacheFactory;
   IntrusiveRefCntPtr<llvm::vfs::FileSystem> vfs;
   llvm::Triple target;
-  clang::InputKind::Language language = clang::InputKind::Unknown;
-  bool useRTTI = true;
+  clang::Language language = clang::Language::Unknown;
+  bool overwriteRTTI = false;
+  bool overwriteNoRTTI = false;
   bool enableModules = false;
   bool validateSystemHeaders = false;
   bool useObjectiveCARC = false;
@@ -45,6 +46,7 @@ struct FrontendJob {
   std::string clangResourcePath;
   std::vector<std::pair<std::string, bool /*isUndef*/>> macros;
   HeaderSeq headerFiles;
+  PathSeq quotedIncludePaths;
   PathSeq systemFrameworkPaths;
   PathSeq systemIncludePaths;
   PathSeq frameworkPaths;

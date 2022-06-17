@@ -20,7 +20,7 @@
 #include "llvm/ADT/IntrusiveRefCntPtr.h"
 
 namespace llvm {
-raw_ostream &errs();
+raw_fd_ostream &errs();
 }
 
 TAPI_NAMESPACE_INTERNAL_BEGIN
@@ -73,6 +73,13 @@ public:
     Reexport() = delete;
   };
 
+  class SDKDB {
+  public:
+    /// \brief Run tapi with the provided arguments.
+    static bool run(DiagnosticsEngine &diag, Options &opts);
+
+    SDKDB() = delete;
+  };
 
   class GenerateAPITests {
   public:
@@ -81,6 +88,7 @@ public:
 
     GenerateAPITests() = delete;
   };
+
 };
 
 TAPI_NAMESPACE_INTERNAL_END

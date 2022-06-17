@@ -11,20 +11,20 @@
 #define DEBUG_TYPE "libtapi-test"
 
 // Test the basic API Version query methods.
-TEST(libtapi, APIVersion_getMajor) {
+TEST(LibTapiTest, APIVersion_getMajor) {
   EXPECT_EQ(tapi::APIVersion::getMajor(), TAPI_API_VERSION_MAJOR);
 }
 
-TEST(libtapi, APIVersion_getMinor) {
+TEST(LibTapiTest, APIVersion_getMinor) {
   EXPECT_EQ(tapi::APIVersion::getMinor(), TAPI_API_VERSION_MINOR);
 }
 
-TEST(libtapi, APIVersion_getPatch) {
+TEST(LibTapiTest, APIVersion_getPatch) {
   EXPECT_EQ(tapi::APIVersion::getPatch(), TAPI_API_VERSION_PATCH);
 }
 
 // Test the APIVersion comparison method.
-TEST(libtapi, APIVersion_isAtLeast) {
+TEST(LibTapiTest, APIVersion_isAtLeast) {
   EXPECT_TRUE(tapi::APIVersion::isAtLeast(TAPI_API_VERSION_MAJOR));
   EXPECT_TRUE(tapi::APIVersion::isAtLeast(TAPI_API_VERSION_MAJOR,
                                           TAPI_API_VERSION_MINOR));
@@ -57,13 +57,8 @@ TEST(libtapi, APIVersion_isAtLeast) {
   }
 }
 
-// Test the feature method.
-TEST(libtapi, APIVersion_hasFeature) {
-  // There are no features to test for yet.
-}
-
 // Test the ABI method.
-TEST(libtapi, APIVersion_hasABI) {
+TEST(LibTapiTest, APIVersion_hasABI) {
   // There never has been an ABI v0.
   EXPECT_FALSE(tapi::APIVersion::hasABI(0));
 

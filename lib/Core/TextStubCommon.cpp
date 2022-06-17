@@ -14,6 +14,8 @@
 
 #include "tapi/Core/TextStubCommon.h"
 
+using namespace llvm::MachO;
+
 namespace llvm {
 namespace yaml {
 
@@ -42,38 +44,34 @@ void ScalarEnumerationTraits<ObjCConstraint>::enumeration(
   io.enumCase(constraint, "gc", ObjCConstraint::GC);
 }
 
-using TAPI_INTERNAL::Platform;
-void ScalarEnumerationTraits<Platform>::enumeration(IO &io,
-                                                    Platform &platform) {
-  io.enumCase(platform, "unknown", Platform::unknown);
-  io.enumCase(platform, "macosx", Platform::macOS);
-  io.enumCase(platform, "ios", Platform::iOS);
-  io.enumCase(platform, "ios", Platform::iOSSimulator);
-  io.enumCase(platform, "watchos", Platform::watchOS);
-  io.enumCase(platform, "watchos", Platform::watchOSSimulator);
-  io.enumCase(platform, "tvos", Platform::tvOS);
-  io.enumCase(platform, "tvos", Platform::tvOSSimulator);
-  io.enumCase(platform, "bridgeos", Platform::bridgeOS);
+void ScalarEnumerationTraits<PlatformKind>::enumeration(
+    IO &io, PlatformKind &platform) {
+  io.enumCase(platform, "unknown", PlatformKind::unknown);
+  io.enumCase(platform, "macosx", PlatformKind::macOS);
+  io.enumCase(platform, "ios", PlatformKind::iOS);
+  io.enumCase(platform, "ios", PlatformKind::iOSSimulator);
+  io.enumCase(platform, "watchos", PlatformKind::watchOS);
+  io.enumCase(platform, "watchos", PlatformKind::watchOSSimulator);
+  io.enumCase(platform, "tvos", PlatformKind::tvOS);
+  io.enumCase(platform, "tvos", PlatformKind::tvOSSimulator);
+  io.enumCase(platform, "bridgeos", PlatformKind::bridgeOS);
 }
 
-using TAPI_INTERNAL::Architecture;
-using TAPI_INTERNAL::ArchitectureSet;
 void ScalarBitSetTraits<ArchitectureSet>::bitset(IO &io,
                                                  ArchitectureSet &archs) {
-#define ARCHINFO(arch, type, subtype)                                          \
+#define ARCHINFO(arch, type, subtype, numbits)                                 \
   io.bitSetCase(archs, #arch, 1U << static_cast<int>(AK_##arch));
-#include "tapi/Core/Architecture.def"
+#include "llvm/TextAPI/MachO/Architecture.def"
 #undef ARCHINFO
 }
 
-using TAPI_INTERNAL::getArchType;
 void ScalarTraits<Architecture>::output(const Architecture &value, void *,
                                         raw_ostream &os) {
   os << value;
 }
 StringRef ScalarTraits<Architecture>::input(StringRef scalar, void *,
                                             Architecture &value) {
-  value = getArchType(scalar);
+  value = getArchitectureFromName(scalar);
   return {};
 }
 QuotingType ScalarTraits<Architecture>::mustQuote(StringRef) {
@@ -178,7 +176,7 @@ void ScalarTraits<UUID>::output(const UUID &value, void *c, raw_ostream &os) {
   assert(ctx);
 
   if (ctx->fileType < TBDv4)
-    os << value.first.architecture << ": " << value.second;
+    os << value.first.Arch << ": " << value.second;
   else
     os << value.first << ": " << value.second;
 }
@@ -189,25 +187,24 @@ StringRef ScalarTraits<UUID>::input(StringRef scalar, void *c, UUID &value) {
   if (uuid.empty())
     return "invalid uuid string pair";
 
-  value.first = Target{getArchType(arch), Platform::unknown};
-  value.second = uuid;
+  value.first = Target{getArchitectureFromName(arch), PlatformKind::unknown};
+  value.second = uuid.str();
   return {};
 }
 QuotingType ScalarTraits<UUID>::mustQuote(StringRef) {
   return QuotingType::Single;
 }
 
-using clang::InputKind;
-void ScalarEnumerationTraits<InputKind::Language>::enumeration(
-    IO &io, InputKind::Language &kind) {
-  io.enumCase(kind, "c", InputKind::C);
-  io.enumCase(kind, "cxx", InputKind::CXX);
-  io.enumCase(kind, "objective-c", InputKind::ObjC);
-  io.enumCase(kind, "objc", InputKind::ObjC); // to keep old snapshots working.
-  io.enumCase(kind, "objective-cxx", InputKind::ObjCXX);
+using clang::Language;
+void ScalarEnumerationTraits<Language>::enumeration(IO &io, Language &kind) {
+  io.enumCase(kind, "c", Language::C);
+  io.enumCase(kind, "cxx", Language::CXX);
+  io.enumCase(kind, "objective-c", Language::ObjC);
+  io.enumCase(kind, "objc", Language::ObjC); // to keep old snapshots working.
+  io.enumCase(kind, "objective-cxx", Language::ObjCXX);
   io.enumCase(kind, "objcxx",
-              InputKind::ObjCXX); // to keep old snapshots working.
-  io.enumCase(kind, "unknown", InputKind::Unknown);
+              Language::ObjCXX); // to keep old snapshots working.
+  io.enumCase(kind, "unknown", Language::Unknown);
 }
 
 } // end namespace yaml.

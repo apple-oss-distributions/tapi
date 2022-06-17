@@ -12,8 +12,14 @@ set(TAPI_CXX_API_HEADERS ${HEADERS}
   CACHE INTERNAL "TAPI API Headers" PARENT_SCOPE
   )
 
+
 install(FILES ${HEADERS}
   DESTINATION include/tapi
+  COMPONENT tapi-headers
+  )
+
+install(FILES ${TAPI_C_API_HEADERS}
+  DESTINATION include/tapi-c
   COMPONENT tapi-headers
   )
 

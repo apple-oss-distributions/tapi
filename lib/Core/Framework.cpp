@@ -37,4 +37,14 @@ StringRef Framework::getName() const {
   return sys::path::filename(path.rtrim("/"));
 }
 
+SwiftModule::SwiftModule(StringRef path) {
+  auto filename = sys::path::filename(path);
+  if (filename.consume_back(".swiftmodule"))
+    name = filename.str();
+  else if (auto n = filename.consume_back(".swiftinterface"))
+    name = filename.str();
+  else
+    llvm_unreachable("unexpected file extension");
+}
+
 TAPI_NAMESPACE_INTERNAL_END

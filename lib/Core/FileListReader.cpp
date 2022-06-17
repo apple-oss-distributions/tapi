@@ -92,7 +92,7 @@ Error FileListReader::Implementation::parseHeaders(Array &headers) {
     if (!path)
       return path.takeError();
 
-    headerList.emplace_back(HeaderInfo{*type, *path});
+    headerList.emplace_back(HeaderInfo{*type, std::string(*path)});
   }
 
   return Error::success();

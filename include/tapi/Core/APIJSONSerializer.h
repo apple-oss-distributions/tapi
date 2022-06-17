@@ -28,6 +28,7 @@ struct APIJSONOption {
   bool noTarget;
   bool externalOnly;
   bool publicOnly;
+  bool ignoreLineCol;
 };
 
 class APIJSONSerializer {

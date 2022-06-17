@@ -4,7 +4,7 @@ platform:        macosx
 flags:           [ not_app_extension_safe ]
 install-name:    '/System/Library/Frameworks/Simple.framework/Versions/A/Simple'
 current-version: 1.2.3
-exports:         
+exports:
   - archs:           [ x86_64 ]
     symbols:         [ '_OBJC_EHTYPE_$_Base', '_OBJC_EHTYPE_$_SimpleInternalAPI', 
                        '_OBJC_EHTYPE_$_SimpleInternalSPI', '_OBJC_EHTYPE_$_SubClass', 

@@ -28,7 +28,7 @@ static void findAndAddHeaderFilesImpl(HeaderSeq &headersOut, FileManager &fm,
                                       DiagnosticsEngine &diag, StringRef path,
                                       HeaderType type) {
   std::error_code ec;
-  auto &fs = *fm.getVirtualFileSystem();
+  auto &fs = fm.getVirtualFileSystem();
   for (vfs::directory_iterator i = fs.dir_begin(path, ec), ie; i != ie;
        i.increment(ec)) {
     auto path = i->path();

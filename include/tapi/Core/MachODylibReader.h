@@ -15,13 +15,13 @@
 #ifndef TAPI_CORE_MACHO_DYLIB_READER_H
 #define TAPI_CORE_MACHO_DYLIB_READER_H
 
-#include "tapi/Core/ArchitectureSet.h"
 #include "tapi/Core/LLVM.h"
 #include "tapi/Core/Registry.h"
 #include "tapi/Defines.h"
 #include "llvm/BinaryFormat/Magic.h"
 #include "llvm/Support/Error.h"
 #include "llvm/Support/MemoryBuffer.h"
+#include "llvm/TextAPI/MachO/ArchitectureSet.h"
 
 TAPI_NAMESPACE_INTERNAL_BEGIN
 

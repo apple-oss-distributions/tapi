@@ -12,5 +12,5 @@
 ; REEXPORT_MISMATCH: error: re-exported libraries do not match: '/System/Library/Frameworks/Foundation.framework/Versions/C/Foundation [ i386 x86_64 ]' (provided) vs '/System/Library/Frameworks/Foundation.framework/Versions/C/Foundation [ x86_64 ]' (found)
 ; ALLOWABLE_MISSING: error: allowable client missing from tapi option: 'Foo [ i386 ]'
 ; ALLOWABLE_MISMATCH: allowable clients do not match: 'Foo [ i386 x86_64 ]' (provided) vs 'Foo [ i386 ]' (found)
-; CHECK-NOT: warning
+; CHECK: warning: reexport_install_name is deprecated, use reexport_framework reexport_l or reexport_library
 ; CHECK-NOT: error

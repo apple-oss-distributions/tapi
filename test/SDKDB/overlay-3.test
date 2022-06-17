@@ -1,0 +1,22 @@
+; RUN: rm -rf %t && mkdir -p %t/System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/Headers/LinearAlgebra
+; RUN: mkdir -p %t.out
+; RUN: cp %p/Inputs/LinearAlgebra.h %t/System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/Headers/LinearAlgebra
+; RUN: cp %p/Inputs/dummy.h %t/System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/Headers/LinearAlgebra
+; RUN: pushd %t/System/Library/Frameworks/Accelerate.framework && ln -s Versions/A/Frameworks Frameworks && popd
+; RUN: pushd %t/System/Library/Frameworks/Accelerate.framework/Frameworks/vecLib.framework && ln -s Versions/A/Headers Headers && popd
+; RUN: RC_PROJECT_COMPILATION_PLATFORM=osx  RC_MIN_VERSION_OPTION="-mmacos-verison-min=10.13" RC_ARCHS="x86_64" RC_XBS="YES" RC_ProjectName="DummyLAPACK" \
+; RUN:  %tapi sdkdb -o %t.out -isysroot %sysroot --runtime-root %t --sdk-content-root %t --config-file=%p/Inputs/dummy-2.config
+; RUN: cat %t.out/partial.sdkdb | FileCheck %s
+; CHECK:       "PublicSDKContentRoot": [
+; CHECK-NEXT:    {
+; CHECK-NEXT:      "globals": [
+; CHECK-NEXT:        {
+; CHECK-NEXT:          "access": "public",
+; CHECK-NEXT:          "file": "/System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/Headers/LinearAlgebra/dummy.h",
+; CHECK-NEXT:          "kind": "function",
+; CHECK-NEXT:          "linkage": "exported",
+; CHECK-NEXT:          "name": "_dummy"
+; CHECK-NEXT:        }
+; CHECK-NEXT:      ],
+; CHECK-NEXT:      "target": "x86_64-apple-macos10.13"
+; CHECK-NEXT:    }

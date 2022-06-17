@@ -1,0 +1,21 @@
+; RUN: rm -rf %t && mkdir -p %t/System/Library/Frameworks/Foundation.framework/Headers
+; RUN: mkdir -p %t.out
+; RUN: cp %p/Inputs/DummyFoundationOverlay.h %t/System/Library/Frameworks/Foundation.framework/Headers
+; RUN: RC_PROJECT_COMPILATION_PLATFORM=osx  RC_MIN_VERSION_OPTION="-mmacos-verison-min=10.13" RC_ARCHS="x86_64" RC_XBS="YES" RC_ProjectName="DummyFoundationOverlayTest" \
+; RUN:  %tapi sdkdb --private-headers -o %t.out -isysroot %sysroot --runtime-root %t --sdk-content-root %t --config-file=%p/Inputs/dummy.config
+; RUN: cat %t.out/partial.sdkdb | FileCheck %s
+; CHECK:       "PublicSDKContentRoot": [
+; CHECK-NEXT:    {
+; CHECK-NEXT:      "globals": [
+; CHECK-NEXT:        {
+; CHECK-NEXT:          "access": "public",
+; CHECK-NEXT:          "file": "/System/Library/Frameworks/Foundation.framework/Headers/DummyFoundationOverlay.h",
+; CHECK-NEXT:          "kind": "variable",
+; CHECK-NEXT:          "linkage": "exported",
+; CHECK-NEXT:          "name": "___test_foundation_overlay"
+; CHECK-NEXT:        }
+; CHECK-NEXT:      ],
+; CHECK-NEXT:      "target": "x86_64-apple-macos10.13"
+; CHECK-NEXT:    }
+; CHECK-NEXT:  ],
+; CHECK-NEXT:  "RuntimeRoot": [],

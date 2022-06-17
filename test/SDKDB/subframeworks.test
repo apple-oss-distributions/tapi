@@ -1,0 +1,6 @@
+; RUN: %tapi sdkdb --action=all -o - -isysroot %sysroot --runtime-root %inputs/SubFrameworks --sdk-content-root %inputs/SubFrameworks 2>&1 | FileCheck %s
+
+; CHECK-NOT: warning:
+; CHECK-DAG: "_framework"
+; CHECK-DAG: "_sub_framework1"
+; CHECK-DAG: "_sub_framework2"

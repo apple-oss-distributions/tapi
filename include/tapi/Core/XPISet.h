@@ -15,8 +15,6 @@
 #ifndef TAPI_CORE_XPISET_H
 #define TAPI_CORE_XPISET_H
 
-#include "tapi/Core/Architecture.h"
-#include "tapi/Core/ArchitectureSet.h"
 #include "tapi/Core/AvailabilityInfo.h"
 #include "tapi/Core/XPI.h"
 #include "tapi/Defines.h"
@@ -27,6 +25,8 @@
 #include "llvm/ADT/iterator.h"
 #include "llvm/ADT/iterator_range.h"
 #include "llvm/Support/Allocator.h"
+#include "llvm/TextAPI/MachO/Architecture.h"
+#include "llvm/TextAPI/MachO/ArchitectureSet.h"
 #include <stddef.h>
 
 namespace clang {
@@ -56,7 +56,7 @@ template <> struct DenseMapInfo<SymbolsMapKey> {
   }
 
   static unsigned getHashValue(const SymbolsMapKey &key) {
-    return combineHashValue(hash_value(key.kind), hash_value(key.name));
+    return detail::combineHashValue(hash_value(key.kind), hash_value(key.name));
   }
 
   static bool isEqual(const SymbolsMapKey &lhs, const SymbolsMapKey &rhs) {

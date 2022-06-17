@@ -32,11 +32,23 @@ TAPI_NAMESPACE_INTERNAL_BEGIN
 
 enum class HeaderType;
 
+struct SwiftModule {
+  std::string name;
+  PathSeq swiftInterfaces;
+
+  SwiftModule(StringRef path);
+
+  void addSwiftInterface(StringRef path) {
+    swiftInterfaces.emplace_back(path);
+  }
+};
+
 struct Framework {
   std::string _baseDirectory;
   HeaderSeq _headerFiles;
   PathSeq _moduleMaps;
   PathSeq _dynamicLibraryFiles;
+  std::vector<SwiftModule> _swiftModules;
   std::vector<Framework> _subFrameworks;
   std::vector<Framework> _versions;
   std::vector<std::unique_ptr<InterfaceFile>> _interfaceFiles;
@@ -60,6 +72,12 @@ struct Framework {
 
   void addDynamicLibraryFile(StringRef path) {
     _dynamicLibraryFiles.emplace_back(path);
+  }
+
+  bool empty() {
+    return _subFrameworks.empty() && _headerFiles.empty() &&
+           _moduleMaps.empty() && _dynamicLibraryFiles.empty() &&
+           _versions.empty();
   }
 };
 

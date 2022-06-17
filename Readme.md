@@ -12,7 +12,7 @@ those files and provides this functionality to the linker as a dynamic library.
 ## Building TAPI
 
 TAPI is a _CLANG_ project and requires the _LLVM_ and _CLANG_ sources to
-compile. This version is supported to build against <https://github.com/apple/llvm-project/tree/apple/stable/20190104>.
+compile. This version is supported to build against <https://github.com/apple/llvm-project/tree/apple/stable/20210107>.
 The source root directory should be placed along side _CLANG_ and _LLVM_ in project structure.
 
 Create a separate build directory and configure the project with CMake:

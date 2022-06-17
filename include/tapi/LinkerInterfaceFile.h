@@ -65,7 +65,6 @@ enum class Platform : unsigned {
   /// \since 1.2
   bridgeOS = 5,
 
-  /// DO NOT RENAME. This needs to be coordinated with ld64.
   /// \brief iOSMac
   /// \since 1.4
   iOSMac = 6,
@@ -74,10 +73,6 @@ enum class Platform : unsigned {
   /// \since 1.5
   DriverKit = 7,
 
-  /// \brief zippered
-  /// This value is temporary for bringup and will be removed.
-  /// \since 1.4
-  zippered = ~0U,
 } __attribute__((deprecated));
 
 ///
@@ -104,28 +99,6 @@ enum class ObjCConstraint : unsigned {
   /// \brief Garbage Collection.
   /// \since 1.0
   GC = 4,
-};
-
-///
-/// \brief Defines a list of supported file types.
-/// \since 1.0
-///
-enum class FileType : unsigned {
-  /// \brief Unsupported file type.
-  /// \since 1.0
-  Unsupported = 0,
-
-  /// \brief Text-based Dynamic Library Stub File (.tbd) version 1.0
-  /// \since 1.0
-  TBD_V1 = 1,
-
-  /// \brief Text-based stub file (.tbd) version 2.0
-  /// \since 1.0
-  TBD_V2 = 2,
-
-  /// \brief Text-based stub file (.tbd) version 3.0
-  /// \since 1.3
-  TBD_V3 = 3,
 };
 
 ///
@@ -302,14 +275,6 @@ public:
   create(const std::string &path, cpu_type_t cpuType, cpu_subtype_t cpuSubType,
          ParsingFlags flags, PackedVersion32 minOSVersion,
          std::string &errorMessage) noexcept;
-
-  ///
-  /// \brief Query the file type.
-  /// \return Returns the file type this TAPI file represents.
-  /// \since 1.0
-  ///
-  FileType getFileType() const noexcept;
-
   ///
   /// \brief Query the platform
   /// \return Returns the platform supported by the TAPI file.

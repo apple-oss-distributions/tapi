@@ -4,13 +4,12 @@ set( LLVM_LINK_COMPONENTS
   )
 
 add_tapi_library(tapiCore
-  Architecture.cpp
-  ArchitectureSet.cpp
   API.cpp
   APIJSONSerializer.cpp
   APIPrinter.cpp
   APIVisitor.cpp
   AvailabilityInfo.cpp
+  ClangDiagnostics.cpp
   FakeSymbols.cpp
   FileListReader.cpp
   FileManager.cpp
@@ -23,11 +22,9 @@ add_tapi_library(tapiCore
   MachOReader.cpp
   PackedVersion.cpp
   Path.cpp
-  Platform.cpp
   ReexportFileWriter.cpp
   Registry.cpp
   TapiError.cpp
-  Target.cpp
   TextStub.cpp
   TextStubv4.cpp
   TextStubCommon.cpp

@@ -30,12 +30,11 @@ InterfaceFileManager::InterfaceFileManager(FileManager &fm) : _fm(fm) {
 
 Expected<InterfaceFile *>
 InterfaceFileManager::readFile(const std::string &path) {
-  auto *file = _fm.getFile(path);
-  if (file == nullptr)
-    return errorCodeToError(
-        std::make_error_code(std::errc::no_such_file_or_directory));
+  auto file = _fm.getFile(path);
+  if (!file)
+    return errorCodeToError(file.getError());
 
-  auto bufferOrErr = _fm.getBufferForFile(file);
+  auto bufferOrErr = _fm.getBufferForFile(*file);
   if (!bufferOrErr)
     return errorCodeToError(bufferOrErr.getError());
 
@@ -44,11 +43,13 @@ InterfaceFileManager::readFile(const std::string &path) {
   if (!interface)
     return interface.takeError();
 
-  auto it = _libraries.find(interface.get()->getInstallName());
+  // Use path location for lookup because
+  // it's possible to contain different interfaces for the same library.
+  auto it = _libraries.find(std::string(interface.get()->getPath()));
   if (it != _libraries.end())
     return it->second.get();
 
-  auto result = _libraries.emplace(interface.get()->getInstallName(),
+  auto result = _libraries.emplace(interface.get()->getPath(),
                                    std::move(interface.get()));
   return result.first->second.get();
 }

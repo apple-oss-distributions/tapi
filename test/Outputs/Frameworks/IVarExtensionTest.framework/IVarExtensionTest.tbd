@@ -3,7 +3,7 @@ archs:           [ x86_64 ]
 platform:        macosx
 flags:           [ not_app_extension_safe ]
 install-name:    '/System/Library/Frameworks/IVarExtensionTest.framework/Versions/A/IVarExtensionTest'
-exports:         
+exports:
   - archs:           [ x86_64 ]
     objc-classes:    [ IVarExtensionTest ]
     objc-ivars:      [ IVarExtensionTest._ivar1, IVarExtensionTest._ivar2 ]

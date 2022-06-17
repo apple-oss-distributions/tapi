@@ -62,6 +62,7 @@ class Diagnostic<string text, DiagClass DC, Severity defaultmapping> {
   bit            AccessControl = 0;
   bit            WarningNoWerror = 0;
   bit            ShowInSystemHeader = 0;
+  bit            Deferrable = 0;
   Severity       DefaultSeverity = defaultmapping;
   DiagGroup      Group;
   string         CategoryName = "";
@@ -81,6 +82,7 @@ def err_no_target : Error<"no target specified: add --target=<triple>">;
 def err_one_architecture : Error<"only one architecture can be specified '%0'">;
 def err_one_target : Error<"only one target can be specified">;
 def err_no_matching_target : Error<"no matching target found for target variant '%0'">;
+def err_unsupported_arch : Error<"architecture '%0' is not supported: '%1'">;
 def err_unsupported_vendor : Error<"vendor '%0' is not supported: '%1'">;
 def err_unsupported_os : Error<"os '%0' is not supported: '%1'">;
 def err_unsupported_environment : Error<"environment '%0' is not supported: '%1'">;
@@ -111,7 +113,7 @@ def err_reexported_libraries_missing : Error<"re-exported library missing from %
 def err_reexported_libraries_mismatch : Error<"re-exported libraries do not match: '%0' (provided) vs '%1' (found)">;
 def err_allowable_clients_missing : Error<"allowable client missing from %0: '%1'">;
 def err_allowable_clients_mismatch : Error<"allowable clients do not match: '%0' (provided) vs '%1' (found)">;
-def warn_parent_umbrella_mismatch : Warning<"parent umbrella does not match: '%0' (provided) vs '%1' (found)">;
+def err_parent_umbrella_mismatch : Error<"parent umbrella does not match: '%0' (provided) vs '%1' (found)">;
 def err_no_twolevel_namespace : Error<"flat namespace libraries are not supported">;
 def err_library_missing_symbol : Error<"library doesn't have symbol '%0'">;
 def err_header_symbol_tlv_mismatch : Error<"header symbol '%0' is thread local, but dynamic library symbol '%1' is not">;
@@ -132,11 +134,14 @@ def err_expected_option: Error<"cannot infer '%0', please specify with option '%
 def err_unsupported_file_type: Error<"unsupported file type">;
 def err_no_output_file: Error<"no output file specified">;
 def err_header_symbol_missing : Error<"headers don't have symbol '%0'">;
+def err_cannot_generate_sdkdb : Error<"cannot generate SDKDB: '%0'">;
 def err_cannot_find_header_dir: Error<"cannot find any public (usr/include) or private (usr/local/include) header directory: '%0'">;
 def err_missing_vfs_overlay_file : Error<"virtual filesystem overlay file '%0' not found">;
 def err_invalid_vfs_overlay : Error<"invalid virtual filesystem overlay file '%0'">;
-def err_invalid_verifier_whitelist_file: Error<"cannot parse whitelist file %0: %1">;
+def err_invalid_verifier_allowlist_file: Error<"cannot parse allowlist file %0: %1">;
 def err_inlining_not_supported: Error<"inlining is not supported for output file type '%0'">;
+def err_merge_file: Error<"unable to merge '%0': '%1'">;
+def err_invalid_platform_name: Error<"invalid platform name '%0'">;
 
 def warn : Warning<"%0">;
 def warn_truncating_current_version : Warning<
@@ -144,13 +149,18 @@ def warn_truncating_current_version : Warning<
 def warn_symbol_unavailable : Warning<"header marked symbol '%0' as unavailable">;
 def warn_broken_symlink : Warning<"ignoring broken symlink '%0'">;
 def warn_header_symbol_missing : Warning<"headers don't have symbol '%0'">;
+def warn_sdkdb_skip_file : Warning<"skipping file '%0': %1">;
+def warn_sdkdb_skip_framework : Warning<"skipping framework '%0': %1">;
+def warn_sdkdb_mismatch_local_info : Warning<"updating '%0': %1 in %2">;
 def warn_glob_did_not_match: Warning<"glob '%0' did not match any header file">;
 def warn_no_such_header_file : Warning<"no such %select{public|private}0 header file: '%1'">;
 def warn_no_such_pre_header_file : Warning<"no such %select{public|private}0 pre-include header file: '%1'">;
 def warn_no_such_excluded_header_file : Warning<"no such excluded %select{public|private}0 header file: '%1'">;
 def warn_no_such_umbrella_header_file : Warning<"no such %select{public|private}0 umbrella header file: '%1'">;
-
+def warn_empty_versions_directory : Warning<"ignoring the Versions directory within framework because it contains no parsable files: '%0'">;
+def warn_generate_path_32bit: Warning<"could not generate information about '%0' for 32bit injection.">;
 def warn_auto_zippered : Warning<"Auto zippering was requested, output will be zippered">;
+def warn_reexport_install_name : Warning<"reexport_install_name is deprecated, use reexport_framework reexport_l or reexport_library">;
 
 } // end of command line category.
 
@@ -195,5 +205,32 @@ def note_api_target_note : Note<"for target %0">;
 def warn_api_incomplete : Warning<"%0 is missing from target %1 but required for target %2">;
 
 } // end of API verifier category.
+
+let CategoryName = "SDKDB" in {
+
+def warn_sdkdb_duplicated_global : Warning<"duplicated symbol '%0' inside SDKDB">;
+def warn_sdkdb_duplicated_objc_class : Warning<"duplicated ObjC interface '%0' inside SDKDB">;
+def warn_sdkdb_duplicated_objc_category : Warning<"duplicated ObjC category '%0(%1)' inside SDKDB">;
+def warn_sdkdb_missing_global : Warning<"missing symbol '%0' from binary interface">;
+def warn_sdkdb_missing_objc_class : Warning<"missing ObjC interface '%0' from binary interface">;
+def warn_sdkdb_missing_objc_protocol : Warning<"missing ObjC protocol '%0' from binary interface">;
+def warn_sdkdb_missing_objc_category : Warning<"missing ObjC category '%0(%1)' from binary interface">;
+def warn_sdkdb_missing_objc_method : Warning<"missing ObjC method '%0' in %select{class|category|protocol}1 '%2' from binary interface">;
+def warn_sdkdb_missing_objc_property : Warning<"missing ObjC property '%0' in %select{class|category|protocol}1 '%2' from binary interface">;
+def warn_sdkdb_conflict_availability : Warning<"conflicting availability info for %0: %1 is not the same as %2">;
+def warn_sdkdb_conflict_gvkind : Warning<"conflicting declaration for exported symbol '%0'">;
+def warn_sdkdb_conflict_superclass : Warning<"conflicting superclass for objc class '%0': '%1' is not the same as '%2'">;
+def warn_sdkdb_conflict_objc_protocol : Warning<"conflict ObjC protocol definition '%0' inside SDKDB">;
+
+def err_sdkdb_missing_target : Error<"missing target '%0'">;
+def err_sdkdb_missing_binary_info : Error<"API info missing binary info for target '%0'">;
+def err_sdkdb_missing_dylib : Error<"missing dylib '%0' for target '%1'">;
+def err_sdkdb_missing_global : Error<"missing %select{symbol|global variable|function}0 '%1' in '%2' for target '%3'">;
+def err_sdkdb_global_regression : Error<"regression for API '%0' in '%1' for target '%2': %3">;
+def err_sdkdb_missing_objc : Error<"missing objc %select{class|category|protocol}0 '%1' in '%2' for target '%3'">;
+def err_sdkdb_objc_container_regression : Error<"regression for ObjC %select{class|category|protocol}0 '%1' in '%2' for target '%3': %4">;
+def err_sdkdb_objc_selector_regression : Error<"regression for ObjC selector '%0' in %select{class|category|protocol}1 '%2' in '%3' for target '%4': %5">;
+
+} // end of SDKDB category.
 
 } // end of TAPI component.

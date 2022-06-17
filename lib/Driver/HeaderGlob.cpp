@@ -38,7 +38,7 @@ Expected<std::unique_ptr<HeaderGlob>> HeaderGlob::create(StringRef globString,
   if (!regex)
     return regex.takeError();
 
-  return make_unique<HeaderGlob>(globString, std::move(*regex), type);
+  return std::make_unique<HeaderGlob>(globString, std::move(*regex), type);
 }
 
 TAPI_NAMESPACE_INTERNAL_END

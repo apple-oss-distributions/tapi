@@ -1,0 +1,16 @@
+; RUN: %tapi -help-hidden | FileCheck %s
+; RUN: %tapi --help-hidden | FileCheck %s
+
+CHECK:      OVERVIEW: Text-based Stubs Tool
+CHECK:      USAGE: tapi [--version][--help]
+CHECK-NEXT:        tapi <command> [<args>]
+CHECK:      Commands:
+CHECK-NEXT:   archive     Merge or thin text-based stub files
+CHECK-NEXT:   stubify     Create a text-based stub file from a library
+CHECK-NEXT:   installapi  Create a text-based stub file by scanning the header files
+CHECK-NEXT:   reexport    Create a linker reexport file by scanning the header files
+CHECK:      Experimental Commands:
+CHECK-NEXT:   sdkdb         Generate SDKDB from SDKContent
+CHECK-NEXT:   api-verify    Compare interfaces between frameworks
+CHECK-EMPTY:
+CHECK-NEXT: See 'tapi <command> --help' to read more about a specific command.

@@ -16,6 +16,7 @@
 #include "llvm/Object/Archive.h"
 #include "llvm/Object/IRObjectFile.h"
 #include "llvm/Object/ObjectFile.h"
+#include "llvm/Object/TapiUniversal.h"
 #include "llvm/Object/WindowsResource.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/ErrorOr.h"
@@ -43,7 +44,7 @@ ObjectFile::createCOFFObjectFile(MemoryBufferRef Object) {
 }
 
 Expected<std::unique_ptr<ObjectFile>>
-ObjectFile::createELFObjectFile(MemoryBufferRef Obj) {
+ObjectFile::createELFObjectFile(MemoryBufferRef Obj, bool initContent) {
   llvm_unreachable("not supported");
 }
 
@@ -52,6 +53,7 @@ ObjectFile::createWasmObjectFile(MemoryBufferRef Object) {
   llvm_unreachable("not supported");
 }
 
+
 Expected<MemoryBufferRef>
 IRObjectFile::findBitcodeInObject(const ObjectFile &Obj) {
   llvm_unreachable("not supported");
@@ -59,6 +61,11 @@ IRObjectFile::findBitcodeInObject(const ObjectFile &Obj) {
 
 Expected<std::unique_ptr<IRObjectFile>>
 IRObjectFile::create(MemoryBufferRef Object, LLVMContext &Context) {
+  llvm_unreachable("not supported");
+}
+
+Expected<std::unique_ptr<TapiUniversal>>
+TapiUniversal::create(MemoryBufferRef Source) {
   llvm_unreachable("not supported");
 }
 
