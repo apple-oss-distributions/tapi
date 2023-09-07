@@ -1,0 +1,9 @@
+{
+  "version" : "2",
+  "headers" : [
+    {
+      "type" : "project",
+      "path" : "SRC_DIR/typedef.h"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+; RUN: rm -rf %t && mkdir -p %t
+; RUN: %tapi reexport -target x86_64-apple-macos12.0 -isysroot %sysroot %S/../Inputs/api_unavailable.h -o %t/symbols.reexport 2>&1 | FileCheck %s -allow-empty
+; RUN: cat %t/symbols.reexport | FileCheck %s --check-prefix=CHECK-API
+
+;CHECK-NOT: error: 
+;CHECK-NOT: warning:
+
+;CHECK-API: _forMacOS
+;CHECK-API: _OBJC_CLASS_$_macOSClass
+;CHECK-API: _OBJC_METACLASS_$_macOSClass
+;CHECK-API: _OBJC_IVAR_$_macOSClass.foo
+
+;CHECK-API-NOT: _foriOS
+;CHECK-API-NOT: _OBJC_CLASS_$_iOSClass
+;CHECK-API-NOT: _OBJC_METACLASS_$_iOSClass

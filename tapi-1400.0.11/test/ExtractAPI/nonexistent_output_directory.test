@@ -1,0 +1,10 @@
+; RUN: rm -rf %t && mkdir -p %t/Simple.framework/Headers && mkdir -p %t/Simple.framework/PrivateHeaders
+; RUN: cp %S/Inputs/src/simple/simple.h %t/Simple.framework/Headers
+; RUN: cp %S/Inputs/src/simple/simple_private.h %t/Simple.framework/PrivateHeaders
+; RUN: sed -e "s:DST_DIR:%t:g" -e "s:SRC_DIR:%S/Inputs/src:g" %S/Inputs/simple_input.json >> %t/simple_input.json
+
+; RUN: %tapi extractapi -target arm64-apple-macos11 -F%t %t/simple_input.json -o %t/nonexistent_dir/output.json | FileCheck -allow-empty %s
+; RUN: diff -a %t/nonexistent_dir/output.json %S/Outputs/simple_output.json
+
+; CHECK-NOT: error:
+; CHECK-NOT: warning:

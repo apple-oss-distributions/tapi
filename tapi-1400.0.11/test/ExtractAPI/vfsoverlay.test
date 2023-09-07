@@ -1,0 +1,22 @@
+; RUN: rm -rf %t && mkdir -p %t/Foo.framework/Headers 
+; RUN: sed -e "s:SRC_DIR:%S/Inputs/src:g" -e "s:DST_DIR:%t:g" %S/Inputs/vfsoverlay_input.json  > %t/vfsoverlay_input.json
+; RUN: sed -e "s:SRC_DIR:%S/Inputs/src:g" -e "s:DST_DIR:%t:g" %S/Inputs/vfsoverlay.yaml > %t/vfsoverlay.yaml
+
+# Hack: writing only to DST_DIR header which changes the source location, to ensure the SRCROOT header is preferred.
+; RUN: sed -e "1s/^/\/\/This is a copy of original header. \n/" %S/Inputs/src/vfsoverlay/Foo.h > %t/Foo.framework/Headers/Foo.h
+
+; RUN: %tapi extractapi -ivfsoverlay %t/vfsoverlay.yaml -target arm64-apple-macos11 -F%t %t/vfsoverlay_input.json -o %t/output.json 2>&1 | FileCheck -allow-empty %s
+; RUN: diff -a %t/output.json %S/Outputs/vfsoverlay_output.json
+
+# Check that without vfsoverlay, source location maps to DST_DIR.
+; RUN: %tapi extractapi -target arm64-apple-macos11 -F%t %t/vfsoverlay_input.json -o %t/dst_dir_output.json 2>&1 | FileCheck -allow-empty %s
+; RUN: not diff -u %t/dst_dir_output.json %S/Outputs/vfsoverlay_output.json | FileCheck %s --check-prefix=DIFF-LOC
+
+; DIFF-LOC:                 "kind": "function",
+; DIFF-LOC-NEXT: -          "line": 2,
+; DIFF-LOC-NEXT: +          "line": 1,
+; DIFF-LOC-NEXT:            "linkage": "exported",
+; DIFF-LOC-NEXT:            "name": "_foo"
+
+; CHECK-NOT: error:
+; CHECK-NOT: warning:

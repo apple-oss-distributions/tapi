@@ -1,0 +1,13 @@
+{
+  "DefaultVariant": "macos", "DisplayName": "macOS 10",
+  "Version": "10.15",
+  "MaximumDeploymentTarget": "10.15.99",
+  "PropertyConditionFallbackNames": [], "VersionMap": {
+    "iOSMac_macOS": {
+      "13.1": "10.15"
+    },
+    "macOS_iOSMac": {
+      "10.15": "13.1"
+    }
+  }
+}

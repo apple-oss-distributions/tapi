@@ -1,0 +1,58 @@
+# RUN: rm -rf %t && mkdir -p %t
+# RUN: RC_PROJECT_COMPILATION_PLATFORM=osx RC_ProjectName="unix-header" RC_MIN_VERSION_OPTION="" RC_ARCHS="x86_64" RC_XBS="YES" \
+# RUN:   %tapi sdkdb --action=scan-interface -o - -isysroot %sysroot --runtime-root %S/Inputs/incompatible-unix-headers \
+# RUN:   --sdk-content-root %S/Inputs/incompatible-unix-headers --config-file=%p/Inputs/dummy-3.config 2>&1 | FileCheck %s
+
+# CHECK:       "PublicSDKContentRoot": [
+# CHECK-NEXT:    {
+# CHECK-NEXT:      "globals": [
+# CHECK-NEXT:        {
+# CHECK-NEXT:          "access": "public",
+# CHECK-NEXT:          "file": "/usr/include/bar/bar.h",
+# CHECK-NEXT:          "kind": "variable",
+# CHECK-NEXT:          "linkage": "exported",
+# CHECK-NEXT:          "name": "_b"
+# CHECK-NEXT:        },
+# CHECK-NEXT:        {
+# CHECK-NEXT:          "access": "public",
+# CHECK-NEXT:          "file": "/usr/include/bar/bar.h",
+# CHECK-NEXT:          "kind": "function",
+# CHECK-NEXT:          "linkage": "exported",
+# CHECK-NEXT:          "name": "_my_function"
+# CHECK-NEXT:        }
+# CHECK-NEXT:      ],
+# CHECK-NEXT:      "target": "x86_64-apple-macos",
+# CHECK-NEXT:      "typedefs": [
+# CHECK-NEXT:        {
+# CHECK-NEXT:          "access": "public",
+# CHECK-NEXT:          "file": "/usr/include/bar/bar.h",
+# CHECK-NEXT:          "name": "MyType"
+# CHECK-NEXT:        }
+# CHECK-NEXT:      ]
+# CHECK-NEXT:    },
+# CHECK-NEXT:    {
+# CHECK-NEXT:      "globals": [
+# CHECK-NEXT:        {
+# CHECK-NEXT:          "access": "public",
+# CHECK-NEXT:          "file": "/usr/include/foo/a.h",
+# CHECK-NEXT:          "kind": "variable",
+# CHECK-NEXT:          "linkage": "exported",
+# CHECK-NEXT:          "name": "_a"
+# CHECK-NEXT:        },
+# CHECK-NEXT:        {
+# CHECK-NEXT:          "access": "public",
+# CHECK-NEXT:          "file": "/usr/include/foo/a.h",
+# CHECK-NEXT:          "kind": "function",
+# CHECK-NEXT:          "linkage": "exported",
+# CHECK-NEXT:          "name": "_my_function"
+# CHECK-NEXT:        }
+# CHECK-NEXT:      ],
+# CHECK-NEXT:      "target": "x86_64-apple-macos",
+# CHECK-NEXT:      "typedefs": [
+# CHECK-NEXT:        {
+# CHECK-NEXT:          "access": "public",
+# CHECK-NEXT:          "file": "/usr/include/foo/a.h",
+# CHECK-NEXT:          "name": "MyType"
+# CHECK-NEXT:        }
+# CHECK-NEXT:      ]
+# CHECK-NEXT:    }

@@ -1,0 +1,11 @@
+; RUN: rm -rf %t && mkdir -p %t/usr/include
+; RUN: mkdir -p %t.out
+; RUN: touch %t/usr/include/empty.h
+; RUN: RC_PROJECT_COMPILATION_PLATFORM=osx  RC_MIN_VERSION_OPTION="-mmacos-verison-min=10.13" RC_ARCHS="x86_64" RC_XBS="YES" RC_ProjectName="PreIncludeTest" \
+; RUN:  %tapi sdkdb --action=scan-interface -o %t.out -isysroot %sysroot --runtime-root %t --sdk-content-root %t -I /SOME_INCLUDE -F /SOME_FRAMEWORK -isystem /SYSTEM_DIR -iframework /SYSTEM_FRAMEWORK -v 2>&1 | FileCheck %s
+
+; CHECK: "-cc1"
+; CHECK-SAME: "-iframework" "/SYSTEM_FRAMEWORK"
+; CHECK-SAME: "-isystem" "/SYSTEM_DIR"
+; CHECK-SAME: "-I" "/SOME_INCLUDE"
+; CHECK-SAME: "-F/SOME_FRAMEWORK"

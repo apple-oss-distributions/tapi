@@ -1,0 +1,31 @@
+{
+  "PublicSDKContentRoot": [],
+  "RuntimeRoot": [],
+  "SDKContentRoot": [
+    {
+      "globals": [
+        {
+          "access": "public",
+          "file": "/System/Library/Frameworks/Test.framework/Headers/Test.h",
+          "kind": "function",
+          "linkage": "exported",
+          "name": "_foo"
+        }
+      ],
+      "target": "x86_64-apple-macos10.15"
+    },
+    {
+      "globals": [
+        {
+          "access": "private",
+          "file": "/System/Library/Frameworks/Test.framework/PrivateHeaders/Test_Private.h",
+          "kind": "function",
+          "linkage": "exported",
+          "name": "_private_impl"
+        }
+      ],
+      "target": "x86_64-apple-macos10.15"
+    }
+  ],
+  "version": "1.0"
+}

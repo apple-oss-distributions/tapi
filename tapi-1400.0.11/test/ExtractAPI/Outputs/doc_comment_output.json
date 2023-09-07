@@ -1,0 +1,263 @@
+{
+  "Private": [],
+  "Project": [
+    {
+      "enums": [
+        {
+          "USR": "c:@Ea@baz",
+          "access": "project",
+          "col": 1,
+          "constants": [
+            {
+              "USR": "c:@Ea@baz@baz",
+              "access": "project",
+              "col": 3,
+              "declarationFragments": [
+                {
+                  "kind": "identifier",
+                  "spelling": "baz"
+                }
+              ],
+              "docComment": {
+                "lines": [
+                  {
+                    "range": {
+                      "end": {
+                        "col": 53,
+                        "line": 17
+                      },
+                      "start": {
+                        "col": 13,
+                        "line": 17
+                      }
+                    },
+                    "text": "This is a one line trailing doc comment."
+                  }
+                ]
+              },
+              "file": "doc_comment.h",
+              "line": 17,
+              "name": "baz",
+              "subHeading": [
+                {
+                  "kind": "identifier",
+                  "spelling": "baz"
+                }
+              ]
+            }
+          ],
+          "declarationFragments": [
+            {
+              "kind": "keyword",
+              "spelling": "enum"
+            },
+            {
+              "kind": "text",
+              "spelling": ": "
+            },
+            {
+              "kind": "typeIdentifier",
+              "preciseIdentifier": "c:i",
+              "spelling": "unsigned int"
+            }
+          ],
+          "file": "doc_comment.h",
+          "line": 16,
+          "name": "(anonymous)"
+        }
+      ],
+      "globals": [
+        {
+          "USR": "c:@F@foo",
+          "access": "project",
+          "col": 12,
+          "declName": "foo",
+          "declarationFragments": [
+            {
+              "kind": "keyword",
+              "spelling": "extern"
+            },
+            {
+              "kind": "text",
+              "spelling": " "
+            },
+            {
+              "kind": "typeIdentifier",
+              "preciseIdentifier": "c:I",
+              "spelling": "int"
+            },
+            {
+              "kind": "text",
+              "spelling": " "
+            },
+            {
+              "kind": "identifier",
+              "spelling": "foo"
+            },
+            {
+              "kind": "text",
+              "spelling": "()"
+            }
+          ],
+          "docComment": {
+            "lines": [
+              {
+                "range": {
+                  "end": {
+                    "col": 42,
+                    "line": 5
+                  },
+                  "start": {
+                    "col": 5,
+                    "line": 5
+                  }
+                },
+                "text": "This is a long multiline doc comment."
+              },
+              {
+                "range": {
+                  "end": {
+                    "col": 37,
+                    "line": 6
+                  },
+                  "start": {
+                    "col": 5,
+                    "line": 6
+                  }
+                },
+                "text": "  Parts of it might be indented."
+              },
+              {
+                "range": {
+                  "end": {
+                    "col": 4,
+                    "line": 7
+                  },
+                  "start": {
+                    "col": 4,
+                    "line": 7
+                  }
+                },
+                "text": ""
+              },
+              {
+                "range": {
+                  "end": {
+                    "col": 28,
+                    "line": 8
+                  },
+                  "start": {
+                    "col": 5,
+                    "line": 8
+                  }
+                },
+                "text": "^ blank lines are kept."
+              },
+              {
+                "range": {
+                  "end": {
+                    "col": 43,
+                    "line": 9
+                  },
+                  "start": {
+                    "col": 5,
+                    "line": 9
+                  }
+                },
+                "text": "The comments styles might be mixed. "
+              },
+              {
+                "range": {
+                  "end": {
+                    "col": 46,
+                    "line": 10
+                  },
+                  "start": {
+                    "col": 5,
+                    "line": 10
+                  }
+                },
+                "text": "\\brief It might contain comment commands."
+              }
+            ]
+          },
+          "file": "doc_comment.h",
+          "functionSignature": {
+            "returns": [
+              {
+                "kind": "typeIdentifier",
+                "preciseIdentifier": "c:I",
+                "spelling": "int"
+              }
+            ]
+          },
+          "kind": "function",
+          "line": 11,
+          "linkage": "exported",
+          "name": "_foo",
+          "subHeading": [
+            {
+              "kind": "identifier",
+              "spelling": "foo"
+            }
+          ]
+        },
+        {
+          "USR": "c:@F@bar",
+          "access": "project",
+          "col": 12,
+          "declName": "bar",
+          "declarationFragments": [
+            {
+              "kind": "keyword",
+              "spelling": "extern"
+            },
+            {
+              "kind": "text",
+              "spelling": " "
+            },
+            {
+              "kind": "typeIdentifier",
+              "preciseIdentifier": "c:I",
+              "spelling": "int"
+            },
+            {
+              "kind": "text",
+              "spelling": " "
+            },
+            {
+              "kind": "identifier",
+              "spelling": "bar"
+            },
+            {
+              "kind": "text",
+              "spelling": "()"
+            }
+          ],
+          "file": "doc_comment.h",
+          "functionSignature": {
+            "returns": [
+              {
+                "kind": "typeIdentifier",
+                "preciseIdentifier": "c:I",
+                "spelling": "int"
+              }
+            ]
+          },
+          "kind": "function",
+          "line": 14,
+          "linkage": "exported",
+          "name": "_bar",
+          "subHeading": [
+            {
+              "kind": "identifier",
+              "spelling": "bar"
+            }
+          ]
+        }
+      ],
+      "target": "arm64-apple-macos11"
+    }
+  ],
+  "Public": []
+}

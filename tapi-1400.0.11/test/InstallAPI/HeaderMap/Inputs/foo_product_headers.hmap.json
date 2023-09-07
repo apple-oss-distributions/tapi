@@ -1,0 +1,9 @@
+{
+  "mappings" :
+    {
+     "Foo.h" : "Foo/Foo.h",
+     "Foo_Private.h" : "Foo/Foo_Private.h",
+     "Foo/Foo.h" : "INPUT_DIR/Foo.framework/Headers/Foo.h",
+     "Foo/Foo_Private.h" : "INPUT_DIR/Foo.Framework/PrivateHeaders/Foo_Private.h"
+    }
+}

@@ -1,0 +1,51 @@
+; Test that a method in the category can update the same method from base class and vice versa.
+
+; RUN: %tapi sdkdb --action=gen-private --no-verify-api -o %t %S/Inputs/categories.partial.sdkdb 2>&1
+; RUN: cat %t/private.sdkdb | FileCheck %s
+
+; CHECK:      {
+; CHECK-NEXT:   "x86_64-apple-macosx": [
+; CHECK-NEXT:     {
+; CHECK-NEXT:       "binaryInfo": {
+; CHECK-NEXT:         "compatibilityVersion": "1",
+; CHECK-NEXT:         "currentVersion": "1.2.3",
+; CHECK-NEXT:         "installName": "/usr/lib/libproperty_test.dylib",
+; CHECK-NEXT:         "twoLevelNamespace": true,
+; CHECK-NEXT:         "type": "dylib"
+; CHECK-NEXT:       },
+; CHECK-NEXT:       "categories": [
+; CHECK-NEXT:         {
+; CHECK-NEXT:           "instanceMethods": [
+; CHECK-NEXT:             {
+; CHECK-NEXT:               "access": "public",
+; CHECK-NEXT:               "name": "anInstanceMethodFromAnInterface"
+; CHECK-NEXT:             },
+; CHECK-NEXT:             {
+; CHECK-NEXT:               "access": "public",
+; CHECK-NEXT:               "name": "anInstanceMethodFromAnotherCategory"
+; CHECK-NEXT:             }
+; CHECK-NEXT:           ],
+; CHECK-NEXT:           "interface": "Basic",
+; CHECK-NEXT:           "name": "SomeExtension"
+; CHECK-NEXT:         }
+; CHECK-NEXT:       ],
+; CHECK-NEXT:       "interfaces": [
+; CHECK-NEXT:         {
+; CHECK-NEXT:           "access": "public",
+; CHECK-NEXT:           "categories": [
+; CHECK-NEXT:             "SomeExtension"
+; CHECK-NEXT:           ],
+; CHECK-NEXT:           "instanceMethods": [
+; CHECK-NEXT:             {
+; CHECK-NEXT:               "access": "public",
+; CHECK-NEXT:               "name": "anInstanceMethodFromAnCategory"
+; CHECK-NEXT:             }
+; CHECK-NEXT:           ],
+; CHECK-NEXT:           "linkage": "exported",
+; CHECK-NEXT:           "name": "Basic",
+; CHECK-NEXT:           "super": "NSObject"
+; CHECK-NEXT:         }
+; CHECK-NEXT:       ]
+; CHECK-NEXT:     }
+; CHECK-NEXT:   ]
+; CHECK-NEXT: }

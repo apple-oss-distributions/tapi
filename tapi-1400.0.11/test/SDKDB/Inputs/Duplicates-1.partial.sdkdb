@@ -1,0 +1,127 @@
+{
+  "PublicSDKContentRoot": [
+    {
+      "categories": [
+        {
+          "access": "public",
+          "interface": "Basic",
+          "name": "Test"
+        }
+      ],
+      "globals": [],
+      "interfaces": [
+        {
+          "access": "public",
+          "linkage": "exported",
+          "name": "Basic",
+          "super": "NSObject"
+        }
+      ],
+      "protocols": [
+        {
+          "access": "public",
+          "name": "Test"
+        }
+      ],
+      "target": "x86_64-apple-macos10.10"
+    }
+  ],
+  "RuntimeRoot": [
+    {
+      "binaryInfo": {
+        "compatibilityVersion": "1",
+        "currentVersion": "1",
+        "installName": "/System/Library/Frameworks/Basic.framework/Basic",
+        "twoLevelNamespace": true,
+        "type": "dylib"
+      },
+      "categories": [],
+      "globals": [],
+      "interfaces": [
+        {
+          "linkage": "exported",
+          "name": "Basic",
+          "super": "NSObject"
+        }
+      ],
+      "protocols": [],
+      "target": "x86_64-apple-macos10.10"
+    },
+    {
+      "binaryInfo": {
+        "compatibilityVersion": "1",
+        "currentVersion": "1",
+        "installName": "/System/Library/Frameworks/Basic.framework/Basic",
+        "twoLevelNamespace": true,
+        "type": "dylib"
+      },
+      "categories": [],
+      "globals": [],
+      "interfaces": [
+        {
+          "linkage": "exported",
+          "name": "Basic",
+          "super": "NSObject"
+        }
+      ],
+      "protocols": [],
+      "target": "x86_64h-apple-macos10.10"
+    },
+    {
+      "binaryInfo": {
+        "compatibilityVersion": "1",
+        "currentVersion": "1",
+        "installName": "/usr/lib/libtest.dylib",
+        "twoLevelNamespace": true,
+        "type": "dylib"
+      },
+      "categories": [
+        {
+          "interface": "Basic",
+          "name": "Test"
+        }
+      ],
+      "globals": [],
+      "interfaces": [],
+      "protocols": [],
+      "target": "x86_64-apple-macos10.10"
+    },
+    {
+      "binaryInfo": {
+        "compatibilityVersion": "1",
+        "currentVersion": "1",
+        "installName": "/usr/local/lib/libtest.dylib",
+        "twoLevelNamespace": true,
+        "type": "dylib"
+      },
+      "categories": [],
+      "globals": [],
+      "interfaces": [],
+      "protocols": [
+        {
+          "name": "Test"
+        }
+      ],
+      "target": "x86_64-apple-macos10.10"
+    },
+    {
+      "binaryInfo": {
+        "compatibilityVersion": "1",
+        "currentVersion": "1",
+        "installName": "",
+        "twoLevelNamespace": true,
+        "type": "invalid"
+      },
+      "categories": [],
+      "globals": [],
+      "interfaces": [],
+      "protocols": [
+        {
+          "name": "Test"
+        }
+      ],
+      "target": "x86_64-apple-macos10.10"
+    }
+  ],
+  "SDKContentRoot": []
+}

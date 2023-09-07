@@ -1,0 +1,8 @@
+; RUN: rm -rf %t && mkdir -p %t
+; RUN: sed -e "s:SRC_DIR:%S/Inputs/src:g" %S/Inputs/doc_comment_input.json > %t/doc_comment_input.json
+
+; RUN: %tapi extractapi -target arm64-apple-macos11 %t/doc_comment_input.json -o %t/output.json | FileCheck -allow-empty %s
+; RUN: diff -a %t/output.json %S/Outputs/doc_comment_output.json
+
+; CHECK-NOT: error:
+; CHECK-NOT: warning:

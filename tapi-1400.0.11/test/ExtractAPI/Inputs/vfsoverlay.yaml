@@ -1,0 +1,17 @@
+{
+    "case-sensitive": "false",
+    "roots": [
+      {
+        "contents": [ 
+          {
+            "external-contents": "SRC_DIR/vfsoverlay/Foo.h",
+            "name": "Foo.h",
+            "type": "file"
+          }
+        ],
+        "name": "DST_DIR/Foo.framework/Headers",
+        "type": "directory"
+      }
+    ],
+    "version": "0"
+}

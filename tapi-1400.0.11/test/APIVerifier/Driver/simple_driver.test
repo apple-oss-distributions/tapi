@@ -1,0 +1,6 @@
+# RUN: cp %S/Inputs/simple.conf %t.conf
+# RUN: sed -i -e "s:{BASE_PATH}:%S/Inputs/base.framework:g" %t.conf
+# RUN: sed -i -e "s:{VARIANT_PATH}:%S/Inputs/variant.framework:g" %t.conf
+# RUN: not %tapi api-verify -x c %t.conf -F%S/Inputs 2>&1 | FileCheck %s
+# CHECK: warning: 'bar' is missing from target
+# CHEKC: error: 'foo' has incompatible definitions

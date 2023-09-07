@@ -1,0 +1,24 @@
+; RUN: rm -rf %t && mkdir -p %t/System/Library/Frameworks
+; RUN: cp -R %inputs/System/Library/Frameworks/APIRename.framework %t/System/Library/Frameworks/
+; RUN: %tapi sdkdb --action=all --no-verify-api --private-headers -o - -isysroot %sysroot --runtime-root %t --sdk-content-root %t 2>&1 | FileCheck %s
+CHECK: missing symbol '_OtherAPI' from binary interface
+CHECK-NOT: error:
+CHECK:  "binaryInfo": {
+; SKIP TO private.sdkdb
+CHECK:  "binaryInfo": {
+CHECK:  "globals": [
+CHECK-NEXT: {
+CHECK-NEXT:   "access": "public",
+CHECK-NEXT:   "introduced": "10.8",
+CHECK-NEXT:   "kind": "function",
+CHECK-NEXT:   "linkage": "exported",
+CHECK-NEXT:   "name": "_NewAPIName"
+CHECK-NEXT: },
+CHECK-NEXT: {
+CHECK-NEXT:   "access": "public",
+CHECK-NEXT:   "introduced": "10.8",
+CHECK-NEXT:   "kind": "function",
+CHECK-NEXT:   "linkage": "exported",
+CHECK-NEXT:   "name": "_OldAPIName"
+CHECK-NEXT: }
+CHECK-NEXT: ]

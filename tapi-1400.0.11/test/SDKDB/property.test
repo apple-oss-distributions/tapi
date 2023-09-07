@@ -1,0 +1,90 @@
+; Test information about properties are correctly propagate to methods
+; RUN: %tapi sdkdb --action=gen-private --no-verify-api -o %t %S/Inputs/property.partial.sdkdb 2>&1 | FileCheck %s --check-prefix=CHECK-DIAGNOSTICS --allow-empty
+; RUN: cat %t/private.sdkdb | FileCheck %s
+
+CHECK-DIAGNOSTICS-NOT: warning:
+
+CHECK:      {
+CHECK-NEXT:   "x86_64-apple-macosx": [
+CHECK-NEXT:     {
+CHECK-NEXT:       "binaryInfo": {
+CHECK-NEXT:         "compatibilityVersion": "1",
+CHECK-NEXT:         "currentVersion": "1.2.3",
+CHECK-NEXT:         "installName": "/usr/lib/libproperty_test.dylib",
+CHECK-NEXT:         "twoLevelNamespace": true,
+CHECK-NEXT:         "type": "dylib"
+CHECK-NEXT:       },
+CHECK-NEXT:       "interfaces": [
+CHECK-NEXT:         {
+CHECK-NEXT:           "access": "public",
+CHECK-NEXT:           "classMethods": [
+CHECK-NEXT:             {
+CHECK-NEXT:               "access": "public",
+CHECK-NEXT:               "name": "property4"
+CHECK-NEXT:             },
+CHECK-NEXT:             {
+CHECK-NEXT:               "access": "public",
+CHECK-NEXT:               "name": "setProperty4:"
+CHECK-NEXT:             }
+CHECK-NEXT:           ],
+CHECK-NEXT:           "instanceMethods": [
+CHECK-NEXT:             {
+CHECK-NEXT:               "access": "public",
+CHECK-NEXT:               "name": "property1"
+CHECK-NEXT:             },
+CHECK-NEXT:             {
+CHECK-NEXT:               "access": "public",
+CHECK-NEXT:               "name": "setProperty1:"
+CHECK-NEXT:             },
+CHECK-NEXT:             {
+CHECK-NEXT:               "access": "public",
+CHECK-NEXT:               "name": "property2"
+CHECK-NEXT:             },
+CHECK-NEXT:             {
+CHECK-NEXT:               "access": "public",
+CHECK-NEXT:               "name": "isProperty3"
+CHECK-NEXT:             },
+CHECK-NEXT:             {
+CHECK-NEXT:               "access": "public",
+CHECK-NEXT:               "name": "myCustomizedSetter:"
+CHECK-NEXT:             }
+CHECK-NEXT:           ],
+CHECK-NEXT:           "linkage": "exported",
+CHECK-NEXT:           "name": "Basic",
+CHECK-NEXT:           "properties": [
+CHECK-NEXT:             {
+CHECK-NEXT:               "access": "public",
+CHECK-NEXT:               "getter": "property1",
+CHECK-NEXT:               "name": "property1",
+CHECK-NEXT:               "setter": "setProperty1:"
+CHECK-NEXT:             },
+CHECK-NEXT:             {
+CHECK-NEXT:               "access": "public",
+CHECK-NEXT:               "attr": [
+CHECK-NEXT:                 "readonly"
+CHECK-NEXT:               ],
+CHECK-NEXT:               "getter": "property2",
+CHECK-NEXT:               "name": "property2"
+CHECK-NEXT:             },
+CHECK-NEXT:             {
+CHECK-NEXT:               "access": "public",
+CHECK-NEXT:               "getter": "isProperty3",
+CHECK-NEXT:               "name": "property3",
+CHECK-NEXT:               "setter": "myCustomizedSetter:"
+CHECK-NEXT:             },
+CHECK-NEXT:             {
+CHECK-NEXT:               "access": "public",
+CHECK-NEXT:               "attr": [
+CHECK-NEXT:                 "class"
+CHECK-NEXT:               ],
+CHECK-NEXT:               "getter": "property4",
+CHECK-NEXT:               "name": "property4",
+CHECK-NEXT:               "setter": "setProperty4"
+CHECK-NEXT:             }
+CHECK-NEXT:           ],
+CHECK-NEXT:           "super": "NSObject"
+CHECK-NEXT:         }
+CHECK-NEXT:       ]
+CHECK-NEXT:     }
+CHECK-NEXT:   ]
+CHECK-NEXT: }

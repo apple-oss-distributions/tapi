@@ -1,0 +1,16 @@
+; REQUIRES: iosmac
+; RUN: rm -rf %t && mkdir -p %t
+; RUN: cp -R %S/Inputs/Xplatform.framework %t 
+; RUN: yaml2obj %S/Inputs/Xplatform.yaml -o=%t/Xplatform.framework/Xplatform
+// Check that in zippered mode, a successful pass runs in both macos & maccatalyst.
+; RUN: %tapi installapi --filetype=tbd-v4 --target=x86_64-apple-macos10.15 --target-variant=x86_64-apple-ios13.1-macabi -Xplatform_ios-macabi -iframework %inputs/System/iOSSupport/System/Library/Frameworks  -install_name /System/Library/Frameworks/Xplatform.framework/Versions/A/Xplatform -current_version 1 -compatibility_version 1 -isysroot %sysroot %t/Xplatform.framework --verify-against=%t/Xplatform.framework/Xplatform --verify-mode=Pedantic 2>&1 | FileCheck -check-prefix=ZIPPERED %s --allow-empty 
+
+; ZIPPERED-NOT: error
+; ZIPPERED-NOT: warning
+
+// Use same tapi invocation & remove maccatalyst macro guards.
+// A missing header error should be invoked in macos pass because it wasn't given the needed search path.
+; RUN: not unifdef -DTARGET_OS_MACCATALYST  %S/Inputs/Xplatform.framework/Headers/Xplatform.h > %t/Xplatform.framework/Headers/Xplatform.h 
+; RUN: not %tapi installapi --filetype=tbd-v4 --target=x86_64-apple-macos10.15 --target-variant=x86_64-apple-ios13.1-macabi -Xplatform_ios-macabi -iframework %inputs/System/iOSSupport/System/Library/Frameworks  -install_name /System/Library/Frameworks/Xplatform.framework/Versions/A/Xplatform -current_version 1 -compatibility_version 1 -isysroot %sysroot %t/Xplatform.framework --verify-against=%t/Xplatform.framework/Xplatform --verify-mode=Pedantic 2>&1 | FileCheck -check-prefix=MACOSFAIL %s 
+
+; MACOSFAIL: fatal error: 'IOSMac/IOSMac.h' file not found

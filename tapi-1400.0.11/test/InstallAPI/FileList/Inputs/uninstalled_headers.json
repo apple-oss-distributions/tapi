@@ -1,0 +1,13 @@
+{
+  "version" : "2",
+  "headers" : [
+    {
+      "type" : "project",
+      "path" : "INPUT_DIR/src/a/Secret.h"
+    },
+    {
+      "type" : "public",
+      "path" : "INPUT_DIR/src/b/bar_internal.h"
+    }
+  ]
+}

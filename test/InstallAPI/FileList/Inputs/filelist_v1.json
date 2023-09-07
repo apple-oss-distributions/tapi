@@ -1,9 +1,0 @@
-{
-  "version" : "1",
-  "headers" : [
-    {
-      "type" : "public",
-      "path" : "SRC_DIR/a/Secret.h"
-    }
-  ]
-}

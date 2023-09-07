@@ -1,0 +1,8 @@
+; RUN: rm -rf %t && mkdir -p %t/usr/include
+; RUN: echo "bad header" > %t/usr/include/test.h
+; RUN: RC_PROJECT_COMPILATION_PLATFORM=osx  RC_MIN_VERSION_OPTION="-mmacos-verison-min=10.13" RC_ARCHS="x86_64" RC_XBS="YES" RC_ProjectName="PreIncludeTest" \
+; RUN: %tapi sdkdb --action=scan-interface -o %t -isysroot %sysroot --runtime-root %t --sdk-content-root %t -v 2>&1 | FileCheck %s
+
+; CHECK: Note: a reproducer of the error is written to: "{{(/|\\).*}}.{m,sh}".
+; CHECK: Note: the reproducer is intended to help users to debug the issue under a more familiar context using clang.
+; CHECK: Note: the paths in the reproducer might need to be adjusted.
