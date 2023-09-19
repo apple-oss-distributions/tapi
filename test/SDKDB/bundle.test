@@ -1,0 +1,22 @@
+; RUN: rm -rf %t && mkdir -p %t
+; RUN: %tapi sdkdb --action=all -o - -isysroot %sysroot --runtime-root %inputs/Bundle --sdk-content-root %inputs/Bundle 2>&1 | FileCheck %s
+
+CHECK:      "globals": [
+CHECK:        {
+CHECK:          "kind": "function",
+CHECK:          "linkage": "exported",
+CHECK:          "name": "_test_bundle_interface"
+CHECK:        }
+CHECK:      ]
+CHECK:      "interfaces": [
+CHECK:        {
+CHECK:          "instanceMethods": [
+CHECK:            {
+CHECK:              "name": "foo"
+CHECK:            }
+CHECK:          ],
+CHECK:          "linkage": "exported",
+CHECK:          "name": "TestBundle",
+CHECK:          "super": "NSObject"
+CHECK:        }
+CHECK:      ]

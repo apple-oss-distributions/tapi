@@ -1,0 +1,218 @@
+{
+  "PublicSDKContentRoot": [
+    {
+      "categories": [
+        {
+          "access": "public",
+          "interface": "Basic",
+          "name": "Test"
+        }
+      ],
+      "globals": [
+        {
+          "access": "public",
+          "kind": "variable",
+          "linkage": "exported",
+          "name": "_publicGlobalVariable"
+        }
+      ],
+      "interfaces": [
+        {
+          "access": "public",
+          "linkage": "exported",
+          "name": "Basic",
+          "super": "NSObject"
+        },
+        {
+          "access": "public",
+          "linkage": "exported",
+          "name": "Base",
+          "super": "NSObject",
+          "instanceMethods": [
+            {
+              "access": "public",
+              "name": "baseMethod"
+            }
+          ],
+          "properties": [
+            {
+              "access": "public",
+              "getter": "baseProperty",
+              "name": "baseProperty",
+              "setter": "setBaseProperty:"
+            }
+          ]
+        },
+        {
+          "access": "public",
+          "linkage": "exported",
+          "name": "PublicChild",
+          "super": "Base"
+        }
+      ],
+      "protocols": [
+        {
+          "access": "public",
+          "name": "Test"
+        }
+      ],
+      "target": "x86_64-apple-macos10.10"
+    }
+  ],
+  "RuntimeRoot": [
+    {
+      "binaryInfo": {
+        "compatibilityVersion": "1",
+        "currentVersion": "1",
+        "installName": "/System/Library/Frameworks/Basic.framework/Basic",
+        "twoLevelNamespace": true,
+        "type": "dylib"
+      },
+      "categories": [
+        {
+          "interface": "Basic",
+          "name": "Test"
+        }
+      ],
+      "globals": [
+        {
+          "linkage": "exported",
+          "name": "_publicGlobalVariable"
+        }
+      ],
+      "interfaces": [
+        {
+          "linkage": "exported",
+          "name": "Basic",
+          "super": "NSObject"
+        }
+      ],
+      "protocols": [
+        {
+          "name": "Test"
+        }
+      ],
+      "target": "x86_64-apple-macos10.10"
+    },
+    {
+      "binaryInfo": {
+        "compatibilityVersion": "1",
+        "currentVersion": "1",
+        "installName": "/System/Library/PrivateFrameworks/Test.framework/Test",
+        "twoLevelNamespace": true,
+        "type": "dylib"
+      },
+      "categories": [
+        {
+          "interface": "Basic",
+          "name": "Test"
+        }
+      ],
+      "globals": [
+        {
+          "linkage": "exported",
+          "name": "_publicGlobalVariable"
+        }
+      ],
+      "interfaces": [
+        {
+          "linkage": "exported",
+          "name": "Basic",
+          "super": "NSObject"
+        },
+        {
+          "linkage": "exported",
+          "name": "Base",
+          "super": "NSObject",
+          "instanceMethods": [
+            {
+              "access": "public",
+              "name": "baseMethod"
+            },
+            {
+              "access": "public",
+              "name": "baseProperty"
+            },
+            {
+              "access": "public",
+              "name": "setBaseProperty:"
+            }
+          ],
+          "properties": [
+            {
+              "access": "public",
+              "getter": "baseProperty",
+              "name": "baseProperty",
+              "setter": "setBaseProperty:"
+            }
+          ]
+        },
+        {
+          "linkage": "exported",
+          "name": "PublicChild",
+          "super": "Base",
+          "instanceMethods": [
+            {
+              "name": "baseMethod"
+            },
+            {
+              "name": "baseProperty"
+            },
+            {
+              "name": "setBaseProperty:"
+            }
+          ],
+          "properties": [
+            {
+              "getter": "baseProperty",
+              "name": "baseProperty",
+              "setter": "setBaseProperty:"
+            }
+          ]
+        },
+        {
+          "linkage": "exported",
+          "name": "PrivateChild",
+          "super": "Base",
+          "instanceMethods": [
+            {
+              "name": "baseMethod"
+            },
+            {
+              "name": "baseProperty"
+            },
+            {
+              "name": "setBaseProperty:"
+            }
+          ],
+          "properties": [
+            {
+              "getter": "baseProperty",
+              "name": "baseProperty",
+              "setter": "setBaseProperty:"
+            }
+          ]
+        }
+      ],
+      "protocols": [
+        {
+          "name": "Test"
+        }
+      ],
+      "target": "x86_64-apple-macos10.10"
+    }
+  ],
+  "SDKContentRoot": [
+    {
+      "interfaces": [
+        {
+          "access": "private",
+          "linkage": "exported",
+          "name": "PrivateChild",
+          "super": "Base"
+        }
+      ],
+      "target": "x86_64-apple-macos10.10"
+    }
+  ]
+}

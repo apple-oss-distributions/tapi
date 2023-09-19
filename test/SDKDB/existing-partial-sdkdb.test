@@ -1,0 +1,360 @@
+;; Testing existing SDKDB in the output directory
+
+; RUN: rm -rf %t
+; RUN: split-file %s %t
+
+; RUN: mkdir -p %t/output %t/output-2 %t/RuntimeRoot/usr/lib %t/SDKContentRoot %t/PublicSDKContentRoot/usr/include
+
+;; Add a binary into RuntimeRoot
+; RUN: cp %inputs/UsrLib/usr/lib/libTest.1.dylib %t/RuntimeRoot/usr/lib
+
+;; This is will be overwrite, do not contribute to input.
+; RUN: cp %S/Inputs/Simple.partial.sdkdb %t/output/partial.sdkdb
+
+;; Inputs that counts
+; RUN: cp %S/Inputs/categories.partial.sdkdb %t/output/test1.sdkdb
+; RUN: cp %S/Inputs/property.partial.sdkdb %t/output/test2.sdkdb
+
+;; Inputs that dont count
+; RUN: cp %S/Inputs/Duplicate.partial.sdkdb %t/output/do-not-count
+
+;; Bad inputs
+; RUN: echo "bad json file" > %t/output/bad.sdkdb
+
+; RUN: %tapi sdkdb --action=scan-interface --runtime-root %t/RuntimeRoot --sdk-content-root %t/SDKContentRoot --public-sdk-content-root %t/PublicSDKContentRoot --sdk %sysroot --output %t/output
+
+; RUN: %api-json-diff -partial-sdkdb %t/output/partial.sdkdb %t/expected.sdkdb | FileCheck %s --allow-empty
+
+;; Test installapi-sdkdb-path option
+; RUN: %tapi sdkdb --action=scan-interface --runtime-root %t/RuntimeRoot --sdk-content-root %t/SDKContentRoot --public-sdk-content-root %t/PublicSDKContentRoot --sdk %sysroot --output %t/output-2 --installapi-sdkdb-path %t/output
+
+; RUN: %api-json-diff -partial-sdkdb %t/output-2/partial.sdkdb %t/expected.sdkdb | FileCheck %s --allow-empty
+
+CHECK-NOT: error
+CHECK-NOT: warning  
+
+//--- expected.sdkdb
+{
+  "PublicSDKContentRoot": [
+    {
+      "categories": [
+        {
+          "access": "public",
+          "instanceMethods": [
+            {
+              "access": "public",
+              "name": "anInstanceMethodFromAnotherCategory"
+            }
+          ],
+          "interface": "Basic",
+          "name": "Another"
+        },
+        {
+          "access": "public",
+          "instanceMethods": [
+            {
+              "access": "public",
+              "name": "anInstanceMethodFromAnCategory"
+            }
+          ],
+          "interface": "Basic",
+          "name": "Cat"
+        }
+      ],
+      "interfaces": [
+        {
+          "access": "public",
+          "categories": [
+            "Cat",
+            "Another"
+          ],
+          "instanceMethods": [
+            {
+              "access": "public",
+              "name": "anInstanceMethodFromAnInterface"
+            }
+          ],
+          "linkage": "exported",
+          "name": "Basic",
+          "super": "NSObject"
+        }
+      ],
+      "target": "x86_64-apple-macos10.10"
+    },
+    {
+      "interfaces": [
+        {
+          "access": "public",
+          "linkage": "exported",
+          "name": "Basic",
+          "properties": [
+            {
+              "access": "public",
+              "getter": "property1",
+              "name": "property1",
+              "setter": "setProperty1:"
+            },
+            {
+              "access": "public",
+              "attr": [
+                "readonly"
+              ],
+              "getter": "property2",
+              "name": "property2"
+            },
+            {
+              "access": "public",
+              "getter": "isProperty3",
+              "name": "property3",
+              "setter": "myCustomizedSetter:"
+            },
+            {
+              "access": "public",
+              "attr": [
+                "class"
+              ],
+              "getter": "property4",
+              "name": "property4",
+              "setter": "setProperty4:"
+            }
+          ],
+          "super": "NSObject"
+        }
+      ],
+      "target": "x86_64-apple-macos10.10"
+    }
+  ],
+  "RuntimeRoot": [
+    {
+      "binaryInfo": {
+        "compatibilityVersion": "1",
+        "currentVersion": "1.2.3",
+        "installName": "/usr/lib/libproperty_test.dylib",
+        "twoLevelNamespace": true,
+        "type": "dylib"
+      },
+      "categories": [
+        {
+          "instanceMethods": [
+            {
+              "name": "anInstanceMethodFromAnInterface"
+            },
+            {
+              "name": "anInstanceMethodFromAnotherCategory"
+            }
+          ],
+          "interface": "Basic",
+          "name": "SomeExtension"
+        }
+      ],
+      "interfaces": [
+        {
+          "categories": [
+            "SomeExtension"
+          ],
+          "instanceMethods": [
+            {
+              "name": "anInstanceMethodFromAnCategory"
+            }
+          ],
+          "linkage": "exported",
+          "name": "Basic",
+          "super": "NSObject"
+        }
+      ],
+      "target": "x86_64-apple-macos10.10"
+    },
+    {
+      "binaryInfo": {
+        "compatibilityVersion": "1",
+        "currentVersion": "1.2.3",
+        "installName": "/usr/lib/libproperty_test.dylib",
+        "twoLevelNamespace": true,
+        "type": "dylib"
+      },
+      "interfaces": [
+        {
+          "classMethods": [
+            {
+              "name": "property4"
+            },
+            {
+              "name": "setProperty4:"
+            }
+          ],
+          "instanceMethods": [
+            {
+              "name": "property1"
+            },
+            {
+              "name": "setProperty1:"
+            },
+            {
+              "name": "property2"
+            },
+            {
+              "name": "isProperty3"
+            },
+            {
+              "name": "myCustomizedSetter:"
+            }
+          ],
+          "linkage": "exported",
+          "name": "Basic",
+          "properties": [
+            {
+              "getter": "property1",
+              "name": "property1",
+              "setter": "setProperty1:"
+            },
+            {
+              "attr": [
+                "readonly"
+              ],
+              "getter": "property2",
+              "name": "property2"
+            },
+            {
+              "getter": "isProperty3",
+              "name": "property3",
+              "setter": "myCustomizedSetter:"
+            },
+            {
+              "access": "public",
+              "attr": [
+                "class"
+              ],
+              "getter": "property4",
+              "name": "property4",
+              "setter": "setProperty4"
+            }
+          ],
+          "super": "NSObject"
+        }
+      ],
+      "target": "x86_64-apple-macos10.10"
+    },
+    {
+      "binaryInfo": {
+        "compatibilityVersion": "1",
+        "currentVersion": "1",
+        "installName": "/usr/lib/libTest.1.dylib",
+        "twoLevelNamespace": true,
+        "type": "dylib"
+      },
+      "globals": [
+        {
+          "kind": "function",
+          "linkage": "exported",
+          "name": "_exclude_function"
+        },
+        {
+          "kind": "function",
+          "linkage": "exported",
+          "name": "_exclude_function2"
+        },
+        {
+          "kind": "function",
+          "linkage": "exported",
+          "name": "_private_function"
+        },
+        {
+          "kind": "function",
+          "linkage": "exported",
+          "name": "_public_function"
+        }
+      ],
+      "target": "x86_64-apple-macos12"
+    }
+  ],
+  "SDKContentRoot": [
+    {
+      "categories": [
+        {
+          "access": "public",
+          "instanceMethods": [
+            {
+              "access": "public",
+              "name": "anInstanceMethodFromAnotherCategory"
+            }
+          ],
+          "interface": "Basic",
+          "name": "Another"
+        },
+        {
+          "access": "public",
+          "instanceMethods": [
+            {
+              "access": "public",
+              "name": "anInstanceMethodFromAnCategory"
+            }
+          ],
+          "interface": "Basic",
+          "name": "Cat"
+        }
+      ],
+      "interfaces": [
+        {
+          "access": "public",
+          "categories": [
+            "Cat",
+            "Another"
+          ],
+          "instanceMethods": [
+            {
+              "access": "public",
+              "name": "anInstanceMethodFromAnInterface"
+            }
+          ],
+          "linkage": "exported",
+          "name": "Basic",
+          "super": "NSObject"
+        }
+      ],
+      "target": "x86_64-apple-macos10.10"
+    },
+    {
+      "interfaces": [
+        {
+          "access": "public",
+          "linkage": "exported",
+          "name": "Basic",
+          "properties": [
+            {
+              "access": "public",
+              "getter": "property1",
+              "name": "property1",
+              "setter": "setProperty1:"
+            },
+            {
+              "access": "public",
+              "attr": [
+                "readonly"
+              ],
+              "getter": "property2",
+              "name": "property2"
+            },
+            {
+              "access": "public",
+              "getter": "isProperty3",
+              "name": "property3",
+              "setter": "myCustomizedSetter:"
+            },
+            {
+              "access": "public",
+              "attr": [
+                "class"
+              ],
+              "getter": "property4",
+              "name": "property4",
+              "setter": "setProperty4:"
+            }
+          ],
+          "super": "NSObject"
+        }
+      ],
+      "target": "x86_64-apple-macos10.10"
+    }
+  ],
+  "version": "1.0"
+}

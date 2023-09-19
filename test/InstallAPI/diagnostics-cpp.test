@@ -1,0 +1,13 @@
+; RUN: not %tapi installapi --target=arm64-apple-macos13 -x objective-c++  -install_name /System/Library/Frameworks/MismatchCpp.framework/Versions/A/MismatchCpp -current_version 1 -compatibility_version 1 -isysroot %sysroot %inputs/System/Library/Frameworks/MismatchCpp.framework --verify-against=%inputs/System/Library/Frameworks/MismatchCpp.framework/MismatchCpp --verify-mode=Pedantic --demangle 2>&1 | FileCheck %s 
+
+CHECK: warning: violations found for arm64-apple-macos13
+CHECK: CPP.h:5:7: error: declaration has external linkage, but symbol has internal linkage in dynamic library 'vtable for Bar'
+CHECK-NEXT: class Bar : Foo {
+CHECK-NEXT:       ^
+CHECK-NEXT: CPP.h:5:7: error: declaration has external linkage, but symbol has internal linkage in dynamic library 'typeinfo for Bar'
+CHECK-NEXT: CPP.h:5:7: error: declaration has external linkage, but symbol has internal linkage in dynamic library 'typeinfo name for Bar'
+CHECK-NEXT: CPP.h:6:7: error: dynamic library symbol '(weak-def) Bar::init()' is weak defined, but it's declaration is not
+CHECK-NEXT:   int init();
+CHECK-NEXT:       ^
+CHECK-NEXT: warning: violations found for arm64
+CHECK-NEXT: error: no declaration found for exported symbol 'int foo<unsigned int>(unsigned int)' in dynamic library

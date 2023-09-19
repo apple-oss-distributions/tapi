@@ -1,0 +1,50 @@
+{
+  "PublicSDKContentRoot": [
+    {
+      "globals": [
+        {
+          "access": "public",
+          "file": "/System/Library/Frameworks/Conflict.framework/Versions/A/Headers/ConflictA.h",
+          "kind": "variable",
+          "linkage": "exported",
+          "name": "_publicGlobalVariable"
+        }
+      ],
+      "target": "arm64-apple-macos13"
+    }
+  ],
+  "RuntimeRoot": [
+    {
+      "binaryInfo": {
+        "compatibilityVersion": "1",
+        "currentVersion": "1.2.3",
+        "installName": "/System/Library/Frameworks/Conflict.framework/Versions/A/Conflict",
+        "twoLevelNamespace": true,
+        "type": "dylib"
+      },
+      "globals": [
+        {
+          "linkage": "exported",
+          "name": "_publicGlobalVariable"
+        }
+      ],
+      "target": "arm64-apple-macos13"
+    }
+  ],
+  "SDKContentRoot": [
+    {
+      "globals": [
+        {
+          "access": "public",
+          "file": "/System/Library/Frameworks/Conflict.framework/Versions/A/Headers/ConflictA.h",
+          "kind": "variable",
+          "linkage": "exported",
+          "name": "_publicGlobalVariable"
+        }
+      ],
+      "target": "arm64-apple-macos13"
+    }
+  ],
+  "projectName": "ConflictA",
+  "version": "1.0"
+}

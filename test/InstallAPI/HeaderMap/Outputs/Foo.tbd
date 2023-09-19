@@ -1,0 +1,11 @@
+--- !tapi-tbd
+tbd-version:     4
+targets:         [ x86_64-macos ]
+flags:           [ not_app_extension_safe ]
+install-name:    '/System/Library/Frameworks/Foo.framework/Foo'
+current-version: 0
+compatibility-version: 0
+exports:
+  - targets:         [ x86_64-macos ]
+    symbols:         [ _private_api, _public_api ]
+...

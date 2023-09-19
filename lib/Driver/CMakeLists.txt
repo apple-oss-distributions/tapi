@@ -1,0 +1,31 @@
+add_tapi_library(tapiDriver
+  APINormalizer.cpp
+  APIVerifyDriver.cpp
+  ArchiveDriver.cpp
+  Configuration.cpp
+  ConfigurationFileReader.cpp
+  DirectoryScanner.cpp
+  Driver.cpp
+  DriverOptions.cpp
+  DriverUtils.cpp
+  FileListVisitor.cpp
+  Glob.cpp
+  HeaderGlob.cpp
+  InstallAPIDriver.cpp
+  Options.cpp
+  ReexportDriver.cpp
+  SDKDBDriver.cpp
+  StubDriver.cpp
+
+  DEPENDS
+  TapiDriverOptions
+
+  LINK_LIBS
+  clangBasic
+  tapiAPIVerifier
+  tapiCore
+  tapiDiagnostics
+  tapiFrontend
+  tapiConfig
+  tapiSDKDB
+  )

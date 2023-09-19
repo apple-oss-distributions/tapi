@@ -1,0 +1,510 @@
+{
+  "PublicSDKContentRoot": [],
+  "RuntimeRoot": [],
+  "SDKContentRoot": [
+    {
+      "categories": [
+        {
+          "access": "public",
+          "file": "Basic.h",
+          "instanceMethods": [
+            {
+              "access": "public",
+              "file": "Basic.h",
+              "name": "anInstanceMethodFromAnExtension"
+            }
+          ],
+          "interface": "Basic6",
+          "ivars": [
+            {
+              "access": "public",
+              "accessControl": "public",
+              "file": "Basic.h",
+              "linkage": "exported",
+              "name": "ivar1"
+            }
+          ],
+          "name": "",
+          "properties": [
+            {
+              "access": "public",
+              "file": "Basic.h",
+              "getter": "property1",
+              "name": "property1",
+              "setter": "setProperty1:"
+            }
+          ]
+        },
+        {
+          "access": "public",
+          "file": "Basic.h",
+          "instanceMethods": [
+            {
+              "access": "public",
+              "file": "Basic.h",
+              "name": "anInstanceMethodFromACategory"
+            }
+          ],
+          "interface": "Basic6",
+          "name": "Foo",
+          "properties": [
+            {
+              "access": "public",
+              "file": "Basic.h",
+              "getter": "property2",
+              "name": "property2",
+              "setter": "setProperty2:"
+            }
+          ]
+        },
+        {
+          "access": "public",
+          "file": "Basic.h",
+          "instanceMethods": [
+            {
+              "access": "public",
+              "file": "Basic.h",
+              "name": "anInstanceMethodFromAnHiddenExtension"
+            }
+          ],
+          "interface": "Basic7",
+          "name": ""
+        },
+        {
+          "access": "public",
+          "file": "Basic.h",
+          "interface": "Basic9",
+          "name": "deprecated",
+          "properties": [
+            {
+              "access": "public",
+              "file": "Basic.h",
+              "getter": "aProperty",
+              "introduced": "10.8",
+              "name": "aProperty",
+              "setter": "setAProperty:"
+            }
+          ]
+        },
+        {
+          "access": "public",
+          "file": "External.h",
+          "instanceMethods": [
+            {
+              "access": "public",
+              "dynamic": true,
+              "file": "External.h",
+              "name": "addChildObject:"
+            },
+            {
+              "access": "public",
+              "dynamic": true,
+              "file": "External.h",
+              "name": "removeChildObject:"
+            },
+            {
+              "access": "public",
+              "dynamic": true,
+              "file": "External.h",
+              "name": "addChild:"
+            },
+            {
+              "access": "public",
+              "dynamic": true,
+              "file": "External.h",
+              "name": "removeChild:"
+            }
+          ],
+          "interface": "ExternalManagedObject",
+          "name": "CoreDataGeneratedAccessors"
+        },
+        {
+          "access": "public",
+          "file": "Simple.h",
+          "interface": "FooClass",
+          "name": "Test",
+          "protocols": [
+            "ForwardProcotol"
+          ]
+        },
+        {
+          "access": "public",
+          "file": "External.h",
+          "instanceMethods": [
+            {
+              "access": "public",
+              "file": "External.h",
+              "name": "supportsSimple"
+            }
+          ],
+          "interface": "NSManagedObject",
+          "name": "Simple"
+        }
+      ],
+      "globals": [
+        {
+          "access": "public",
+          "file": "Simple.h",
+          "kind": "variable",
+          "linkage": "exported",
+          "name": "_publicGlobalVariable"
+        },
+        {
+          "access": "public",
+          "file": "Simple.h",
+          "kind": "variable",
+          "linkage": "exported",
+          "name": "_weakPublicGlobalVariable",
+          "weakDefined": true
+        }
+      ],
+      "interfaces": [
+        {
+          "access": "public",
+          "file": "Basic.h",
+          "instanceMethods": [
+            {
+              "access": "public",
+              "file": "Basic.h",
+              "introduced": "10.11",
+              "name": "aMethod"
+            },
+            {
+              "access": "public",
+              "file": "Basic.h",
+              "name": "bMethod",
+              "unavailable": true
+            }
+          ],
+          "linkage": "exported",
+          "name": "A",
+          "super": "NSObject"
+        },
+        {
+          "access": "public",
+          "file": "Simple.h",
+          "hasException": true,
+          "linkage": "exported",
+          "name": "Base",
+          "super": "NSObject"
+        },
+        {
+          "access": "public",
+          "file": "Basic.h",
+          "linkage": "exported",
+          "name": "Basic1",
+          "super": ""
+        },
+        {
+          "access": "public",
+          "file": "Basic.h",
+          "linkage": "exported",
+          "name": "Basic2",
+          "super": "NSObject"
+        },
+        {
+          "access": "public",
+          "file": "Basic.h",
+          "linkage": "exported",
+          "name": "Basic3",
+          "properties": [
+            {
+              "access": "public",
+              "file": "Basic.h",
+              "getter": "property1",
+              "name": "property1",
+              "setter": "setProperty1:"
+            },
+            {
+              "access": "public",
+              "attr": [
+                "readonly"
+              ],
+              "file": "Basic.h",
+              "getter": "property2",
+              "name": "property2"
+            },
+            {
+              "access": "public",
+              "file": "Basic.h",
+              "getter": "isProperty3",
+              "name": "property3",
+              "setter": "setProperty3:"
+            },
+            {
+              "access": "public",
+              "file": "Basic.h",
+              "getter": "dynamicProp",
+              "name": "dynamicProp",
+              "setter": "setDynamicProp:"
+            }
+          ],
+          "super": "NSObject"
+        },
+        {
+          "access": "public",
+          "file": "Basic.h",
+          "ivars": [
+            {
+              "access": "public",
+              "accessControl": "public",
+              "file": "Basic.h",
+              "linkage": "exported",
+              "name": "ivar1"
+            },
+            {
+              "access": "public",
+              "accessControl": "protected",
+              "file": "Basic.h",
+              "linkage": "exported",
+              "name": "ivar2"
+            },
+            {
+              "access": "public",
+              "accessControl": "package",
+              "file": "Basic.h",
+              "linkage": "exported",
+              "name": "ivar3"
+            },
+            {
+              "access": "public",
+              "accessControl": "private",
+              "file": "Basic.h",
+              "linkage": "exported",
+              "name": "ivar4"
+            }
+          ],
+          "linkage": "exported",
+          "name": "Basic4",
+          "super": "NSObject"
+        },
+        {
+          "access": "public",
+          "file": "Basic.h",
+          "ivars": [
+            {
+              "access": "public",
+              "accessControl": "private",
+              "file": "Basic.h",
+              "linkage": "exported",
+              "name": "ivar4"
+            },
+            {
+              "access": "public",
+              "accessControl": "package",
+              "file": "Basic.h",
+              "linkage": "exported",
+              "name": "ivar3"
+            },
+            {
+              "access": "public",
+              "accessControl": "protected",
+              "file": "Basic.h",
+              "linkage": "exported",
+              "name": "ivar2"
+            },
+            {
+              "access": "public",
+              "accessControl": "public",
+              "file": "Basic.h",
+              "linkage": "exported",
+              "name": "ivar1"
+            }
+          ],
+          "linkage": "exported",
+          "name": "Basic4_2",
+          "super": "NSObject"
+        },
+        {
+          "access": "public",
+          "classMethods": [
+            {
+              "access": "public",
+              "file": "Basic.h",
+              "name": "aClassMethod"
+            }
+          ],
+          "file": "Basic.h",
+          "instanceMethods": [
+            {
+              "access": "public",
+              "file": "Basic.h",
+              "name": "anInstanceMethod"
+            }
+          ],
+          "linkage": "exported",
+          "name": "Basic5",
+          "super": "NSObject"
+        },
+        {
+          "access": "public",
+          "categories": [
+            "Foo"
+          ],
+          "file": "Basic.h",
+          "linkage": "exported",
+          "name": "Basic6",
+          "super": "NSObject"
+        },
+        {
+          "access": "public",
+          "classMethods": [
+            {
+              "access": "public",
+              "file": "Basic.h",
+              "name": "useSameName"
+            }
+          ],
+          "file": "Basic.h",
+          "linkage": "exported",
+          "name": "Basic8",
+          "super": "NSObject"
+        },
+        {
+          "access": "public",
+          "categories": [
+            "deprecated"
+          ],
+          "file": "Basic.h",
+          "linkage": "exported",
+          "name": "Basic9",
+          "properties": [
+            {
+              "access": "public",
+              "attr": [
+                "readonly"
+              ],
+              "file": "Basic.h",
+              "getter": "aProperty",
+              "introduced": "10.10",
+              "name": "aProperty"
+            }
+          ],
+          "super": "NSObject"
+        },
+        {
+          "access": "public",
+          "categories": [
+            "CoreDataGeneratedAccessors"
+          ],
+          "file": "External.h",
+          "instanceMethods": [
+            {
+              "access": "public",
+              "file": "External.h",
+              "name": "foo"
+            }
+          ],
+          "linkage": "exported",
+          "name": "ExternalManagedObject",
+          "super": "NSManagedObject"
+        },
+        {
+          "access": "public",
+          "categories": [
+            "Test"
+          ],
+          "file": "Simple.h",
+          "linkage": "exported",
+          "name": "FooClass",
+          "protocols": [
+            "FooProtocol",
+            "BarProtocol"
+          ],
+          "super": ""
+        },
+        {
+          "access": "public",
+          "file": "Simple.h",
+          "linkage": "exported",
+          "name": "Simple",
+          "super": "NSObject"
+        },
+        {
+          "access": "public",
+          "file": "Simple.h",
+          "hasException": true,
+          "linkage": "exported",
+          "name": "SubClass",
+          "super": "Base"
+        }
+      ],
+      "protocols": [
+        {
+          "access": "public",
+          "file": "Simple.h",
+          "instanceMethods": [
+            {
+              "access": "public",
+              "file": "Simple.h",
+              "name": "barMethod"
+            }
+          ],
+          "name": "BarProtocol"
+        },
+        {
+          "access": "public",
+          "file": "Simple.h",
+          "instanceMethods": [
+            {
+              "access": "public",
+              "file": "Simple.h",
+              "name": "baseMethod"
+            }
+          ],
+          "name": "BaseProtocol"
+        },
+        {
+          "access": "public",
+          "file": "Simple.h",
+          "instanceMethods": [
+            {
+              "access": "public",
+              "file": "Simple.h",
+              "name": "protocolMethod"
+            }
+          ],
+          "introduced": "10.11",
+          "name": "FooProtocol",
+          "protocols": [
+            "BaseProtocol"
+          ]
+        },
+        {
+          "access": "public",
+          "file": "Basic.h",
+          "instanceMethods": [
+            {
+              "access": "public",
+              "file": "Basic.h",
+              "name": "aMethod"
+            }
+          ],
+          "name": "_A"
+        }
+      ],
+      "target": "x86_64-apple-macos10.12"
+    },
+    {
+      "globals": [
+        {
+          "access": "private",
+          "file": "SimplePrivate.h",
+          "kind": "variable",
+          "linkage": "exported",
+          "name": "_privateGlobalVariable"
+        },
+        {
+          "access": "private",
+          "file": "SimplePrivate.h",
+          "kind": "variable",
+          "linkage": "exported",
+          "name": "_weakPrivateGlobalVariable",
+          "weakDefined": true
+        }
+      ],
+      "target": "x86_64-apple-macos10.12"
+    }
+  ],
+  "version": "1.0"
+}

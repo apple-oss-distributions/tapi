@@ -1,0 +1,172 @@
+; RUN: rm -rf %t
+; RUN: split-file %s %t
+; RUN: %tapi-mrm -o %t.sdkdb  %S/Inputs/api-propagation.partial.sdkdb
+; RUN: %api-json-diff -sdkdb %t.sdkdb %t/expected.sdkdb 2>&1 | FileCheck %s --allow-empty
+
+; CHECK-NOT: error
+
+//--- expected.sdkdb
+{
+  "x86_64-apple-macosx": [
+    {
+      "binaryInfo": {
+        "compatibilityVersion": "1",
+        "currentVersion": "1",
+        "installName": "/System/Library/Frameworks/Basic.framework/Basic",
+        "twoLevelNamespace": true,
+        "type": "dylib"
+      },
+      "categories": [
+        {
+          "access": "public",
+          "interface": "Basic",
+          "name": "Test"
+        }
+      ],
+      "globals": [
+        {
+          "access": "public",
+          "kind": "variable",
+          "linkage": "exported",
+          "name": "_publicGlobalVariable"
+        }
+      ],
+      "interfaces": [
+        {
+          "access": "public",
+          "categories": [
+            "Test"
+          ],
+          "linkage": "exported",
+          "name": "Basic",
+          "super": "NSObject"
+        }
+      ],
+      "protocols": [
+        {
+          "access": "public",
+          "name": "Test"
+        }
+      ]
+    },
+    {
+      "binaryInfo": {
+        "compatibilityVersion": "1",
+        "currentVersion": "1",
+        "installName": "/System/Library/PrivateFrameworks/Test.framework/Test",
+        "twoLevelNamespace": true,
+        "type": "dylib"
+      },
+      "categories": [
+        {
+          "interface": "Basic",
+          "name": "Test"
+        }
+      ],
+      "globals": [
+        {
+          "access": "public",
+          "kind": "variable",
+          "linkage": "exported",
+          "name": "_publicGlobalVariable"
+        }
+      ],
+      "interfaces": [
+        {
+          "access": "public",
+          "instanceMethods": [
+            {
+              "access": "public",
+              "name": "baseMethod"
+            },
+            {
+              "access": "public",
+              "name": "baseProperty"
+            },
+            {
+              "access": "public",
+              "name": "setBaseProperty:"
+            }
+          ],
+          "linkage": "exported",
+          "name": "Base",
+          "properties": [
+            {
+              "access": "public",
+              "getter": "baseProperty",
+              "name": "baseProperty",
+              "setter": "setBaseProperty:"
+            }
+          ],
+          "super": "NSObject"
+        },
+        {
+          "categories": [
+            "Test"
+          ],
+          "linkage": "exported",
+          "name": "Basic",
+          "super": "NSObject"
+        },
+        {
+          "access": "private",
+          "instanceMethods": [
+            {
+              "name": "baseMethod"
+            },
+            {
+              "name": "baseProperty"
+            },
+            {
+              "name": "setBaseProperty:"
+            }
+          ],
+          "linkage": "exported",
+          "name": "PrivateChild",
+          "properties": [
+            {
+              "getter": "baseProperty",
+              "name": "baseProperty",
+              "setter": "setBaseProperty:"
+            }
+          ],
+          "super": "Base"
+        },
+        {
+          "access": "public",
+          "instanceMethods": [
+            {
+              "access": "public",
+              "name": "baseMethod"
+            },
+            {
+              "access": "public",
+              "name": "baseProperty"
+            },
+            {
+              "access": "public",
+              "name": "setBaseProperty:"
+            }
+          ],
+          "linkage": "exported",
+          "name": "PublicChild",
+          "properties": [
+            {
+              "access": "public",
+              "getter": "baseProperty",
+              "name": "baseProperty",
+              "setter": "setBaseProperty:"
+            }
+          ],
+          "super": "Base"
+        }
+      ],
+      "protocols": [
+        {
+          "access": "public",
+          "name": "Test"
+        }
+      ]
+    }
+  ]
+}

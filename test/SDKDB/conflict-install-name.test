@@ -1,0 +1,8 @@
+; RUN: rm -rf %t && mkdir -p %t
+
+; RUN: %tapi-mrm -o %t/baseline.sdkdb --bitcode %S/Inputs/conflict-install-name-A.partial.sdkdb
+; RUN: %tapi-mrm -o %t/conflict-install-name.sdkdb --bitcode %S/Inputs/conflict-install-name-A.partial.sdkdb %S/Inputs/conflict-install-name-B.partial.sdkdb
+
+; RUN: %tapi-sdkdb --compare --baseline %t/baseline.sdkdb %t/conflict-install-name.sdkdb 2>&1 | FileCheck %s
+
+CHECK: warning: conflicting install name '/System/Library/Frameworks/Conflict.framework/Versions/A/Conflict' from project 'ConflictA' and 'ConflictB'

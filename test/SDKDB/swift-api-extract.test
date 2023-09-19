@@ -1,0 +1,148 @@
+; REQUIRES: swift_api_extract
+
+; RUN: rm -rf %t && mkdir -p %t
+; RUN: _TAPI_TEST_SWIFT_API_EXTRACT=%swift_api_extract RC_PROJECT_COMPILATION_PLATFORM=osx RC_ARCHS="x86_64" \
+; RUN:   %tapi sdkdb --action=scan-interface --runtime-root %t \
+; RUN:   --sdk-content-root %S/Inputs/fakeroot --public-sdk-content-root %S/Inputs/fakeroot \
+; RUN:   --sdk %sysroot --output %t
+; RUN: cat %t/partial.sdkdb | FileCheck %s --match-full-lines
+
+; CHECK:      "SDKContentRoot": [
+; CHECK-NEXT:   {
+; CHECK-NEXT:     "globals": [
+; CHECK-NEXT:       {
+; CHECK-NEXT:         "access": "public",
+; CHECK-NEXT:         "file": "/System/Library/Frameworks/Test.framework/Modules/Test.swiftmodule",
+; CHECK-NEXT:         "linkage": "exported",
+; CHECK-NEXT:         "name": "_$s4Test7MyClassC6methodyyFTj"
+; CHECK-NEXT:       },
+; CHECK-NEXT:       {
+; CHECK-NEXT:         "access": "public",
+; CHECK-NEXT:         "file": "/System/Library/Frameworks/Test.framework/Modules/Test.swiftmodule",
+; CHECK-NEXT:         "linkage": "exported",
+; CHECK-NEXT:         "name": "_$s4Test7MyClassC6methodyyFTq"
+; CHECK-NEXT:       },
+; CHECK-NEXT:       {
+; CHECK-NEXT:         "access": "public",
+; CHECK-NEXT:         "file": "/System/Library/Frameworks/Test.framework/Modules/Test.swiftmodule",
+; CHECK-NEXT:         "linkage": "exported",
+; CHECK-NEXT:         "name": "_$s4Test7MyClassCMa"
+; CHECK-NEXT:       },
+; CHECK-NEXT:       {
+; CHECK-NEXT:         "access": "public",
+; CHECK-NEXT:         "file": "/System/Library/Frameworks/Test.framework/Modules/Test.swiftmodule",
+; CHECK-NEXT:         "linkage": "exported",
+; CHECK-NEXT:         "name": "_$s4Test7MyClassCMn"
+; CHECK-NEXT:       },
+; CHECK-NEXT:       {
+; CHECK-NEXT:         "access": "public",
+; CHECK-NEXT:         "file": "/System/Library/Frameworks/Test.framework/Modules/Test.swiftmodule",
+; CHECK-NEXT:         "linkage": "exported",
+; CHECK-NEXT:         "name": "_$s4Test7MyClassCMo"
+; CHECK-NEXT:       },
+; CHECK-NEXT:       {
+; CHECK-NEXT:         "access": "public",
+; CHECK-NEXT:         "file": "/System/Library/Frameworks/Test.framework/Modules/Test.swiftmodule",
+; CHECK-NEXT:         "linkage": "exported",
+; CHECK-NEXT:         "name": "_$s4Test7MyClassCMu"
+; CHECK-NEXT:       },
+; CHECK-NEXT:       {
+; CHECK-NEXT:         "access": "public",
+; CHECK-NEXT:         "file": "/System/Library/Frameworks/Test.framework/Modules/Test.swiftmodule",
+; CHECK-NEXT:         "linkage": "exported",
+; CHECK-NEXT:         "name": "_$s4Test7MyClassCN"
+; CHECK-NEXT:       },
+; CHECK-NEXT:       {
+; CHECK-NEXT:         "access": "public",
+; CHECK-NEXT:         "file": "/System/Library/Frameworks/Test.framework/Modules/Test.swiftmodule",
+; CHECK-NEXT:         "linkage": "exported",
+; CHECK-NEXT:         "name": "_$s4Test7MyClassCfD"
+; CHECK:            }
+; CHECK-NEXT:     ],
+; CHECK-NEXT:     "interfaces": [
+; CHECK-NEXT:       {
+; CHECK-NEXT:         "access": "public",
+; CHECK-NEXT:         "file": "/System/Library/Frameworks/Test.framework/Modules/Test.swiftmodule",
+; CHECK-NEXT:         "instanceMethods": [
+; CHECK-NEXT:           {
+; CHECK-NEXT:             "access": "public",
+; CHECK-NEXT:             "file": "/System/Library/Frameworks/Test.framework/Modules/Test.swiftmodule",
+; CHECK-NEXT:             "name": "method"
+; CHECK-NEXT:           }
+; CHECK-NEXT:         ],
+; CHECK-NEXT:         "linkage": "exported",
+; CHECK-NEXT:         "name": "_TtC4Test7MyClass",
+; CHECK-NEXT:         "super": "NSObject"
+; CHECK-NEXT:       }
+; CHECK-NEXT:     ],
+; CHECK-NEXT:     "target": "x86_64-apple-macos"
+; CHECK-NEXT:   },
+; CHECK-NEXT:   {
+; CHECK-NEXT:     "globals": [
+; CHECK-NEXT:       {
+; CHECK-NEXT:         "access": "public",
+; CHECK-NEXT:         "file": "/usr/lib/swift/test.swiftmodule",
+; CHECK-NEXT:         "linkage": "exported",
+; CHECK-NEXT:         "name": "_$s4test4TestC6methodyyFTj"
+; CHECK-NEXT:       },
+; CHECK-NEXT:       {
+; CHECK-NEXT:         "access": "public",
+; CHECK-NEXT:         "file": "/usr/lib/swift/test.swiftmodule",
+; CHECK-NEXT:         "linkage": "exported",
+; CHECK-NEXT:         "name": "_$s4test4TestC6methodyyFTq"
+; CHECK-NEXT:       },
+; CHECK-NEXT:       {
+; CHECK-NEXT:         "access": "public",
+; CHECK-NEXT:         "file": "/usr/lib/swift/test.swiftmodule",
+; CHECK-NEXT:         "linkage": "exported",
+; CHECK-NEXT:         "name": "_$s4test4TestCMa"
+; CHECK-NEXT:       },
+; CHECK-NEXT:       {
+; CHECK-NEXT:         "access": "public",
+; CHECK-NEXT:         "file": "/usr/lib/swift/test.swiftmodule",
+; CHECK-NEXT:         "linkage": "exported",
+; CHECK-NEXT:         "name": "_$s4test4TestCMn"
+; CHECK-NEXT:       },
+; CHECK-NEXT:       {
+; CHECK-NEXT:         "access": "public",
+; CHECK-NEXT:         "file": "/usr/lib/swift/test.swiftmodule",
+; CHECK-NEXT:         "linkage": "exported",
+; CHECK-NEXT:         "name": "_$s4test4TestCMo"
+; CHECK-NEXT:       },
+; CHECK-NEXT:       {
+; CHECK-NEXT:         "access": "public",
+; CHECK-NEXT:         "file": "/usr/lib/swift/test.swiftmodule",
+; CHECK-NEXT:         "linkage": "exported",
+; CHECK-NEXT:         "name": "_$s4test4TestCMu"
+; CHECK-NEXT:       },
+; CHECK-NEXT:       {
+; CHECK-NEXT:         "access": "public",
+; CHECK-NEXT:         "file": "/usr/lib/swift/test.swiftmodule",
+; CHECK-NEXT:         "linkage": "exported",
+; CHECK-NEXT:         "name": "_$s4test4TestCN"
+; CHECK-NEXT:       },
+; CHECK-NEXT:       {
+; CHECK-NEXT:         "access": "public",
+; CHECK-NEXT:         "file": "/usr/lib/swift/test.swiftmodule",
+; CHECK-NEXT:         "linkage": "exported",
+; CHECK-NEXT:         "name": "_$s4test4TestCfD"
+; CHECK:            }
+; CHECK-NEXT:     ],
+; CHECK-NEXT:     "interfaces": [
+; CHECK-NEXT:       {
+; CHECK-NEXT:         "access": "public",
+; CHECK-NEXT:         "file": "/usr/lib/swift/test.swiftmodule",
+; CHECK-NEXT:         "instanceMethods": [
+; CHECK-NEXT:           {
+; CHECK-NEXT:             "access": "public",
+; CHECK-NEXT:             "file": "/usr/lib/swift/test.swiftmodule",
+; CHECK-NEXT:             "name": "method"
+; CHECK-NEXT:           }
+; CHECK-NEXT:         ],
+; CHECK-NEXT:         "linkage": "exported",
+; CHECK-NEXT:         "name": "_TtC4test4Test",
+; CHECK-NEXT:         "super": "NSObject"
+; CHECK-NEXT:       }
+; CHECK-NEXT:     ],
+; CHECK-NEXT:     "target": "x86_64-apple-macos"
+; CHECK-NEXT:   }

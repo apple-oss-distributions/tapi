@@ -1,0 +1,21 @@
+// RUN: rm -rf %t
+// RUN: split-file %s %t
+; RUN: %tapi installapi -arch x86_64 -arch arm64 -install_name /System/Library/Frameworks/Umbrella4.framework/Versions/A/Umbrella4 -current_version 1 -compatibility_version 1 -mtargetos=macosx13 -isysroot %sysroot %inputs/System/Library/Frameworks/Umbrella4.framework -F %inputs/System/Library/Frameworks -L %inputs/usr/lib --verify-mode=Pedantic --verify-against=%inputs/System/Library/Frameworks/Umbrella4.framework/Umbrella4 -reexport_framework SubBar -o %t/Umbrella4.tbd 2>&1 | FileCheck -allow-empty %s
+; RUN: %readtapi --compare %t/Umbrella4.tbd %t/expected.tbd 2>&1 | FileCheck -allow-empty %s
+
+; CHECK-NOT: error
+; CHECK-NOT: warning
+
+//--- expected.tbd
+--- !tapi-tbd
+tbd-version:     4
+targets:         [ x86_64-macos, arm64-macos ]
+flags:           [ not_app_extension_safe ]
+install-name:    '/System/Library/Frameworks/Umbrella4.framework/Versions/A/Umbrella4'
+reexported-libraries:
+  - targets:         [ x86_64-macos, arm64-macos ]
+    libraries:       [ '/System/Library/Frameworks/SubBar.framework/Versions/A/SubBar' ]
+exports:
+  - targets:         [ x86_64-macos ]
+    symbols:         [ _foo ]
+...

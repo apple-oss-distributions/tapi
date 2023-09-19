@@ -1,0 +1,37 @@
+; REQUIRES: swift_api_extract
+
+; RUN: rm -rf %t && mkdir -p %t
+; RUN: split-file %s %t
+; RUN: _TAPI_TEST_SWIFT_API_EXTRACT=%swift_api_extract RC_PROJECT_COMPILATION_PLATFORM=osx RC_ARCHS="x86_64" \
+; RUN:   %tapi sdkdb --action=scan-interface --runtime-root %t/RuntimeRoot \
+; RUN:   --sdk-content-root %t/SDKContentRoot --public-sdk-content-root %t/PublicSDKContentRoot \
+; RUN:   --sdk %sysroot --output %t
+
+; CHECK: Note: a reproducer
+
+//--- RuntimeRoot/System/Library/Frameworks/Test.framework/Modules/Test.swiftmodule/x86_64-apple-macos.swiftinterface
+// swift-interface-format-version: 1.0
+// swift-compiler-version: Apple Swift version 5.3
+// swift-module-flags: -target x86_64-apple-macos13.0 -enable-library-evolution -module-name Test
+
+public class MyRuntimeRootClass {
+  public func
+}
+
+//--- SDKContentRoot/System/Library/Frameworks/Test.framework/Modules/Test.swiftmodule/x86_64-apple-macos.swiftinterface
+// swift-interface-format-version: 1.0
+// swift-compiler-version: Apple Swift version 5.3
+// swift-module-flags: -target x86_64-apple-macos13.0 -enable-library-evolution -module-name Test
+
+public class MySDKContentRootClass {
+  public func
+}
+
+//--- PublicSDKContentRoot/System/Library/Frameworks/Test.framework/Modules/Test.swiftmodule/x86_64-apple-macos.swiftinterface
+// swift-interface-format-version: 1.0
+// swift-compiler-version: Apple Swift version 5.3
+// swift-module-flags: -target x86_64-apple-macos13.0 -enable-library-evolution -module-name Test
+
+public class MyPublicSDKContentRootClass {
+  public func
+}

@@ -1,0 +1,7 @@
+; RUN: rm -rf %t && mkdir %t
+; RUN: not %tapi installapi -target x86_64-apple-macosx13 -target arm64-apple-macosx13 -install_name /System/Library/Frameworks/SingleArchError.framework/Versions/A/SingleArchError -current_version 1 -compatibility_version 1 -verify-against %inputs/System/Library/Frameworks/SingleArchError.framework/Versions/A/SingleArchError --verify-mode=Pedantic -isysroot %sysroot  %inputs/System/Library/Frameworks/SingleArchError.framework -o %t/SingleArchError.tbd 2>&1 | FileCheck %s
+
+CHECK: warning: violations found for x86_64
+CHECK: error: no declaration found for exported symbol '_foo' in dynamic library
+CHECK-NOT: warning
+CHECK-NOT: error 

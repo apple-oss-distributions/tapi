@@ -1,0 +1,94 @@
+// RUN: rm -rf %t
+// RUN: split-file %s %t
+; RUN: mkdir -p %t/sysroot
+; RUN: cp -R %p/../Inputs/InlineIOSMac/ %t/sysroot/
+; RUN: %tapi stubify --filetype=tbd-v5 --inline-private-frameworks -isysroot %t/sysroot  %t/sysroot/ 2>&1 | FileCheck -allow-empty %s
+; RUN: %readtapi --compare %t/foo.tbd %t/sysroot/System/Library/Frameworks/Foo.framework/Foo.tbd 2>&1 | FileCheck -allow-empty %s
+; RUN: %readtapi --compare %t/bar.tbd %t/sysroot/System/Library/PrivateFrameworks/Bar.framework/Bar.tbd 2>&1 | FileCheck -allow-empty %s
+
+; CHECK-NOT: error
+; CHECK-NOT: warning
+
+//--- foo.tbd
+{
+  "libraries": [
+    {
+      "exported_symbols": [
+        {
+          "data": {
+            "global": [
+              "_bar1"
+            ]
+          }
+        }
+      ],
+      "install_names": [
+        {
+          "name": "/System/Library/Frameworks/Bar.framework/Bar"
+        }
+      ],
+      "target_info": [
+        {
+          "min_deployment": "0",
+          "target": "x86_64-macos"
+        },
+        {
+          "min_deployment": "0",
+          "target": "x86_64-maccatalyst"
+        }
+      ]
+    }
+  ],
+  "main_library": {
+    "install_names": [
+      {
+        "name": "/System/Library/Frameworks/Foo.framework/Foo"
+      }
+    ],
+    "reexported_libraries": [
+      {
+        "names": [
+          "/System/Library/PrivateFrameworks/Bar.framework/Bar"
+        ]
+      }
+    ],
+    "target_info": [
+      {
+        "min_deployment": "0",
+        "target": "x86_64-maccatalyst"
+      }
+    ]
+  },
+  "tapi_tbd_version": 5
+}
+
+//--- bar.tbd
+{
+  "main_library": {
+    "exported_symbols": [
+      {
+        "data": {
+          "global": [
+            "_bar1"
+          ]
+        }
+      }
+    ],
+    "install_names": [
+      {
+        "name": "/System/Library/Frameworks/Bar.framework/Bar"
+      }
+    ],
+    "target_info": [
+      {
+        "min_deployment": "0",
+        "target": "x86_64-macos"
+      },
+      {
+        "min_deployment": "0",
+        "target": "x86_64-maccatalyst"
+      }
+    ]
+  },
+  "tapi_tbd_version": 5
+}

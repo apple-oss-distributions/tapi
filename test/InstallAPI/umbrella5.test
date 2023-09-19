@@ -1,0 +1,44 @@
+; RUN: rm -rf %t
+; RUN: split-file %s %t
+; RUN: %tapi installapi -arch x86_64 -arch arm64 -install_name /System/Library/Frameworks/Foo.framework/Versions/A/Foo -current_version 1 -compatibility_version 1 -mtargetos=macosx13 -isysroot %sysroot %t/System/Library/Frameworks/Foo.framework -F %t/System/Library/Frameworks --verify-mode=Pedantic -reexport_framework Bar -o %t/Foo.tbd 2>&1 | FileCheck -allow-empty %s
+; RUN: %readtapi --compare %t/Foo.tbd %t/expected.tbd 2>&1 | FileCheck -allow-empty %s
+
+; CHECK-NOT: error
+; CHECK-NOT: warning
+
+//--- System/Library/Frameworks/Foo.framework/Headers/Foo.h
+#import <Foundation/Foundation.h>
+
+@interface NSFoo: NSObject {
+    NSString *attributeExtra;
+    NSString *extra;
+}
+@end
+int umbrellaFunc(void);
+
+//--- System/Library/Frameworks/Bar.framework/Bar.tbd
+--- !tapi-tbd
+tbd-version:     4
+targets:         [ x86_64-macos, arm64-macos ]
+install-name:    '/System/Library/Frameworks/Bar.framework/Versions/A/Bar'
+exports:
+  - targets:         [ x86_64-macos, arm64-macos ]
+    symbols:         [ _foo ]
+    objc-classes:    [ NSFoo ]
+    objc-ivars:      [ NSFoo.extra, NSFoo.attributeExtra ]
+...
+
+
+//--- expected.tbd
+--- !tapi-tbd
+tbd-version:     4
+targets:         [ x86_64-macos, arm64-macos ]
+flags:           [ not_app_extension_safe ]
+install-name:    '/System/Library/Frameworks/Foo.framework/Versions/A/Foo'
+reexported-libraries:
+  - targets:         [ x86_64-macos, arm64-macos ]
+    libraries:       [ '/System/Library/Frameworks/Bar.framework/Versions/A/Bar' ]
+exports:
+  - targets:         [ x86_64-macos, arm64-macos ]
+    symbols:         [ _umbrellaFunc ]
+...

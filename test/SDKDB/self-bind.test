@@ -1,0 +1,27 @@
+; RUN: rm -rf %t && mkdir -p %t/System/Library/Frameworks/Bind.framework/
+; RUN: yaml2obj %p/Inputs/Bind.yaml -o %t/System/Library/Frameworks/Bind.framework/Bind
+; RUN: %tapi sdkdb -o - --action=interface-only --diagnostics-file=%t/diag.plist -isysroot %sysroot --runtime-root %t --sdk-content-root %t | FileCheck %s
+
+; CHECK:      "RuntimeRoot"
+; CHECK:      "categories"
+; CHECK-NEXT: {
+; CHECK-NEXT:   "instanceMethods": [
+; CHECK-NEXT:     {
+; CHECK-NEXT:       "name": "population"
+; CHECK-NEXT:     }
+; CHECK-NEXT:   ],
+; CHECK-NEXT:   "interface": "World",
+; CHECK-NEXT:   "name": "Population"
+; CHECK-NEXT: }
+; CHECK:      "interfaces"
+; CHECK-NEXT: {
+; CHECK-NEXT:   "instanceMethods": [
+; CHECK-NEXT:     {
+; CHECK-NEXT:       "name": "name"
+; CHECK-NEXT:     }
+; CHECK-NEXT:   ],
+; CHECK-NEXT:   "linkage": "exported",
+; CHECK-NEXT:   "name": "Earth",
+; CHECK-NEXT:   "super": "World"
+; CHECK-NEXT: }
+; CHECK-NOT:  "error": true

@@ -1,0 +1,474 @@
+# // hello.m - xcrun clang hello.m -dynamiclib -o libhello.dylib -framework Foundation
+# #import <Foundation/Foundation.h>
+#
+# void hello(void) { }
+#
+# @interface Hello: NSObject
+# @end
+#
+# @implementation Hello
+# @end
+ 
+# // world.m - xcrun clang world.m -dynamiclib -o libworld.dylib -framework Foundation
+# #import <Foundation/Foundation.h>
+#
+# void world(void) {}
+#
+# @interface World: NSObject
+# - (NSString*)name;
+# @end
+#
+# @implementation World
+# - (NSString*)name {
+#     return @"world";
+# }
+# @end
+
+# The library needs to reexport at least 2 orher libraries, or the linker won't change the referenced symbols to self-binds.
+# Test.m - xcrun clang Test.m -dynamiclib -o Test -framework Foundation -L. -Wl,-reexport-lhello -Wl,-reexport-lworld
+# #import <Foundation/Foundation.h>
+#
+# extern void hello(void);
+# extern void world(void);
+#
+# @interface Hello: NSObject
+# @end
+#
+# @interface World: NSObject
+# - (NSString*)name;
+# @end
+#
+# void *phello = &hello;
+# void *pworld = &world;
+#
+# void say(void) {
+#   hello();
+#   world();
+# }
+#
+# @interface Earth: World
+# - (NSString*)name;
+# @end
+#
+# @implementation Earth
+# - (NSString*)name {
+#   return @"Earth";
+# }
+# @end
+#
+# @interface World(Population)
+# - (int)population;
+# @end
+#
+# @implementation World(Population)
+# - (int)population {
+#   return 0;
+# }
+# @end
+
+# obj2yaml --raw-segment=data --raw-segment=linkedit Test > Bind.yaml
+--- !mach-o
+FileHeader:
+  magic:           0xFEEDFACF
+  cputype:         0x100000C
+  cpusubtype:      0x0
+  filetype:        0x6
+  ncmds:           21
+  sizeofcmds:      2328
+  flags:           0x85
+  reserved:        0x0
+LoadCommands:
+  - cmd:             LC_SEGMENT_64
+    cmdsize:         712
+    segname:         __TEXT
+    vmaddr:          0
+    vmsize:          16384
+    fileoff:         0
+    filesize:        16384
+    maxprot:         5
+    initprot:        5
+    nsects:          8
+    flags:           0
+    Sections:
+      - sectname:        __text
+        segname:         __TEXT
+        addr:            0x3EE4
+        size:            76
+        offset:          0x3EE4
+        align:           2
+        reloff:          0x0
+        nreloc:          0
+        flags:           0x80000400
+        reserved1:       0x0
+        reserved2:       0x0
+        reserved3:       0x0
+        content:         FD7BBFA9FD0300911100009413000094FD7BC1A8C0035FD6FF4300D1E00700F9E10300F9000000B000400091FF430091C0035FD6FF4300D1E00700F9E10300F900008052FF430091C0035FD6
+      - sectname:        __stubs
+        segname:         __TEXT
+        addr:            0x3F30
+        size:            24
+        offset:          0x3F30
+        align:           2
+        reloff:          0x0
+        nreloc:          0
+        flags:           0x80000408
+        reserved1:       0x0
+        reserved2:       0xC
+        reserved3:       0x0
+        content:         100000B0100240F900021FD6100000B0100640F900021FD6
+      - sectname:        __objc_methlist
+        segname:         __TEXT
+        addr:            0x3F48
+        size:            44
+        offset:          0x3F48
+        align:           3
+        reloff:          0x0
+        nreloc:          0
+        flags:           0x0
+        reserved1:       0x0
+        reserved2:       0x0
+        reserved3:       0x0
+        content:         0C000080010000008041000047000000A4FFFFFF000000000C000080010000007041000037000000A8FFFFFF
+      - sectname:        __cstring
+        segname:         __TEXT
+        addr:            0x3F74
+        size:            6
+        offset:          0x3F74
+        align:           0
+        reloff:          0x0
+        nreloc:          0
+        flags:           0x2
+        reserved1:       0x0
+        reserved2:       0x0
+        reserved3:       0x0
+        content:         '456172746800'
+      - sectname:        __objc_classname
+        segname:         __TEXT
+        addr:            0x3F7A
+        size:            17
+        offset:          0x3F7A
+        align:           0
+        reloff:          0x0
+        nreloc:          0
+        flags:           0x2
+        reserved1:       0x0
+        reserved2:       0x0
+        reserved3:       0x0
+        content:         456172746800506F70756C6174696F6E00
+      - sectname:        __objc_methname
+        segname:         __TEXT
+        addr:            0x3F8B
+        size:            16
+        offset:          0x3F8B
+        align:           0
+        reloff:          0x0
+        nreloc:          0
+        flags:           0x2
+        reserved1:       0x0
+        reserved2:       0x0
+        reserved3:       0x0
+        content:         6E616D6500706F70756C6174696F6E00
+      - sectname:        __objc_methtype
+        segname:         __TEXT
+        addr:            0x3F9B
+        size:            16
+        offset:          0x3F9B
+        align:           0
+        reloff:          0x0
+        nreloc:          0
+        flags:           0x2
+        reserved1:       0x0
+        reserved2:       0x0
+        reserved3:       0x0
+        content:         40313640303A380069313640303A3800
+      - sectname:        __unwind_info
+        segname:         __TEXT
+        addr:            0x3FAC
+        size:            80
+        offset:          0x3FAC
+        align:           2
+        reloff:          0x0
+        nreloc:          0
+        flags:           0x0
+        reserved1:       0x0
+        reserved2:       0x0
+        reserved3:       0x0
+        content:         010000001C000000000000001C000000000000001C00000002000000E43E00003400000034000000313F00000000000034000000030000000C0002001400020000000001180000000010000200000004
+  - cmd:             LC_SEGMENT_64
+    cmdsize:         472
+    segname:         __DATA_CONST
+    vmaddr:          16384
+    vmsize:          16384
+    fileoff:         16384
+    filesize:        16384
+    maxprot:         3
+    initprot:        3
+    nsects:          5
+    flags:           16
+    Sections:
+      - sectname:        __got
+        segname:         __DATA_CONST
+        addr:            0x4000
+        size:            16
+        offset:          0x4000
+        align:           3
+        reloff:          0x0
+        nreloc:          0
+        flags:           0x6
+        reserved1:       0x2
+        reserved2:       0x0
+        reserved3:       0x0
+        content:         '00000000000010800100000000001080'
+      - sectname:        __cfstring
+        segname:         __DATA_CONST
+        addr:            0x4010
+        size:            32
+        offset:          0x4010
+        align:           3
+        reloff:          0x0
+        nreloc:          0
+        flags:           0x0
+        reserved1:       0x0
+        reserved2:       0x0
+        reserved3:       0x0
+        content:         0200000000002080C807000000000000743F0000000020000500000000000000
+      - sectname:        __objc_classlist
+        segname:         __DATA_CONST
+        addr:            0x4030
+        size:            8
+        offset:          0x4030
+        align:           3
+        reloff:          0x0
+        nreloc:          0
+        flags:           0x10000000
+        reserved1:       0x0
+        reserved2:       0x0
+        reserved3:       0x0
+        content:         '0881000000001000'
+      - sectname:        __objc_catlist
+        segname:         __DATA_CONST
+        addr:            0x4038
+        size:            8
+        offset:          0x4038
+        align:           3
+        reloff:          0x0
+        nreloc:          0
+        flags:           0x10000000
+        reserved1:       0x0
+        reserved2:       0x0
+        reserved3:       0x0
+        content:         '9080000000000000'
+      - sectname:        __objc_imageinfo
+        segname:         __DATA_CONST
+        addr:            0x4040
+        size:            8
+        offset:          0x4040
+        align:           2
+        reloff:          0x0
+        nreloc:          0
+        flags:           0x0
+        reserved1:       0x0
+        reserved2:       0x0
+        reserved3:       0x0
+        content:         '0000000040000000'
+  - cmd:             LC_SEGMENT_64
+    cmdsize:         392
+    segname:         __DATA
+    vmaddr:          32768
+    vmsize:          16384
+    fileoff:         32768
+    filesize:        16384
+    maxprot:         3
+    initprot:        3
+    nsects:          4
+    flags:           0
+    Sections:
+      - sectname:        __objc_const
+        segname:         __DATA
+        addr:            0x8000
+        size:            208
+        offset:          0x8000
+        align:           3
+        reloff:          0x0
+        nreloc:          0
+        flags:           0x0
+        reserved1:       0x0
+        reserved2:       0x0
+        reserved3:       0x0
+        content:         0100000028000000280000000000000000000000000000007A3F000000009000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000008000000080000000000000000000000000000007A3F000000001000483F0000000050000000000000000000000000000000000000000000000000000000000000000000803F0000000010000300000000001080603F00000000600000000000000000000000000000000000000000000000000000000000000000004000000000000000
+      - sectname:        __objc_selrefs
+        segname:         __DATA
+        addr:            0x80D0
+        size:            16
+        offset:          0x80D0
+        align:           3
+        reloff:          0x0
+        nreloc:          0
+        flags:           0x10000005
+        reserved1:       0x0
+        reserved2:       0x0
+        reserved3:       0x0
+        content:         8B3F000000001000903F000000001000
+      - sectname:        __objc_data
+        segname:         __DATA
+        addr:            0x80E0
+        size:            80
+        offset:          0x80E0
+        align:           3
+        reloff:          0x0
+        nreloc:          0
+        flags:           0x0
+        reserved1:       0x0
+        reserved2:       0x0
+        reserved3:       0x0
+        content:         '06000000000010800500000000001080040000000000208000000000000000000080000000001000E0800000000010000300000000001080040000000000208000000000000000004880000000001000'
+      - sectname:        __data
+        segname:         __DATA
+        addr:            0x8130
+        size:            16
+        offset:          0x8130
+        align:           3
+        reloff:          0x0
+        nreloc:          0
+        flags:           0x0
+        reserved1:       0x0
+        reserved2:       0x0
+        reserved3:       0x0
+        content:         '00000000000010800100000000000080'
+  - cmd:             LC_SEGMENT_64
+    cmdsize:         72
+    segname:         __LINKEDIT
+    vmaddr:          49152
+    vmsize:          16384
+    fileoff:         49152
+    filesize:        1649
+    maxprot:         1
+    initprot:        1
+    nsects:          0
+    flags:           0
+  - cmd:             LC_ID_DYLIB
+    cmdsize:         32
+    dylib:
+      name:            24
+      timestamp:       1
+      current_version: 0
+      compatibility_version: 0
+    Content:         Test
+    ZeroPadBytes:    4
+  - cmd:             LC_DYLD_CHAINED_FIXUPS
+    cmdsize:         16
+    dataoff:         49152
+    datasize:        272
+  - cmd:             LC_DYLD_EXPORTS_TRIE
+    cmdsize:         16
+    dataoff:         49424
+    datasize:        104
+  - cmd:             LC_SYMTAB
+    cmdsize:         24
+    symoff:          49536
+    nsyms:           19
+    stroff:          49856
+    strsize:         416
+  - cmd:             LC_DYSYMTAB
+    cmdsize:         80
+    ilocalsym:       0
+    nlocalsym:       7
+    iextdefsym:      7
+    nextdefsym:      5
+    iundefsym:       12
+    nundefsym:       7
+    tocoff:          0
+    ntoc:            0
+    modtaboff:       0
+    nmodtab:         0
+    extrefsymoff:    0
+    nextrefsyms:     0
+    indirectsymoff:  49840
+    nindirectsyms:   4
+    extreloff:       0
+    nextrel:         0
+    locreloff:       0
+    nlocrel:         0
+  - cmd:             LC_UUID
+    cmdsize:         24
+    uuid:            9ECC4C06-CA13-32B7-8B73-5AAB47B5E70F
+  - cmd:             LC_BUILD_VERSION
+    cmdsize:         32
+    platform:        1
+    minos:           786432
+    sdk:             787456
+    ntools:          1
+    Tools:
+      - tool:            3
+        version:         53280768
+  - cmd:             LC_SOURCE_VERSION
+    cmdsize:         16
+    version:         0
+  - cmd:             LC_LOAD_DYLIB
+    cmdsize:         96
+    dylib:
+      name:            24
+      timestamp:       2
+      current_version: 122093568
+      compatibility_version: 19660800
+    Content:         '/System/Library/Frameworks/Foundation.framework/Versions/C/Foundation'
+    ZeroPadBytes:    3
+  - cmd:             LC_REEXPORT_DYLIB
+    cmdsize:         40
+    dylib:
+      name:            24
+      timestamp:       2
+      current_version: 0
+      compatibility_version: 0
+    Content:         libhello.dylib
+    ZeroPadBytes:    2
+  - cmd:             LC_REEXPORT_DYLIB
+    cmdsize:         40
+    dylib:
+      name:            24
+      timestamp:       2
+      current_version: 0
+      compatibility_version: 0
+    Content:         libworld.dylib
+    ZeroPadBytes:    2
+  - cmd:             LC_LOAD_DYLIB
+    cmdsize:         56
+    dylib:
+      name:            24
+      timestamp:       2
+      current_version: 85948417
+      compatibility_version: 65536
+    Content:         '/usr/lib/libSystem.B.dylib'
+    ZeroPadBytes:    6
+  - cmd:             LC_LOAD_DYLIB
+    cmdsize:         104
+    dylib:
+      name:            24
+      timestamp:       2
+      current_version: 122093568
+      compatibility_version: 9830400
+    Content:         '/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation'
+    ZeroPadBytes:    3
+  - cmd:             LC_LOAD_DYLIB
+    cmdsize:         56
+    dylib:
+      name:            24
+      timestamp:       2
+      current_version: 14942208
+      compatibility_version: 65536
+    Content:         '/usr/lib/libobjc.A.dylib'
+    ZeroPadBytes:    8
+  - cmd:             LC_FUNCTION_STARTS
+    cmdsize:         16
+    dataoff:         49528
+    datasize:        8
+  - cmd:             LC_DATA_IN_CODE
+    cmdsize:         16
+    dataoff:         49536
+    datasize:        0
+  - cmd:             LC_CODE_SIGNATURE
+    cmdsize:         16
+    dataoff:         50272
+    datasize:        529
+__LINKEDIT:      00000000200000006800000084000000070000000100000000000000000000000400000000000000180000003000000000000000000000001800000000400600004000000000000000000000010000001800000000400600008000000000000000000000010018000002000000100000051E000000620000068A000000B0000006E00000005F68656C6C6F005F776F726C64005F5F5F4346436F6E7374616E74537472696E67436C6173735265666572656E6365005F4F424A435F434C4153535F245F576F726C64005F5F6F626A635F656D7074795F6361636865005F4F424A435F4D455441434C4153535F245F576F726C64005F4F424A435F4D455441434C4153535F245F4E534F626A656374000000015F0005000373617900164F424A435F001B70004B0300E47D0000024D455441434C4153535F245F4561727468003F434C4153535F245F456172746800450400E0810200040088820200000268656C6C6F005B776F726C6400610400B08202000400B882020000E47D181C00000000CD0000000E010000FC3E000000000000DB0000000E010000183F000000000000FB0000000E030000483F0000000000001B0100000E030000603F000000000000470100000E0E00000080000000000000630100000E0E000048800000000000007B0100000E0E00009080000000000000020000000F1000000881000000000000160000000F100000E0800000000000002E0000000F1100003081000000000000360000000F11000038810000000000003E0000000F010000E43E0000000000004300000001000000000000000000000057000000010000060000000000000000720000000100000000000000000000008A000000010000050000000000000000AC000000010000060000000000000000BF000000010000000000000000000000C60000000100000000000000000000001100000012000000110000001200000020005F4F424A435F434C4153535F245F4561727468005F4F424A435F4D455441434C4153535F245F4561727468005F7068656C6C6F005F70776F726C64005F736179005F4F424A435F434C4153535F245F576F726C64005F4F424A435F4D455441434C4153535F245F4E534F626A656374005F4F424A435F4D455441434C4153535F245F576F726C64005F5F5F4346436F6E7374616E74537472696E67436C6173735265666572656E6365005F5F6F626A635F656D7074795F6361636865005F68656C6C6F005F776F726C64002D5B4561727468206E616D655D002D5B576F726C6428506F70756C6174696F6E2920706F70756C6174696F6E5D005F5F4F424A435F245F494E5354414E43455F4D4554484F44535F4561727468005F5F4F424A435F245F494E5354414E43455F4D4554484F44535F576F726C6428506F70756C6174696F6E29005F5F4F424A435F4D455441434C4153535F524F5F245F4561727468005F5F4F424A435F434C4153535F524F5F245F4561727468005F5F4F424A435F245F43415445474F52595F576F726C645F245F506F70756C6174696F6E00FADE0CC000000211000000010000000000000014FADE0C02000001FD00020400000200020000005D00000058000000000000000D0000C4602002000C0000000000000000000000000000000000000000000000000000000000000000000000000000400000000000000000005465737400F5D9CE51DE7427CAFD46280B6D2E737BF1654DA91DFC41BF9BC6295B25BD17E2AD7FACB2586FC6E966C004D7D1D16B024F5805FF7CB47C7A85DABD8B48892CA7AD7FACB2586FC6E966C004D7D1D16B024F5805FF7CB47C7A85DABD8B48892CA77868E374543D826B5C9C1C90271B5CA4C138E4464443B79819C9F685CB1DAA1B9766B55FA52527E84BBE7DD32C8C03C5502CB6A253A12EA81DBB703F80B31ADCAD7FACB2586FC6E966C004D7D1D16B024F5805FF7CB47C7A85DABD8B48892CA7AD7FACB2586FC6E966C004D7D1D16B024F5805FF7CB47C7A85DABD8B48892CA7AD7FACB2586FC6E966C004D7D1D16B024F5805FF7CB47C7A85DABD8B48892CA780B4F30BB3E39570F1D07BB672D74B83D518906277EE13D843538F81C4CB02ADAD7FACB2586FC6E966C004D7D1D16B024F5805FF7CB47C7A85DABD8B48892CA7AD7FACB2586FC6E966C004D7D1D16B024F5805FF7CB47C7A85DABD8B48892CA7AD7FACB2586FC6E966C004D7D1D16B024F5805FF7CB47C7A85DABD8B48892CA7E53C2AB89988013D17A867855CE91008C97CCD79EE6CA233107E9655500352D1
+...

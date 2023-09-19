@@ -1,0 +1,7 @@
+; RUN: rm -rf %t && mkdir -p %t
+; RUN: yaml2obj %S/Inputs/DriverKit.yaml -o=%t/DriverKit
+; RUN: %tapi stubify --filetype=tbd-v3 %t/DriverKit -o %t/DriverKit.tbd 2>&1 | FileCheck --allow-empty %s
+; RUN: %readtapi --compare %t/DriverKit.tbd %S/Outputs/DriverKit.tbd 2>&1 | FileCheck --allow-empty %s
+
+; CHECK-NOT: error
+; CHECK-NOT: warning

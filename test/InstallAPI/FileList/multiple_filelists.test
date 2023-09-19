@@ -1,0 +1,29 @@
+; RUN: rm -rf %t && mkdir -p %t
+; RUN: split-file %s %t
+; RUN: sed -e "s:INPUT_DIR:%S/Inputs:g" %S/Inputs/filelist_framework.json > %t/filelist_framework.json
+; RUN: sed -e "s:INPUT_DIR:%S/Inputs:g" %S/Inputs/uninstalled_headers.json > %t/uninstalled_headers.json
+
+; Filelist with flag
+; RUN: %tapi installapi --filetype=tbd-v4 --filelist=%t/uninstalled_headers.json --filelist=%t/filelist_framework.json -target x86_64-apple-macosx.10.15 -install_name /System/Library/Frameworks/Foo.framework/Foo -isysroot %sysroot -o %t/Foo1.tbd 2>&1 | FileCheck %s --allow-empty
+
+; Filelist without flag
+; RUN: %tapi installapi --filelist=%t/uninstalled_headers.json -target x86_64-apple-macosx.10.15 -install_name /System/Library/Frameworks/Foo.framework/Foo -isysroot %sysroot %t/filelist_framework.json -o %t/Foo2.tbd 2>&1 | FileCheck %s --allow-empty
+
+; RUN: %readtapi --compare %t/expected.tbd %t/Foo1.tbd | FileCheck %s --allow-empty
+; RUN: %readtapi --compare %t/expected.tbd %t/Foo2.tbd | FileCheck %s --allow-empty
+
+; CHECK-NOT: error: 
+; CHECK-NOT: warning:
+
+;--- expected.tbd
+--- !tapi-tbd
+tbd-version:     4
+targets:         [ x86_64-macos ]
+flags:           [ not_app_extension_safe ]
+install-name:    '/System/Library/Frameworks/Foo.framework/Foo'
+current-version: 0
+compatibility-version: 0
+exports:
+  - targets:         [ x86_64-macos ]
+    symbols:         [ _bar_internal, _secret_api, _public_api ]
+...

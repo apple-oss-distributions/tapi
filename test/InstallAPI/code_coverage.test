@@ -1,0 +1,4 @@
+; RUN: _TAPI_TEST_CLANG=%host-clang %tapi installapi -arch x86_64 -install_name /System/Library/Frameworks/CodeCoverage.framework/Versions/A/CodeCoverage -current_version 1 -compatibility_version 1 -mtargetos=macos13 -isysroot %sysroot %inputs/System/Library/Frameworks/CodeCoverage.framework -o %t.tbd --verify-against=%inputs/System/Library/Frameworks/CodeCoverage.framework/CodeCoverage --verify-mode=Pedantic -fprofile-instr-generate 2>&1 | FileCheck -allow-empty %s
+
+; CHECK-NOT: error
+; CHECK-NOT: warning

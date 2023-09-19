@@ -1,0 +1,38 @@
+// RUN: rm -rf %t
+// RUN: split-file %s %t
+
+// RUN: mkdir -p %t/usr/include/
+// RUN: cp %t/foo.h %t/usr/include/
+// RUN: %tapi installapi --target=arm64-apple-ios -install_name /usr/lib/libfoo.dylib -current_version 1 -compatibility_version 1 -dynamiclib --verify-mode=Pedantic %t -o %t/libfoo.tbd -swift-installapi-interface %t/swift.tbd  2>&1 | FileCheck -allow-empty %s
+// RUN: %readtapi --compare %t/libfoo.tbd %t/expected.tbd 2>&1 | FileCheck -allow-empty %s
+
+// CHECK-NOT: error
+// CHECK-NOT: warning
+
+//--- foo.h
+
+extern int foo() __attribute__((availability(ios, unavailable)));
+extern int baz(); 
+
+//--- swift.tbd
+--- !tapi-tbd
+tbd-version:     4
+targets:         [ arm64-ios ]
+flags:           [ not_app_extension_safe ]
+install-name:    '/usr/lib/libfoo.dylib'
+exports:
+  - targets:         [ arm64-ios ]
+    symbols:         [ _bar ]
+...
+
+//--- expected.tbd
+--- !tapi-tbd
+tbd-version:     4
+targets:         [ arm64-ios ]
+flags:           [ not_app_extension_safe ]
+install-name:    '/usr/lib/libfoo.dylib'
+exports:
+  - targets:         [ arm64-ios ]
+    symbols:         [ _baz, _bar ]
+...
+

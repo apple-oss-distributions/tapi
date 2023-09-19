@@ -1,0 +1,13 @@
+--- !tapi-tbd
+tbd-version:     4
+targets:         [ x86_64-macos, x86_64-maccatalyst ]
+flags:           [ not_app_extension_safe ]
+install-name:    '/System/Library/Frameworks/Zippered.framework/Versions/A/Zippered'
+exports:
+  - targets:         [ x86_64-macos ]
+    symbols:         [ _macOSAPI, _macOSAPI2 ]
+  - targets:         [ x86_64-macos, x86_64-maccatalyst ]
+    symbols:         [ _a, _commonAPI, _image, _invalidAPI ]
+  - targets:         [ x86_64-maccatalyst ]
+    symbols:         [ _iOSAPI ]
+...

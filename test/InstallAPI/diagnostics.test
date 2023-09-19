@@ -1,0 +1,46 @@
+; RUN: not %tapi installapi --target=arm64-apple-macos13 --target=x86_64-apple-macos13 --target-variant=x86_64-apple-ios16.0-macabi  --target-variant=arm64-apple-ios16.0-macabi -install_name /System/Library/Frameworks/Mismatch.framework/Versions/A/Mismatch -current_version 1 -compatibility_version 1 -isysroot %sysroot %inputs/System/Library/Frameworks/Mismatch.framework --verify-against=%inputs/System/Library/Frameworks/Mismatch.framework/Mismatch --verify-mode=Pedantic --demangle 2>&1 | FileCheck %s 
+CHECK: warning: violations found for arm64-apple-macos13
+CHECK: Mismatch.h:6:12: error: declaration has external linkage, but dynamic library doesn't have symbol 'foo_arch_arm'
+CHECK-NEXT: extern int foo_arch_arm();
+CHECK-NEXT:            ^
+
+CHECK: Mismatch.h:10:5: error: symbol exported in dynamic library, but marked hidden in declaration 'baz'
+CHECK-NEXT: int baz() __attribute__((visibility("hidden")));
+CHECK-NEXT:     ^
+
+CHECK-NOT: inlinedFunc
+
+CHECK: Mismatch_Private.h:2:12: error: declaration has external linkage, but symbol has internal linkage in dynamic library 'bar'
+CHECK-NEXT: extern int bar();
+CHECK-NEXT:            ^
+
+CHECK: Mismatch_Private.h:4:12: error: declaration has external linkage, but dynamic library doesn't have symbol 'NSFoo'
+CHECK-NEXT: @interface NSFoo : NSObject {
+CHECK-NEXT:            ^
+
+CHECK: Mismatch_Private.h:5:13: error: declaration has external linkage, but dynamic library doesn't have symbol 'NSFoo.string'
+CHECK-NEXT:   NSString *string;
+CHECK-NEXT:             ^
+
+CHECK: Mismatch_Private.h:10:12: error: declaration has external linkage, but dynamic library doesn't have symbol 'NSFooExcept'
+CHECK-NEXT: @interface NSFooExcept : NSObject
+CHECK-NEXT:            ^
+
+CHECK: warning: violations found for x86_64-apple-macos13
+CHECK: Mismatch.h:4:12: error: declaration has external linkage, but dynamic library doesn't have symbol 'foo_arch_x86'
+CHECK-NEXT: extern int foo_arch_x86();
+CHECK-NEXT:            ^
+
+CHECK: error: no declaration found for exported symbol '_fooBar' in dynamic library
+
+CHECK: warning: violations found for x86_64-apple-macos13
+CHECK-NEXT: Mismatch_Private.h:13:12: error: declaration 'unavailableSymbol' is marked available, but symbol is not exported in dynamic library
+CHECK-NEXT: extern int unavailableSymbol __attribute__((
+CHECK-NEXT:            ^
+CHECK: warning: violations found for x86_64-apple-ios16.0-macabi
+CHECK-NEXT: Mismatch_Private.h:13:12: error: declaration 'unavailableSymbol' is marked available, but symbol is not exported in dynamic library
+CHECK-NEXT: extern int unavailableSymbol __attribute__((
+CHECK-NEXT:           ^
+
+CHECK: warning: violations found for arm64 
+CHECK-NEXT: error: no declaration found for exported symbol '_fooBar' in dynamic library

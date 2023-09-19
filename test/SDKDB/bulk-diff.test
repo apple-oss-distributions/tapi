@@ -1,0 +1,99 @@
+; RUN: rm -rf %t && mkdir -p %t
+
+; RUN: %tapi-mrm -o %t/baseline.sdkdb --bitcode %S/Inputs/Bulk/Bulk-baseline.partial.sdkdb
+; RUN: %tapi-mrm -o %t/new-project.sdkdb --bitcode %S/Inputs/Bulk/Bulk-baseline.partial.sdkdb %S/Inputs/Bulk/Bulk-new-project.partial.sdkdb
+; RUN: %tapi-mrm -o %t/new-dylib.sdkdb --bitcode %S/Inputs/Bulk/Bulk-new-dylib.partial.sdkdb
+; RUN: %tapi-mrm -o %t/move-dylib-no-change.sdkdb --bitcode %S/Inputs/Bulk/Bulk-move-dylib.partial.sdkdb
+; RUN: %tapi-mrm -o %t/move-dylib-symbol-change.sdkdb --bitcode %S/Inputs/Bulk/Bulk-move-dylib-symbol-change.partial.sdkdb
+; RUN: %tapi-mrm -o %t/non-public-install-name.sdkdb --bitcode %S/Inputs/Bulk/Bulk-non-public-install-name.partial.sdkdb
+; RUN: %tapi-mrm -o %t/private-framework.sdkdb --bitcode %S/Inputs/Bulk/Bulk-private-framework.partial.sdkdb
+
+; Add/remove project
+; RUN: %tapi-sdkdb --compare --baseline %t/baseline.sdkdb %t/new-project.sdkdb 2>&1 | FileCheck --check-prefix=NEW-PROJECT --implicit-check-not warning: --implicit-check-not error: %s
+; RUN: not %tapi-sdkdb --compare --baseline %t/new-project.sdkdb %t/baseline.sdkdb 2>&1 | FileCheck --check-prefix=REMOVE-PROJECT --implicit-check-not warning: --implicit-check-not error: %s
+
+; Add/remove dylib within same project
+; RUN: %tapi-sdkdb --compare --baseline %t/baseline.sdkdb %t/new-dylib.sdkdb 2>&1 | FileCheck --check-prefix=NEW-DYLIB --implicit-check-not warning: --implicit-check-not error: %s
+; RUN: not %tapi-sdkdb --compare --baseline %t/new-dylib.sdkdb %t/baseline.sdkdb 2>&1 | FileCheck --check-prefix=REMOVE-DYLIB --implicit-check-not warning: --implicit-check-not error: %s
+
+; Move dylib from one project to another without symbol changes
+; RUN: %tapi-sdkdb --compare --baseline %t/baseline.sdkdb %t/move-dylib-no-change.sdkdb 2>&1 | FileCheck --allow-empty --check-prefix=MOVE-DYLIB-NO-CHANGE --implicit-check-not warning: --implicit-check-not error: %s
+; Check both directions to account for different ordering between base and test
+; RUN: %tapi-sdkdb --compare --baseline %t/move-dylib-no-change.sdkdb %t/baseline.sdkdb 2>&1 | FileCheck --allow-empty --check-prefix=MOVE-DYLIB-NO-CHANGE-REVERSE --implicit-check-not warning: --implicit-check-not error: %s
+
+; Move dylib from one project to another with symbol changes
+; RUN: not %tapi-sdkdb --compare --baseline %t/baseline.sdkdb %t/move-dylib-symbol-change.sdkdb 2>&1 | FileCheck --check-prefix=MOVE-DYLIB-SYMBOL-CHANGE --implicit-check-not warning: --implicit-check-not error: %s
+; Check both directions to account for different ordering between base and test
+; RUN: not %tapi-sdkdb --compare --baseline %t/move-dylib-symbol-change.sdkdb %t/baseline.sdkdb 2>&1 | FileCheck --check-prefix=MOVE-DYLIB-SYMBOL-CHANGE-REVERSE --implicit-check-not warning: --implicit-check-not error: %s
+
+; Library changes in non-public locations
+; RUN: %tapi-sdkdb --compare --baseline %t/baseline.sdkdb %t/non-public-install-name.sdkdb 2>&1 | FileCheck --allow-empty --check-prefix=NON-PUBLIC --implicit-check-not warning: --implicit-check-not error: %s
+; RUN: %tapi-sdkdb --compare --baseline %t/non-public-install-name.sdkdb %t/baseline.sdkdb 2>&1 | FileCheck --allow-empty --check-prefix=NON-PUBLIC --implicit-check-not warning: --implicit-check-not error: %s
+
+; A PrivateFrameworks library becomes public
+; RUN: %tapi-sdkdb --compare --baseline %t/private-framework.sdkdb %t/baseline.sdkdb 2>&1 | FileCheck --allow-empty --check-prefix=PRIVATE-TO-PUBLIC --implicit-check-not warning: --implicit-check-not error: %s
+; A public Frameworks library becomes private
+; RUN: not %tapi-sdkdb --compare --baseline %t/baseline.sdkdb %t/private-framework.sdkdb 2>&1 | FileCheck --allow-empty --check-prefix=PUBLIC-TO-PRIVATE --implicit-check-not warning: --implicit-check-not error: %s
+
+; Adding a new project with a new library should only produce a diagnostic for the library.
+NEW-PROJECT: warning: new library '/System/Library/Frameworks/NewFramework.framework/Versions/A/NewFramework' from project 'NewProject' for target 'arm64-apple-macosx'
+
+; Removing a project should only produce a diagnostic for the removed library.
+REMOVE-PROJECT: error: missing library '/System/Library/Frameworks/NewFramework.framework/Versions/A/NewFramework' from project 'NewProject' for target 'arm64-apple-macosx'
+
+; Adding a new library should only produce a diagnostic for the added library.
+NEW-DYLIB: warning: new library '/System/Library/Frameworks/NotBulk.framework/Versions/A/NotBulk' from project 'Bulk' for target 'arm64-apple-macosx'
+
+; Removing a library from an existing project should only produce a diagnostic for the removed library.
+REMOVE-DYLIB: error: missing library '/System/Library/Frameworks/NotBulk.framework/Versions/A/NotBulk' from project 'Bulk' for target 'arm64-apple-macosx'
+
+; Move a library from one project to another without any symbol change should not produce any diagnostic.
+MOVE-DYLIB-NO-CHANGE-NOT: error
+MOVE-DYLIB-NO-CHANGE-NOT: warning
+
+; Move a library from one project to another in any direction without any symbol change should not produce any diagnostic.
+MOVE-DYLIB-NO-CHANGE-REVERSE-NOT: error
+MOVE-DYLIB-NO-CHANGE-REVERSE-NOT: warning
+
+; Move a library from one project to another with symbol changes should only produce diagnostics for the changed symbols.
+MOVE-DYLIB-SYMBOL-CHANGE: warning: new API function '_newPublicGlobalFunction' in '/System/Library/Frameworks/Bulk.framework/Versions/A/Bulk' for target 'arm64-apple-macosx'
+MOVE-DYLIB-SYMBOL-CHANGE-NEXT: warning: new API global variable '_privateGlobalVariable' in '/System/Library/Frameworks/Bulk.framework/Versions/A/Bulk' for target 'arm64-apple-macosx'
+MOVE-DYLIB-SYMBOL-CHANGE-NEXT: error: missing function '_publicGlobalFunction' in '/System/Library/Frameworks/Bulk.framework/Versions/A/Bulk' for target 'arm64-apple-macosx'
+MOVE-DYLIB-SYMBOL-CHANGE-NEXT: warning: new API objc class 'newPublicInterface' in '/System/Library/Frameworks/Bulk.framework/Versions/A/Bulk' for target 'arm64-apple-macosx'
+MOVE-DYLIB-SYMBOL-CHANGE-NEXT: warning: new API objc class 'privateInterface' in '/System/Library/Frameworks/Bulk.framework/Versions/A/Bulk' for target 'arm64-apple-macosx'
+MOVE-DYLIB-SYMBOL-CHANGE-NEXT: error: missing objc class 'publicInterface' in '/System/Library/Frameworks/Bulk.framework/Versions/A/Bulk' for target 'arm64-apple-macosx'
+MOVE-DYLIB-SYMBOL-CHANGE-NEXT: warning: new API objc category 'newPublicCategory(newPublicInterface)' in '/System/Library/Frameworks/Bulk.framework/Versions/A/Bulk' for target 'arm64-apple-macosx'
+MOVE-DYLIB-SYMBOL-CHANGE-NEXT: warning: new API objc category 'privateCategory(privateInterface)' in '/System/Library/Frameworks/Bulk.framework/Versions/A/Bulk' for target 'arm64-apple-macosx'
+MOVE-DYLIB-SYMBOL-CHANGE-NEXT: error: missing objc category 'publicCategory(publicInterface)' in '/System/Library/Frameworks/Bulk.framework/Versions/A/Bulk' for target 'arm64-apple-macosx'
+MOVE-DYLIB-SYMBOL-CHANGE-NEXT: warning: new API objc protocol 'newPublicProtocol' in '/System/Library/Frameworks/Bulk.framework/Versions/A/Bulk' for target 'arm64-apple-macosx'
+MOVE-DYLIB-SYMBOL-CHANGE-NEXT: warning: new API objc protocol 'privateProtocol' in '/System/Library/Frameworks/Bulk.framework/Versions/A/Bulk' for target 'arm64-apple-macosx'
+MOVE-DYLIB-SYMBOL-CHANGE-NEXT: error: missing objc protocol 'publicProtocol' in '/System/Library/Frameworks/Bulk.framework/Versions/A/Bulk' for target 'arm64-apple-macosx'
+
+; Move a library from one project to another with symbol changes should only produce diagnostics for the changed symbols.
+MOVE-DYLIB-SYMBOL-CHANGE-REVERSE: error: missing function '_newPublicGlobalFunction' in '/System/Library/Frameworks/Bulk.framework/Versions/A/Bulk' for target 'arm64-apple-macosx'
+MOVE-DYLIB-SYMBOL-CHANGE-REVERSE-NEXT: error: regression for API '_privateGlobalVariable' in '/System/Library/Frameworks/Bulk.framework/Versions/A/Bulk' for target 'arm64-apple-macosx': api access regression
+MOVE-DYLIB-SYMBOL-CHANGE-REVERSE-NEXT: warning: new API function '_publicGlobalFunction' in '/System/Library/Frameworks/Bulk.framework/Versions/A/Bulk' for target 'arm64-apple-macosx'
+MOVE-DYLIB-SYMBOL-CHANGE-REVERSE-NEXT: error: missing objc class 'newPublicInterface' in '/System/Library/Frameworks/Bulk.framework/Versions/A/Bulk' for target 'arm64-apple-macosx'
+MOVE-DYLIB-SYMBOL-CHANGE-REVERSE-NEXT: error: regression for ObjC class 'privateInterface' in '/System/Library/Frameworks/Bulk.framework/Versions/A/Bulk' for target 'arm64-apple-macosx': api access regression
+MOVE-DYLIB-SYMBOL-CHANGE-REVERSE-NEXT: error: regression for ObjC selector 'privateInstanceMethod' in class 'privateInterface' in '/System/Library/Frameworks/Bulk.framework/Versions/A/Bulk' for target 'arm64-apple-macosx': api access regression
+MOVE-DYLIB-SYMBOL-CHANGE-REVERSE-NEXT: error: regression for ObjC selector 'privateProperty' in class 'privateInterface' in '/System/Library/Frameworks/Bulk.framework/Versions/A/Bulk' for target 'arm64-apple-macosx': api access regression
+MOVE-DYLIB-SYMBOL-CHANGE-REVERSE-NEXT: error: regression for ObjC selector 'setPrivateProperty:' in class 'privateInterface' in '/System/Library/Frameworks/Bulk.framework/Versions/A/Bulk' for target 'arm64-apple-macosx': api access regression
+MOVE-DYLIB-SYMBOL-CHANGE-REVERSE-NEXT: warning: new API objc class 'publicInterface' in '/System/Library/Frameworks/Bulk.framework/Versions/A/Bulk' for target 'arm64-apple-macosx'
+MOVE-DYLIB-SYMBOL-CHANGE-REVERSE-NEXT: error: missing objc category 'newPublicCategory(newPublicInterface)' in '/System/Library/Frameworks/Bulk.framework/Versions/A/Bulk' for target 'arm64-apple-macosx'
+MOVE-DYLIB-SYMBOL-CHANGE-REVERSE-NEXT: error: regression for ObjC category 'privateCategory(privateInterface)' in '/System/Library/Frameworks/Bulk.framework/Versions/A/Bulk' for target 'arm64-apple-macosx': api access regression
+MOVE-DYLIB-SYMBOL-CHANGE-REVERSE-NEXT: error: regression for ObjC selector 'privateCategoryInstanceMethod' in category 'privateCategory(privateInterface)' in '/System/Library/Frameworks/Bulk.framework/Versions/A/Bulk' for target 'arm64-apple-macosx': api acces
+MOVE-DYLIB-SYMBOL-CHANGE-REVERSE-NEXT: warning: new API objc category 'publicCategory(publicInterface)' in '/System/Library/Frameworks/Bulk.framework/Versions/A/Bulk' for target 'arm64-apple-macosx'
+MOVE-DYLIB-SYMBOL-CHANGE-REVERSE-NEXT: error: missing objc protocol 'newPublicProtocol' in '/System/Library/Frameworks/Bulk.framework/Versions/A/Bulk' for target 'arm64-apple-macosx'
+MOVE-DYLIB-SYMBOL-CHANGE-REVERSE-NEXT: error: regression for ObjC protocol 'privateProtocol' in '/System/Library/Frameworks/Bulk.framework/Versions/A/Bulk' for target 'arm64-apple-macosx': api access regression
+MOVE-DYLIB-SYMBOL-CHANGE-REVERSE-NEXT: error: regression for ObjC selector 'privateClassMethod' in protocol 'privateProtocol' in '/System/Library/Frameworks/Bulk.framework/Versions/A/Bulk' for target 'arm64-apple-macosx': api access regression
+MOVE-DYLIB-SYMBOL-CHANGE-REVERSE-NEXT: warning: new API objc protocol 'publicProtocol' in '/System/Library/Frameworks/Bulk.framework/Versions/A/Bulk' for target 'arm64-apple-macosx'
+
+; Library changes that are not part of the public SDK should not produce any diagnostic
+NON-PUBLIC-NOT: error
+NON-PUBLIC-NOT: warning
+
+; A private framework becoming public should only produce a warning for the new public library
+PRIVATE-TO-PUBLIC: warning: new library '/System/Library/Frameworks/Bulk.framework/Versions/A/Bulk' from project 'Bulk' for target 'arm64-apple-macosx'
+
+; A public framework becoming private should only produce an error for the missing public library
+PUBLIC-TO-PRIVATE: error: missing library '/System/Library/Frameworks/Bulk.framework/Versions/A/Bulk' from project 'Bulk' for target 'arm64-apple-macosx'

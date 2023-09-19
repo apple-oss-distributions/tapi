@@ -1,0 +1,15 @@
+; RUN: rm -rf %t && mkdir -p %t
+; RUN: %tapi installapi -arch x86_64 -install_name /System/Library/Frameworks/Mod.framework/Versions/A/Mod -current_version 1 -compatibility_version 1 -macosx_version_min 13 -isysroot %sysroot %inputs/System/Library/Frameworks/Mod.framework -o %t/Mod.tbd --verify-against=%inputs/System/Library/Frameworks/Mod.framework/Versions/A/Mod --verify-mode=Pedantic -fmodules -fmodules-verify-system-headers -fmodules-cache-path=%t/module_test 2>&1 | FileCheck -allow-empty %s --check-prefix=CHECK-ALL-MODULE-FLAGS
+; RUN: test -d %t/module_test
+
+; CHECK-ALL-MODULE-FLAGS-NOT: error
+
+# verify custom module cache is generated when one was not provided 
+; RUN: CLANG_LINE=$(%tapi installapi -v -arch x86_64 -install_name /System/Library/Frameworks/Mod.framework/Versions/A/Mod -current_version 1 -compatibility_version 1 -macosx_version_min 13 -isysroot %sysroot %inputs/System/Library/Frameworks/Mod.framework -o %t/Mod.tbd --verify-against=%inputs/System/Library/Frameworks/Mod.framework/Versions/A/Mod --verify-mode=Pedantic -fmodules 2>&1 | grep "fmodules" | head -1)
+; RUN: tmp="${CLANG_LINE#*fmodules\-cache\-path\=}"; MODULE_PATH="${tmp%%%\"*}"; echo $MODULE_PATH | FileCheck %s --check-prefix=CHECK-VALID-PATH
+# check that new module file was deleted after used.
+; RUN: file $MODULE_PATH | FileCheck %s --check-prefix=CHECK-NO-MODULE-PATH 
+
+; CHECK-VALID-PATH: org.llvm.clang.tapi/ModuleCache
+; CHECK-NO-MODULE-PATH: No such file or directory
+

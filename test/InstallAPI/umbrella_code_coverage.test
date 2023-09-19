@@ -1,0 +1,4 @@
+; RUN: _TAPI_TEST_CLANG=%host-clang %tapi installapi -arch x86_64 -reexport_framework FooCC -install_name /System/Library/Frameworks/UmbrellaCC.framework/Versions/A/UmbrellaCC -current_version 1 -compatibility_version 1 -mtargetos=macosx13 -isysroot %sysroot -F %inputs/System/Library/Frameworks %inputs/System/Library/Frameworks/UmbrellaCC.framework -o %t.tbd --verify-against=%inputs/System/Library/Frameworks/UmbrellaCC.framework/UmbrellaCC --verify-mode=Pedantic -fprofile-instr-generate 2>&1 | FileCheck -allow-empty %s
+
+; CHECK-NOT: error
+; CHECK-NOT: warning

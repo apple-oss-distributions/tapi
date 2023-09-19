@@ -1,0 +1,68 @@
+; RUN: rm -rf %t
+; RUN: split-file %s %t
+; RUN: sed -e "s:SRC_DIR:%S:g" %t/input.json.in >> %t/input.json
+; RUN: sed -e "s:TMP_DIR:%t:g" %t/all_target.hmap.json.in >> \
+; RUN: %t/all_target.hmap.json
+; RUN: %hmaptool write %t/all_target.hmap.json %t/all_target.hmap
+; RUN: mkdir -p %t/Source
+; RUN: cp %S/Inputs/Root/System/Library/PrivateFrameworks/Test.framework/Headers/Test.h %t/Source
+; RUN: cp %S/Inputs/Root/System/Library/PrivateFrameworks/Test.framework/PrivateHeaders/Test_Private.h %t/Source
+; RUN: %tapi installapi --filetype=tbd-v4 --target=x86_64-apple-macos10.15 -install_name /System/Library/PrivateFrameworks/Test.framework/Test -I%t/all_target.hmap -fmodules -current_version 1 -compatibility_version 1 %t/input.json -sdkdb-output-dir %t -o %t/Test.tbd 2>&1 | FileCheck -allow-empty %s
+; RUN: %readtapi --compare %t/Test.tbd %S/Outputs/Test-3.tbd
+; RUN: %api-json-diff -partial-sdkdb  %t/Test.partial.sdkdb %t/expected.sdkdb
+
+; CHECK-NOT: error
+; CHECK-NOT: warning
+
+//--- all_target.hmap.json.in
+{
+  "mappings" :
+      {
+        "Test/Test.h" : "TMP_DIR/Source/Test.h",
+        "Test/Test_Private.h" : "TMP_DIR/Source/Test_Private.h"
+      }
+}
+
+//--- input.json.in
+{
+  "version" : "3",
+  "headers" : [
+    {
+      "type" : "public",
+      "path" : "SRC_DIR/Inputs/Root/System/Library/PrivateFrameworks/Test.framework/Headers/Test.h"
+    },
+    {
+      "type" : "public",
+      "path" : "SRC_DIR/Inputs/Root/System/Library/PrivateFrameworks/Test.framework/PrivateHeaders/Test_Private.h"
+    }
+  ]
+}
+
+
+//--- expected.sdkdb
+{
+  "PublicSDKContentRoot": [],
+  "RuntimeRoot": [],
+  "SDKContentRoot": [
+    {
+      "globals": [
+        {
+          "access": "private",
+          "file": "Test.h",
+          "kind": "function",
+          "linkage": "exported",
+          "name": "_foo"
+        },
+        {
+          "access": "private",
+          "file": "Test_Private.h",
+          "kind": "function",
+          "linkage": "exported",
+          "name": "_private_impl"
+        }
+      ],
+      "target": "x86_64-apple-macos10.15"
+    }
+  ],
+  "version": "1.0"
+}

@@ -1,0 +1,1197 @@
+// RUN: rm -rf %t
+// RUN: split-file %s %t
+// RUN: %tapi-binary-reader -no-uuid -json %t.json %inputs/System/Library/Frameworks/Simple.framework/Simple 2>&1 | FileCheck %s
+// RUN: %api-json-diff %t.json %t/expected.json | FileCheck %s --allow-empty --check-prefix=JSON 
+
+CHECK: Architecture: x86_64
+CHECK-NEXT: globals:
+CHECK-NEXT: - name: __OBJC_CLASS_PROTOCOLS_$_FooClass(Private)
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   access: unknown
+CHECK-NEXT:   isWeakDefined: false
+CHECK-NEXT:   isThreadLocalValue: false
+CHECK-NEXT:   kind: variable
+CHECK-NEXT:   linkage: internal
+CHECK-NEXT: - name: __OBJC_LABEL_PROTOCOL_$_BarProtocol
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   access: unknown
+CHECK-NEXT:   isWeakDefined: false
+CHECK-NEXT:   isThreadLocalValue: false
+CHECK-NEXT:   kind: variable
+CHECK-NEXT:   linkage: internal
+CHECK-NEXT: - name: __OBJC_LABEL_PROTOCOL_$_BaseProtocol
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   access: unknown
+CHECK-NEXT:   isWeakDefined: false
+CHECK-NEXT:   isThreadLocalValue: false
+CHECK-NEXT:   kind: variable
+CHECK-NEXT:   linkage: internal
+CHECK-NEXT: - name: __OBJC_LABEL_PROTOCOL_$_FooProtocol
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   access: unknown
+CHECK-NEXT:   isWeakDefined: false
+CHECK-NEXT:   isThreadLocalValue: false
+CHECK-NEXT:   kind: variable
+CHECK-NEXT:   linkage: internal
+CHECK-NEXT: - name: __OBJC_LABEL_PROTOCOL_$_PrivateProtocol
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   access: unknown
+CHECK-NEXT:   isWeakDefined: false
+CHECK-NEXT:   isThreadLocalValue: false
+CHECK-NEXT:   kind: variable
+CHECK-NEXT:   linkage: internal
+CHECK-NEXT: - name: __OBJC_PROTOCOL_$_BarProtocol
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   access: unknown
+CHECK-NEXT:   isWeakDefined: false
+CHECK-NEXT:   isThreadLocalValue: false
+CHECK-NEXT:   kind: variable
+CHECK-NEXT:   linkage: internal
+CHECK-NEXT: - name: __OBJC_PROTOCOL_$_BaseProtocol
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   access: unknown
+CHECK-NEXT:   isWeakDefined: false
+CHECK-NEXT:   isThreadLocalValue: false
+CHECK-NEXT:   kind: variable
+CHECK-NEXT:   linkage: internal
+CHECK-NEXT: - name: __OBJC_PROTOCOL_$_FooProtocol
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   access: unknown
+CHECK-NEXT:   isWeakDefined: false
+CHECK-NEXT:   isThreadLocalValue: false
+CHECK-NEXT:   kind: variable
+CHECK-NEXT:   linkage: internal
+CHECK-NEXT: - name: __OBJC_PROTOCOL_$_PrivateProtocol
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   access: unknown
+CHECK-NEXT:   isWeakDefined: false
+CHECK-NEXT:   isThreadLocalValue: false
+CHECK-NEXT:   kind: variable
+CHECK-NEXT:   linkage: internal
+CHECK-NEXT: - name: __objc_empty_cache
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   access: unknown
+CHECK-NEXT:   isWeakDefined: false
+CHECK-NEXT:   isThreadLocalValue: false
+CHECK-NEXT:   kind: variable
+CHECK-NEXT:   linkage: external
+CHECK-NEXT: - name: _extraGlobalAPI1
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   access: unknown
+CHECK-NEXT:   isWeakDefined: false
+CHECK-NEXT:   isThreadLocalValue: false
+CHECK-NEXT:   kind: variable
+CHECK-NEXT:   linkage: exported
+CHECK-NEXT: - name: _extraGlobalAPI2
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   access: unknown
+CHECK-NEXT:   isWeakDefined: false
+CHECK-NEXT:   isThreadLocalValue: false
+CHECK-NEXT:   kind: variable
+CHECK-NEXT:   linkage: exported
+CHECK-NEXT: - name: _objc_ehtype_vtable
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   access: unknown
+CHECK-NEXT:   isWeakDefined: false
+CHECK-NEXT:   isThreadLocalValue: false
+CHECK-NEXT:   kind: variable
+CHECK-NEXT:   linkage: external
+CHECK-NEXT: - name: _privateGlobalVariable
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   access: unknown
+CHECK-NEXT:   isWeakDefined: false
+CHECK-NEXT:   isThreadLocalValue: false
+CHECK-NEXT:   kind: variable
+CHECK-NEXT:   linkage: exported
+CHECK-NEXT: - name: _publicGlobalVariable
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   access: unknown
+CHECK-NEXT:   isWeakDefined: false
+CHECK-NEXT:   isThreadLocalValue: false
+CHECK-NEXT:   kind: variable
+CHECK-NEXT:   linkage: exported
+CHECK-NEXT: - name: _weakPrivateGlobalVariable
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   access: unknown
+CHECK-NEXT:   isWeakDefined: true
+CHECK-NEXT:   isThreadLocalValue: false
+CHECK-NEXT:   kind: variable
+CHECK-NEXT:   linkage: exported
+CHECK-NEXT: - name: _weakPublicGlobalVariable
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   access: unknown
+CHECK-NEXT:   isWeakDefined: true
+CHECK-NEXT:   isThreadLocalValue: false
+CHECK-NEXT:   kind: variable
+CHECK-NEXT:   linkage: exported
+CHECK-NEXT: - name: dyld_stub_binder
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   access: unknown
+CHECK-NEXT:   isWeakDefined: false
+CHECK-NEXT:   isThreadLocalValue: false
+CHECK-NEXT:   kind: variable
+CHECK-NEXT:   linkage: external
+CHECK-NEXT: objective-c protocols:
+CHECK-NEXT: - name: BaseProtocol
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   protocols:
+CHECK-NEXT:   methods:
+CHECK-NEXT:   - name: baseMethod
+CHECK-NEXT:     kind: instance
+CHECK-NEXT:     isOptional: false
+CHECK-NEXT:     isDynamic: false
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   properties:
+CHECK-NEXT: - name: FooProtocol
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   protocols:
+CHECK-NEXT:   methods:
+CHECK-NEXT:   - name: protocolMethod
+CHECK-NEXT:     kind: instance
+CHECK-NEXT:     isOptional: false
+CHECK-NEXT:     isDynamic: false
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   properties:
+CHECK-NEXT: - name: BarProtocol
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   protocols:
+CHECK-NEXT:   methods:
+CHECK-NEXT:   - name: barMethod
+CHECK-NEXT:     kind: instance
+CHECK-NEXT:     isOptional: false
+CHECK-NEXT:     isDynamic: false
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   properties:
+CHECK-NEXT: - name: PrivateProtocol
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   protocols:
+CHECK-NEXT:   methods:
+CHECK-NEXT:   - name: privateProcotolMethod
+CHECK-NEXT:     kind: instance
+CHECK-NEXT:     isOptional: false
+CHECK-NEXT:     isDynamic: false
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   properties:
+CHECK-NEXT: objective-c interfaces:
+CHECK-NEXT: - name: Basic4_1
+CHECK-NEXT:   superClassName: NSObject
+CHECK-NEXT:   hasExceptionAttribute: false
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   categories:
+CHECK-NEXT:   protocols:
+CHECK-NEXT:   methods:
+CHECK-NEXT:   properties:
+CHECK-NEXT:   instance variables:
+CHECK-NEXT:   linkage: internal
+CHECK-NEXT: - name: Basic7
+CHECK-NEXT:   superClassName: NSObject
+CHECK-NEXT:   hasExceptionAttribute: false
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   categories:
+CHECK-NEXT:   protocols:
+CHECK-NEXT:   methods:
+CHECK-NEXT:   - name: anInstanceMethodFromAnHiddenExtension
+CHECK-NEXT:     kind: instance
+CHECK-NEXT:     isOptional: false
+CHECK-NEXT:     isDynamic: false
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   properties:
+CHECK-NEXT:   instance variables:
+CHECK-NEXT:   linkage: internal
+CHECK-NEXT: - name: HiddenClass
+CHECK-NEXT:   superClassName: NSObject
+CHECK-NEXT:   hasExceptionAttribute: false
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   categories:
+CHECK-NEXT:   protocols:
+CHECK-NEXT:   methods:
+CHECK-NEXT:   properties:
+CHECK-NEXT:   instance variables:
+CHECK-NEXT:   linkage: internal
+CHECK-NEXT: - name: A
+CHECK-NEXT:   superClassName: NSObject
+CHECK-NEXT:   hasExceptionAttribute: false
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   categories:
+CHECK-NEXT:   protocols:
+CHECK-NEXT:   methods:
+CHECK-NEXT:   - name: aMethod
+CHECK-NEXT:     kind: instance
+CHECK-NEXT:     isOptional: false
+CHECK-NEXT:     isDynamic: false
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   properties:
+CHECK-NEXT:   instance variables:
+CHECK-NEXT:   linkage: exported
+CHECK-NEXT: - name: Base
+CHECK-NEXT:   superClassName: NSObject
+CHECK-NEXT:   hasExceptionAttribute: true
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   categories:
+CHECK-NEXT:   protocols:
+CHECK-NEXT:   methods:
+CHECK-NEXT:   properties:
+CHECK-NEXT:   instance variables:
+CHECK-NEXT:   linkage: exported
+CHECK-NEXT: - name: Basic1
+CHECK-NEXT:   superClassName: 
+CHECK-NEXT:   hasExceptionAttribute: false
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   categories:
+CHECK-NEXT:   protocols:
+CHECK-NEXT:   methods:
+CHECK-NEXT:   properties:
+CHECK-NEXT:   instance variables:
+CHECK-NEXT:   linkage: exported
+CHECK-NEXT: - name: Basic2
+CHECK-NEXT:   superClassName: NSObject
+CHECK-NEXT:   hasExceptionAttribute: false
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   categories:
+CHECK-NEXT:   protocols:
+CHECK-NEXT:   methods:
+CHECK-NEXT:   properties:
+CHECK-NEXT:   instance variables:
+CHECK-NEXT:   linkage: exported
+CHECK-NEXT: - name: Basic3
+CHECK-NEXT:   superClassName: NSObject
+CHECK-NEXT:   hasExceptionAttribute: false
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   categories:
+CHECK-NEXT:   protocols:
+CHECK-NEXT:   methods:
+CHECK-NEXT:   - name: property1
+CHECK-NEXT:     kind: instance
+CHECK-NEXT:     isOptional: false
+CHECK-NEXT:     isDynamic: false
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   - name: setProperty1:
+CHECK-NEXT:     kind: instance
+CHECK-NEXT:     isOptional: false
+CHECK-NEXT:     isDynamic: false
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   - name: property2
+CHECK-NEXT:     kind: instance
+CHECK-NEXT:     isOptional: false
+CHECK-NEXT:     isDynamic: false
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   - name: isProperty3
+CHECK-NEXT:     kind: instance
+CHECK-NEXT:     isOptional: false
+CHECK-NEXT:     isDynamic: false
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   - name: setProperty3:
+CHECK-NEXT:     kind: instance
+CHECK-NEXT:     isOptional: false
+CHECK-NEXT:     isDynamic: false
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   properties:
+CHECK-NEXT:   - name: property1
+CHECK-NEXT:     attributes:
+CHECK-NEXT:     isOptional: false
+CHECK-NEXT:     getter name: property1
+CHECK-NEXT:     setter name: setProperty1:
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   - name: property2
+CHECK-NEXT:     attributes: readonly
+CHECK-NEXT:     isOptional: false
+CHECK-NEXT:     getter name: property2
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   - name: property3
+CHECK-NEXT:     attributes:
+CHECK-NEXT:     isOptional: false
+CHECK-NEXT:     getter name: isProperty3
+CHECK-NEXT:     setter name: setProperty3:
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   - name: dynamicProp
+CHECK-NEXT:     attributes: dynamic
+CHECK-NEXT:     isOptional: false
+CHECK-NEXT:     getter name: dynamicProp
+CHECK-NEXT:     setter name: setDynamicProp:
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   instance variables:
+CHECK-NEXT:   linkage: exported
+CHECK-NEXT: - name: Basic4
+CHECK-NEXT:   superClassName: NSObject
+CHECK-NEXT:   hasExceptionAttribute: false
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   categories:
+CHECK-NEXT:   protocols:
+CHECK-NEXT:   methods:
+CHECK-NEXT:   properties:
+CHECK-NEXT:   instance variables:
+CHECK-NEXT:   - name: ivar1
+CHECK-NEXT:     access: none
+CHECK-NEXT:   linkage: exported
+CHECK-NEXT:   - name: ivar2
+CHECK-NEXT:     access: none
+CHECK-NEXT:   linkage: exported
+CHECK-NEXT:   linkage: exported
+CHECK-NEXT: - name: Basic4_2
+CHECK-NEXT:   superClassName: NSObject
+CHECK-NEXT:   hasExceptionAttribute: false
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   categories:
+CHECK-NEXT:   protocols:
+CHECK-NEXT:   methods:
+CHECK-NEXT:   properties:
+CHECK-NEXT:   instance variables:
+CHECK-NEXT:   - name: ivar1
+CHECK-NEXT:     access: none
+CHECK-NEXT:   linkage: exported
+CHECK-NEXT:   - name: ivar2
+CHECK-NEXT:     access: none
+CHECK-NEXT:   linkage: exported
+CHECK-NEXT:   linkage: exported
+CHECK-NEXT: - name: Basic5
+CHECK-NEXT:   superClassName: NSObject
+CHECK-NEXT:   hasExceptionAttribute: false
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   categories:
+CHECK-NEXT:   protocols:
+CHECK-NEXT:   methods:
+CHECK-NEXT:   - name: aClassMethod
+CHECK-NEXT:     kind: class
+CHECK-NEXT:     isOptional: false
+CHECK-NEXT:     isDynamic: false
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   - name: anInstanceMethod
+CHECK-NEXT:     kind: instance
+CHECK-NEXT:     isOptional: false
+CHECK-NEXT:     isDynamic: false
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   properties:
+CHECK-NEXT:   instance variables:
+CHECK-NEXT:   linkage: exported
+CHECK-NEXT: - name: Basic6
+CHECK-NEXT:   superClassName: NSObject
+CHECK-NEXT:   hasExceptionAttribute: false
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   categories:
+CHECK-NEXT:   protocols:
+CHECK-NEXT:   methods:
+CHECK-NEXT:   - name: property2
+CHECK-NEXT:     kind: instance
+CHECK-NEXT:     isOptional: false
+CHECK-NEXT:     isDynamic: false
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   - name: setProperty2:
+CHECK-NEXT:     kind: instance
+CHECK-NEXT:     isOptional: false
+CHECK-NEXT:     isDynamic: false
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   - name: anInstanceMethodFromACategory
+CHECK-NEXT:     kind: instance
+CHECK-NEXT:     isOptional: false
+CHECK-NEXT:     isDynamic: false
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   - name: anInstanceMethodFromAnExtension
+CHECK-NEXT:     kind: instance
+CHECK-NEXT:     isOptional: false
+CHECK-NEXT:     isDynamic: false
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   - name: property1
+CHECK-NEXT:     kind: instance
+CHECK-NEXT:     isOptional: false
+CHECK-NEXT:     isDynamic: false
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   - name: setProperty1:
+CHECK-NEXT:     kind: instance
+CHECK-NEXT:     isOptional: false
+CHECK-NEXT:     isDynamic: false
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   properties:
+CHECK-NEXT:   - name: property2
+CHECK-NEXT:     attributes:
+CHECK-NEXT:     isOptional: false
+CHECK-NEXT:     getter name: property2
+CHECK-NEXT:     setter name: setProperty2:
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   - name: property1
+CHECK-NEXT:     attributes:
+CHECK-NEXT:     isOptional: false
+CHECK-NEXT:     getter name: property1
+CHECK-NEXT:     setter name: setProperty1:
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   instance variables:
+CHECK-NEXT:   - name: ivar1
+CHECK-NEXT:     access: none
+CHECK-NEXT:   linkage: exported
+CHECK-NEXT:   linkage: exported
+CHECK-NEXT: - name: Basic8
+CHECK-NEXT:   superClassName: NSObject
+CHECK-NEXT:   hasExceptionAttribute: false
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   categories:
+CHECK-NEXT:   protocols:
+CHECK-NEXT:   methods:
+CHECK-NEXT:   - name: useSameName
+CHECK-NEXT:     kind: class
+CHECK-NEXT:     isOptional: false
+CHECK-NEXT:     isDynamic: false
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   - name: useSameName
+CHECK-NEXT:     kind: instance
+CHECK-NEXT:     isOptional: false
+CHECK-NEXT:     isDynamic: false
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   properties:
+CHECK-NEXT:   instance variables:
+CHECK-NEXT:   linkage: exported
+CHECK-NEXT: - name: Basic9
+CHECK-NEXT:   superClassName: NSObject
+CHECK-NEXT:   hasExceptionAttribute: false
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   categories:
+CHECK-NEXT:   protocols:
+CHECK-NEXT:   methods:
+CHECK-NEXT:   - name: aProperty
+CHECK-NEXT:     kind: instance
+CHECK-NEXT:     isOptional: false
+CHECK-NEXT:     isDynamic: false
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   properties:
+CHECK-NEXT:   - name: aProperty
+CHECK-NEXT:     attributes:
+CHECK-NEXT:     isOptional: false
+CHECK-NEXT:     getter name: aProperty
+CHECK-NEXT:     setter name: setAProperty:
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   - name: aProperty
+CHECK-NEXT:     attributes: readonly
+CHECK-NEXT:     isOptional: false
+CHECK-NEXT:     getter name: aProperty
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   instance variables:
+CHECK-NEXT:   linkage: exported
+CHECK-NEXT: - name: ExternalManagedObject
+CHECK-NEXT:   superClassName: NSManagedObject
+CHECK-NEXT:   hasExceptionAttribute: false
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   categories:
+CHECK-NEXT:   protocols:
+CHECK-NEXT:   methods:
+CHECK-NEXT:   - name: foo
+CHECK-NEXT:     kind: instance
+CHECK-NEXT:     isOptional: false
+CHECK-NEXT:     isDynamic: false
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   properties:
+CHECK-NEXT:   instance variables:
+CHECK-NEXT:   linkage: exported
+CHECK-NEXT: - name: FooClass
+CHECK-NEXT:   superClassName: 
+CHECK-NEXT:   hasExceptionAttribute: false
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   categories:
+CHECK-NEXT:   protocols:
+CHECK-NEXT:   methods:
+CHECK-NEXT:   - name: privateProcotolMethod
+CHECK-NEXT:     kind: instance
+CHECK-NEXT:     isOptional: false
+CHECK-NEXT:     isDynamic: false
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   - name: baseMethod
+CHECK-NEXT:     kind: instance
+CHECK-NEXT:     isOptional: false
+CHECK-NEXT:     isDynamic: false
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   - name: protocolMethod
+CHECK-NEXT:     kind: instance
+CHECK-NEXT:     isOptional: false
+CHECK-NEXT:     isDynamic: false
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   - name: barMethod
+CHECK-NEXT:     kind: instance
+CHECK-NEXT:     isOptional: false
+CHECK-NEXT:     isDynamic: false
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   properties:
+CHECK-NEXT:   instance variables:
+CHECK-NEXT:   linkage: exported
+CHECK-NEXT: - name: Simple
+CHECK-NEXT:   superClassName: NSObject
+CHECK-NEXT:   hasExceptionAttribute: false
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   categories:
+CHECK-NEXT:   protocols:
+CHECK-NEXT:   methods:
+CHECK-NEXT:   properties:
+CHECK-NEXT:   instance variables:
+CHECK-NEXT:   linkage: exported
+CHECK-NEXT: - name: SimpleInternalAPI
+CHECK-NEXT:   superClassName: NSObject
+CHECK-NEXT:   hasExceptionAttribute: true
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   categories:
+CHECK-NEXT:   protocols:
+CHECK-NEXT:   methods:
+CHECK-NEXT:   properties:
+CHECK-NEXT:   instance variables:
+CHECK-NEXT:   linkage: exported
+CHECK-NEXT: - name: SimpleInternalSPI
+CHECK-NEXT:   superClassName: NSObject
+CHECK-NEXT:   hasExceptionAttribute: true
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   categories:
+CHECK-NEXT:   protocols:
+CHECK-NEXT:   methods:
+CHECK-NEXT:   properties:
+CHECK-NEXT:   instance variables:
+CHECK-NEXT:   linkage: exported
+CHECK-NEXT: - name: SubClass
+CHECK-NEXT:   superClassName: Base
+CHECK-NEXT:   hasExceptionAttribute: true
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   categories:
+CHECK-NEXT:   protocols:
+CHECK-NEXT:   methods:
+CHECK-NEXT:   properties:
+CHECK-NEXT:   instance variables:
+CHECK-NEXT:   linkage: exported
+CHECK-NEXT: - name: NSManagedObject
+CHECK-NEXT:   superClassName: 
+CHECK-NEXT:   hasExceptionAttribute: false
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   categories: Simple
+CHECK-NEXT:   protocols:
+CHECK-NEXT:   methods:
+CHECK-NEXT:   properties:
+CHECK-NEXT:   instance variables:
+CHECK-NEXT:   linkage: external
+CHECK-NEXT: - name: NSObject
+CHECK-NEXT:   superClassName: 
+CHECK-NEXT:   hasExceptionAttribute: false
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   categories:
+CHECK-NEXT:   protocols:
+CHECK-NEXT:   methods:
+CHECK-NEXT:   properties:
+CHECK-NEXT:   instance variables:
+CHECK-NEXT:   linkage: external
+CHECK-NEXT: objective-c categories:
+CHECK-NEXT: - name: 
+CHECK-NEXT:   interfaceName: Basic3
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   protocols:
+CHECK-NEXT:   methods:
+CHECK-NEXT:   properties:
+CHECK-NEXT:   instance variables:
+CHECK-NEXT:   - name: property1
+CHECK-NEXT:     access: none
+CHECK-NEXT:   linkage: internal
+CHECK-NEXT:   - name: property2
+CHECK-NEXT:     access: none
+CHECK-NEXT:   linkage: internal
+CHECK-NEXT:   - name: property3
+CHECK-NEXT:     access: none
+CHECK-NEXT:   linkage: internal
+CHECK-NEXT: - name: 
+CHECK-NEXT:   interfaceName: Basic4
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   protocols:
+CHECK-NEXT:   methods:
+CHECK-NEXT:   properties:
+CHECK-NEXT:   instance variables:
+CHECK-NEXT:   - name: ivar3
+CHECK-NEXT:     access: none
+CHECK-NEXT:   linkage: internal
+CHECK-NEXT:   - name: ivar4
+CHECK-NEXT:     access: none
+CHECK-NEXT:   linkage: internal
+CHECK-NEXT: - name: 
+CHECK-NEXT:   interfaceName: Basic4_1
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   protocols:
+CHECK-NEXT:   methods:
+CHECK-NEXT:   properties:
+CHECK-NEXT:   instance variables:
+CHECK-NEXT:   - name: ivar1
+CHECK-NEXT:     access: none
+CHECK-NEXT:   linkage: internal
+CHECK-NEXT:   - name: ivar2
+CHECK-NEXT:     access: none
+CHECK-NEXT:   linkage: internal
+CHECK-NEXT:   - name: ivar3
+CHECK-NEXT:     access: none
+CHECK-NEXT:   linkage: internal
+CHECK-NEXT:   - name: ivar4
+CHECK-NEXT:     access: none
+CHECK-NEXT:   linkage: internal
+CHECK-NEXT: - name: 
+CHECK-NEXT:   interfaceName: Basic4_2
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   protocols:
+CHECK-NEXT:   methods:
+CHECK-NEXT:   properties:
+CHECK-NEXT:   instance variables:
+CHECK-NEXT:   - name: ivar4
+CHECK-NEXT:     access: none
+CHECK-NEXT:   linkage: internal
+CHECK-NEXT:   - name: ivar3
+CHECK-NEXT:     access: none
+CHECK-NEXT:   linkage: internal
+CHECK-NEXT: - name: 
+CHECK-NEXT:   interfaceName: Basic6
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   protocols:
+CHECK-NEXT:   methods:
+CHECK-NEXT:   properties:
+CHECK-NEXT:   instance variables:
+CHECK-NEXT:   - name: property1
+CHECK-NEXT:     access: none
+CHECK-NEXT:   linkage: internal
+CHECK-NEXT: - name: 
+CHECK-NEXT:   interfaceName: Basic9
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   protocols:
+CHECK-NEXT:   methods:
+CHECK-NEXT:   properties:
+CHECK-NEXT:   instance variables:
+CHECK-NEXT:   - name: _aProperty
+CHECK-NEXT:     access: none
+CHECK-NEXT:   linkage: internal
+CHECK-NEXT: - name: Simple
+CHECK-NEXT:   interfaceName: NSManagedObject
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   protocols:
+CHECK-NEXT:   methods:
+CHECK-NEXT:   - name: supportsSimple
+CHECK-NEXT:     kind: instance
+CHECK-NEXT:     isOptional: false
+CHECK-NEXT:     isDynamic: false
+CHECK-NEXT:   availability: i:0 d:0 o:0 u:0
+CHECK-NEXT:   properties:
+CHECK-NEXT:   instance variables:
+
+JSON-NOT: error
+JSON-NOT: warning 
+
+//--- expected.json
+{
+  "api_json_version": 1,
+  "binaryInfo": {
+    "compatibilityVersion": "1",
+    "currentVersion": "1.2.3",
+    "installName": "/System/Library/Frameworks/Simple.framework/Versions/A/Simple",
+    "twoLevelNamespace": true,
+    "type": "dylib"
+  },
+  "categories": [
+    {
+      "interface": "Basic3",
+      "ivars": [
+        {
+          "linkage": "internal",
+          "name": "property1"
+        },
+        {
+          "linkage": "internal",
+          "name": "property2"
+        },
+        {
+          "linkage": "internal",
+          "name": "property3"
+        }
+      ],
+      "name": ""
+    },
+    {
+      "interface": "Basic4",
+      "ivars": [
+        {
+          "linkage": "internal",
+          "name": "ivar3"
+        },
+        {
+          "linkage": "internal",
+          "name": "ivar4"
+        }
+      ],
+      "name": ""
+    },
+    {
+      "interface": "Basic4_1",
+      "ivars": [
+        {
+          "linkage": "internal",
+          "name": "ivar1"
+        },
+        {
+          "linkage": "internal",
+          "name": "ivar2"
+        },
+        {
+          "linkage": "internal",
+          "name": "ivar3"
+        },
+        {
+          "linkage": "internal",
+          "name": "ivar4"
+        }
+      ],
+      "name": ""
+    },
+    {
+      "interface": "Basic4_2",
+      "ivars": [
+        {
+          "linkage": "internal",
+          "name": "ivar4"
+        },
+        {
+          "linkage": "internal",
+          "name": "ivar3"
+        }
+      ],
+      "name": ""
+    },
+    {
+      "interface": "Basic6",
+      "ivars": [
+        {
+          "linkage": "internal",
+          "name": "property1"
+        }
+      ],
+      "name": ""
+    },
+    {
+      "interface": "Basic9",
+      "ivars": [
+        {
+          "linkage": "internal",
+          "name": "_aProperty"
+        }
+      ],
+      "name": ""
+    },
+    {
+      "instanceMethods": [
+        {
+          "name": "supportsSimple"
+        }
+      ],
+      "interface": "NSManagedObject",
+      "name": "Simple"
+    }
+  ],
+  "globals": [
+    {
+      "kind": "variable",
+      "linkage": "internal",
+      "name": "__OBJC_LABEL_PROTOCOL_$_BaseProtocol"
+    },
+    {
+      "kind": "variable",
+      "linkage": "internal",
+      "name": "__OBJC_LABEL_PROTOCOL_$_FooProtocol"
+    },
+    {
+      "kind": "variable",
+      "linkage": "internal",
+      "name": "__OBJC_LABEL_PROTOCOL_$_BarProtocol"
+    },
+    {
+      "kind": "variable",
+      "linkage": "internal",
+      "name": "__OBJC_LABEL_PROTOCOL_$_PrivateProtocol"
+    },
+    {
+      "kind": "variable",
+      "linkage": "internal",
+      "name": "__OBJC_CLASS_PROTOCOLS_$_FooClass(Private)"
+    },
+    {
+      "kind": "variable",
+      "linkage": "internal",
+      "name": "__OBJC_PROTOCOL_$_BaseProtocol"
+    },
+    {
+      "kind": "variable",
+      "linkage": "internal",
+      "name": "__OBJC_PROTOCOL_$_FooProtocol"
+    },
+    {
+      "kind": "variable",
+      "linkage": "internal",
+      "name": "__OBJC_PROTOCOL_$_BarProtocol"
+    },
+    {
+      "kind": "variable",
+      "linkage": "internal",
+      "name": "__OBJC_PROTOCOL_$_PrivateProtocol"
+    },
+    {
+      "kind": "variable",
+      "linkage": "exported",
+      "name": "_extraGlobalAPI1"
+    },
+    {
+      "kind": "variable",
+      "linkage": "exported",
+      "name": "_extraGlobalAPI2"
+    },
+    {
+      "kind": "variable",
+      "linkage": "exported",
+      "name": "_privateGlobalVariable"
+    },
+    {
+      "kind": "variable",
+      "linkage": "exported",
+      "name": "_publicGlobalVariable"
+    },
+    {
+      "kind": "variable",
+      "linkage": "exported",
+      "name": "_weakPrivateGlobalVariable",
+      "weakDefined": true
+    },
+    {
+      "kind": "variable",
+      "linkage": "exported",
+      "name": "_weakPublicGlobalVariable",
+      "weakDefined": true
+    },
+    {
+      "kind": "variable",
+      "linkage": "external",
+      "name": "__objc_empty_cache"
+    },
+    {
+      "kind": "variable",
+      "linkage": "external",
+      "name": "_objc_ehtype_vtable"
+    },
+    {
+      "kind": "variable",
+      "linkage": "external",
+      "name": "dyld_stub_binder"
+    }
+  ],
+  "interfaces": [
+    {
+      "linkage": "internal",
+      "name": "Basic4_1",
+      "super": "NSObject"
+    },
+    {
+      "instanceMethods": [
+        {
+          "name": "anInstanceMethodFromAnHiddenExtension"
+        }
+      ],
+      "linkage": "internal",
+      "name": "Basic7",
+      "super": "NSObject"
+    },
+    {
+      "linkage": "internal",
+      "name": "HiddenClass",
+      "super": "NSObject"
+    },
+    {
+      "instanceMethods": [
+        {
+          "name": "aMethod"
+        }
+      ],
+      "linkage": "exported",
+      "name": "A",
+      "super": "NSObject"
+    },
+    {
+      "hasException": true,
+      "linkage": "exported",
+      "name": "Base",
+      "super": "NSObject"
+    },
+    {
+      "linkage": "exported",
+      "name": "Basic1",
+      "super": ""
+    },
+    {
+      "linkage": "exported",
+      "name": "Basic2",
+      "super": "NSObject"
+    },
+    {
+      "instanceMethods": [
+        {
+          "name": "property1"
+        },
+        {
+          "name": "setProperty1:"
+        },
+        {
+          "name": "property2"
+        },
+        {
+          "name": "isProperty3"
+        },
+        {
+          "name": "setProperty3:"
+        }
+      ],
+      "linkage": "exported",
+      "name": "Basic3",
+      "properties": [
+        {
+          "getter": "property1",
+          "name": "property1",
+          "setter": "setProperty1:"
+        },
+        {
+          "attr": [
+            "readonly"
+          ],
+          "getter": "property2",
+          "name": "property2"
+        },
+        {
+          "getter": "isProperty3",
+          "name": "property3",
+          "setter": "setProperty3:"
+        },
+        {
+          "attr": [
+            "dynamic"
+          ],
+          "getter": "dynamicProp",
+          "name": "dynamicProp",
+          "setter": "setDynamicProp:"
+        }
+      ],
+      "super": "NSObject"
+    },
+    {
+      "ivars": [
+        {
+          "linkage": "exported",
+          "name": "ivar1"
+        },
+        {
+          "linkage": "exported",
+          "name": "ivar2"
+        }
+      ],
+      "linkage": "exported",
+      "name": "Basic4",
+      "super": "NSObject"
+    },
+    {
+      "ivars": [
+        {
+          "linkage": "exported",
+          "name": "ivar1"
+        },
+        {
+          "linkage": "exported",
+          "name": "ivar2"
+        }
+      ],
+      "linkage": "exported",
+      "name": "Basic4_2",
+      "super": "NSObject"
+    },
+    {
+      "classMethods": [
+        {
+          "name": "aClassMethod"
+        }
+      ],
+      "instanceMethods": [
+        {
+          "name": "anInstanceMethod"
+        }
+      ],
+      "linkage": "exported",
+      "name": "Basic5",
+      "super": "NSObject"
+    },
+    {
+      "instanceMethods": [
+        {
+          "name": "property2"
+        },
+        {
+          "name": "setProperty2:"
+        },
+        {
+          "name": "anInstanceMethodFromACategory"
+        },
+        {
+          "name": "anInstanceMethodFromAnExtension"
+        },
+        {
+          "name": "property1"
+        },
+        {
+          "name": "setProperty1:"
+        }
+      ],
+      "ivars": [
+        {
+          "linkage": "exported",
+          "name": "ivar1"
+        }
+      ],
+      "linkage": "exported",
+      "name": "Basic6",
+      "properties": [
+        {
+          "getter": "property2",
+          "name": "property2",
+          "setter": "setProperty2:"
+        },
+        {
+          "getter": "property1",
+          "name": "property1",
+          "setter": "setProperty1:"
+        }
+      ],
+      "super": "NSObject"
+    },
+    {
+      "classMethods": [
+        {
+          "name": "useSameName"
+        }
+      ],
+      "instanceMethods": [
+        {
+          "name": "useSameName"
+        }
+      ],
+      "linkage": "exported",
+      "name": "Basic8",
+      "super": "NSObject"
+    },
+    {
+      "instanceMethods": [
+        {
+          "name": "aProperty"
+        }
+      ],
+      "linkage": "exported",
+      "name": "Basic9",
+      "properties": [
+        {
+          "getter": "aProperty",
+          "name": "aProperty",
+          "setter": "setAProperty:"
+        },
+        {
+          "attr": [
+            "readonly"
+          ],
+          "getter": "aProperty",
+          "name": "aProperty"
+        }
+      ],
+      "super": "NSObject"
+    },
+    {
+      "instanceMethods": [
+        {
+          "name": "foo"
+        }
+      ],
+      "linkage": "exported",
+      "name": "ExternalManagedObject",
+      "super": "NSManagedObject"
+    },
+    {
+      "instanceMethods": [
+        {
+          "name": "privateProcotolMethod"
+        },
+        {
+          "name": "baseMethod"
+        },
+        {
+          "name": "protocolMethod"
+        },
+        {
+          "name": "barMethod"
+        }
+      ],
+      "linkage": "exported",
+      "name": "FooClass",
+      "super": ""
+    },
+    {
+      "linkage": "exported",
+      "name": "Simple",
+      "super": "NSObject"
+    },
+    {
+      "hasException": true,
+      "linkage": "exported",
+      "name": "SimpleInternalAPI",
+      "super": "NSObject"
+    },
+    {
+      "hasException": true,
+      "linkage": "exported",
+      "name": "SimpleInternalSPI",
+      "super": "NSObject"
+    },
+    {
+      "hasException": true,
+      "linkage": "exported",
+      "name": "SubClass",
+      "super": "Base"
+    },
+    {
+      "categories": [
+        "Simple"
+      ],
+      "linkage": "external",
+      "name": "NSManagedObject",
+      "super": ""
+    },
+    {
+      "linkage": "external",
+      "name": "NSObject",
+      "super": ""
+    }
+  ],
+  "protocols": [
+    {
+      "instanceMethods": [
+        {
+          "name": "baseMethod"
+        }
+      ],
+      "name": "BaseProtocol"
+    },
+    {
+      "instanceMethods": [
+        {
+          "name": "protocolMethod"
+        }
+      ],
+      "name": "FooProtocol"
+    },
+    {
+      "instanceMethods": [
+        {
+          "name": "barMethod"
+        }
+      ],
+      "name": "BarProtocol"
+    },
+    {
+      "instanceMethods": [
+        {
+          "name": "privateProcotolMethod"
+        }
+      ],
+      "name": "PrivateProtocol"
+    }
+  ],
+  "target": "x86_64-apple-macos10.12"
+}

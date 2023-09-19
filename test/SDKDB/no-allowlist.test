@@ -1,0 +1,56 @@
+--- !tapi-configuration-v1
+sdk-platform: ios
+sdk-version: 10.0
+sdk-root: /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS10.0.sdk
+macros: [ -DTARGET_OS_IPHONE ]
+public-dylibs: [ /usr/lib/libc++* ]
+frameworks:
+  - name: iPhoneOS10.0.sdk
+    path: /
+    include-paths: [ /usr/include ]
+    public-header:
+      umbrella: usr/include/umbrella.h
+      excludes: [ "**/test_exclude*.h" ]
+# RUN: rm -rf %t && mkdir -p %t
+# RUN: %tapi sdkdb --action=interface-scan --private-headers -o %t --config-file=%s -isysroot %sysroot --runtime-root %inputs/UsrLib --sdk-content-root %inputs/UsrLib
+# RUN: %tapi sdkdb --action=gen-private -o - --config-file=%s %t/partial.sdkdb 2>&1 | FileCheck %s
+
+# CHECK-NOT: warning:
+# CHECK: {
+# CHECK-NEXT:   "x86_64-apple-macosx": [
+# CHECK-NEXT:     {
+# CHECK-NEXT:       "binaryInfo": {
+# CHECK-NEXT:         "compatibilityVersion": "1",
+# CHECK-NEXT:         "currentVersion": "1",
+# CHECK-NEXT:         "installName": "/usr/lib/libTest.1.dylib",
+# CHECK-NEXT:         "twoLevelNamespace": true,
+# CHECK-NEXT:         "type": "dylib"
+# CHECK-NEXT:       },
+# CHECK-NEXT:       "globals": [
+# CHECK-NEXT:         {
+# CHECK-NEXT:           "kind": "function",
+# CHECK-NEXT:           "linkage": "exported",
+# CHECK-NEXT:           "name": "_exclude_function"
+# CHECK-NEXT:         },
+# CHECK-NEXT:         {
+# CHECK-NEXT:           "kind": "function",
+# CHECK-NEXT:           "linkage": "exported",
+# CHECK-NEXT:           "name": "_exclude_function2"
+# CHECK-NEXT:         },
+# CHECK-NEXT:         {
+# CHECK-NEXT:           "access": "private",
+# CHECK-NEXT:           "kind": "function",
+# CHECK-NEXT:           "linkage": "exported",
+# CHECK-NEXT:           "name": "_private_function"
+# CHECK-NEXT:         },
+# CHECK-NEXT:         {
+# CHECK-NEXT:           "access": "public",
+# CHECK-NEXT:           "kind": "function",
+# CHECK-NEXT:           "linkage": "exported",
+# CHECK-NEXT:           "name": "_public_function"
+# CHECK-NEXT:         }
+# CHECK-NEXT:       ]
+# CHECK-NEXT:     }
+# CHECK-NEXT:   ]
+# CHECK-NEXT: }
+...

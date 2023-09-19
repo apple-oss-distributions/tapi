@@ -1,0 +1,10 @@
+; RUN: rm -rf %t
+; RUN: split-file %s %t
+; RUN: RC_PROJECT_COMPILATION_PLATFORM="osx" RC_ARCHS="arm64" \
+; RUN: %tapi sdkdb --action=scan-interface -o %t/Output -isysroot %t --runtime-root %t --public-sdk-content-root %t --sdk-content-root %t
+; RUN: FileCheck %s --input-file=%t/Output/partial.sdkdb
+
+; CHECK: "target": "arm64-apple-driverkit19.0"
+
+//--- System/DriverKit/System/Library/Frameworks/DriverKit.framework/Headers/DriverKit.h
+extern int DriverKitAPI(void);

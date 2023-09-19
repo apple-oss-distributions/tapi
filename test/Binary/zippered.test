@@ -1,0 +1,119 @@
+// RUN: %tapi-binary-reader -no-uuid -json %t.json %inputs/System/Library/Frameworks/Zippered.framework/Zippered
+// RUN: cat %t.json  | Filecheck %s
+
+CHECK: {
+CHECK-NEXT:   "api_json_version": 1,
+CHECK-NEXT:   "binaryInfo": {
+CHECK-NEXT:     "compatibilityVersion": "1",
+CHECK-NEXT:     "currentVersion": "1",
+CHECK-NEXT:     "installName": "/System/Library/Frameworks/Zippered.framework/Versions/A/Zippered",
+CHECK-NEXT:     "twoLevelNamespace": true,
+CHECK-NEXT:     "type": "dylib"
+CHECK-NEXT:   },
+CHECK-NEXT:   "globals": [
+CHECK-NEXT:     {
+CHECK-NEXT:       "kind": "variable",
+CHECK-NEXT:       "linkage": "exported",
+CHECK-NEXT:       "name": "_a"
+CHECK-NEXT:     },
+CHECK-NEXT:     {
+CHECK-NEXT:       "kind": "function",
+CHECK-NEXT:       "linkage": "exported",
+CHECK-NEXT:       "name": "_commonAPI"
+CHECK-NEXT:     },
+CHECK-NEXT:     {
+CHECK-NEXT:       "kind": "function",
+CHECK-NEXT:       "linkage": "exported",
+CHECK-NEXT:       "name": "_iOSAPI"
+CHECK-NEXT:     },
+CHECK-NEXT:     {
+CHECK-NEXT:       "kind": "variable",
+CHECK-NEXT:       "linkage": "exported",
+CHECK-NEXT:       "name": "_image"
+CHECK-NEXT:     },
+CHECK-NEXT:     {
+CHECK-NEXT:       "kind": "function",
+CHECK-NEXT:       "linkage": "exported",
+CHECK-NEXT:       "name": "_invalidAPI"
+CHECK-NEXT:     },
+CHECK-NEXT:     {
+CHECK-NEXT:       "kind": "function",
+CHECK-NEXT:       "linkage": "exported",
+CHECK-NEXT:       "name": "_macOSAPI"
+CHECK-NEXT:     },
+CHECK-NEXT:     {
+CHECK-NEXT:       "kind": "function",
+CHECK-NEXT:       "linkage": "exported",
+CHECK-NEXT:       "name": "_macOSAPI2"
+CHECK-NEXT:     },
+;; Ignore potential external references that could differ in CI 
+;; Specifically the inclusion of _objc_msgSend
+CHECK:            "linkage": "exported",
+CHECK-NEXT:       "name": "_obsoletedMacOSAPI"
+CHECK-NEXT:     },
+CHECK:     {
+CHECK-NEXT:       "kind": "variable",
+CHECK-NEXT:       "linkage": "external",
+CHECK-NEXT:       "name": "dyld_stub_binder"
+CHECK-NEXT:     }
+CHECK-NEXT:   ],
+CHECK-NEXT:   "target": "x86_64-apple-ios13.1-macabi"
+CHECK-NEXT: }
+CHECK-NEXT: {
+CHECK-NEXT:   "api_json_version": 1,
+CHECK-NEXT:   "binaryInfo": {
+CHECK-NEXT:     "compatibilityVersion": "1",
+CHECK-NEXT:     "currentVersion": "1",
+CHECK-NEXT:     "installName": "/System/Library/Frameworks/Zippered.framework/Versions/A/Zippered",
+CHECK-NEXT:     "twoLevelNamespace": true,
+CHECK-NEXT:     "type": "dylib"
+CHECK-NEXT:   },
+CHECK-NEXT:   "globals": [
+CHECK-NEXT:     {
+CHECK-NEXT:       "kind": "variable",
+CHECK-NEXT:       "linkage": "exported",
+CHECK-NEXT:       "name": "_a"
+CHECK-NEXT:     },
+CHECK-NEXT:     {
+CHECK-NEXT:       "kind": "function",
+CHECK-NEXT:       "linkage": "exported",
+CHECK-NEXT:       "name": "_commonAPI"
+CHECK-NEXT:     },
+CHECK-NEXT:     {
+CHECK-NEXT:       "kind": "function",
+CHECK-NEXT:       "linkage": "exported",
+CHECK-NEXT:       "name": "_iOSAPI"
+CHECK-NEXT:     },
+CHECK-NEXT:     {
+CHECK-NEXT:       "kind": "variable",
+CHECK-NEXT:       "linkage": "exported",
+CHECK-NEXT:       "name": "_image"
+CHECK-NEXT:     },
+CHECK-NEXT:     {
+CHECK-NEXT:       "kind": "function",
+CHECK-NEXT:       "linkage": "exported",
+CHECK-NEXT:       "name": "_invalidAPI"
+CHECK-NEXT:     },
+CHECK-NEXT:     {
+CHECK-NEXT:       "kind": "function",
+CHECK-NEXT:       "linkage": "exported",
+CHECK-NEXT:       "name": "_macOSAPI"
+CHECK-NEXT:     },
+CHECK-NEXT:     {
+CHECK-NEXT:       "kind": "function",
+CHECK-NEXT:       "linkage": "exported",
+CHECK-NEXT:       "name": "_macOSAPI2"
+CHECK-NEXT:     },
+;; Ignore potential external references that could differ in CI 
+;; Specifically the inclusion of _objc_msgSend
+CHECK:            "linkage": "exported",
+CHECK-NEXT:       "name": "_obsoletedMacOSAPI"
+CHECK-NEXT:     },
+CHECK-NEXT:     {
+CHECK-NEXT:       "kind": "variable",
+CHECK-NEXT:       "linkage": "external",
+CHECK-NEXT:       "name": "dyld_stub_binder"
+CHECK-NEXT:     }
+CHECK-NEXT:   ],
+CHECK-NEXT:   "target": "x86_64-apple-macos10.15"
+CHECK-NEXT: }

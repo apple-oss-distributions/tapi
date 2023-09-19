@@ -1,0 +1,30 @@
+; RUN: %tapi sdkdb --action=all -o - -isysroot %sysroot --runtime-root %inputs/Export --sdk-content-root %inputs/Export 2>&1 | FileCheck %s
+; CHECK: 			"installName": "/System/Library/Frameworks/Export.framework/Versions/A/Export"
+; CHECK: "access": "public",
+; CHECK: "kind": "variable",
+; CHECK: "linkage": "exported",
+; CHECK: "name": "_public_sym1"
+; CHECK: "interfaces": [
+; CHECK:   {
+; CHECK:     "access": "public",
+; CHECK:     "instanceMethods": [
+; CHECK:       {
+; CHECK:         "access": "public",
+; CHECK:         "name": "method"
+; CHECK:       }
+; CHECK:     ],
+; CHECK:     "linkage": "exported",
+; CHECK:     "name": "A",
+; CHECK:     "super": ""
+; CHECK:   },
+; CHECK:   {
+; CHECK:     "instanceMethods": [
+; CHECK:       {
+; CHECK:         "name": "method"
+; CHECK:       }
+; CHECK:     ],
+; CHECK:     "linkage": "exported",
+; CHECK:     "name": "C",
+; CHECK:     "super": "A"
+; CHECK:   }
+; CHECK: ]

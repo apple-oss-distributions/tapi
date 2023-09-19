@@ -1,0 +1,50 @@
+; RUN: rm -rf %t
+; RUN: split-file %s %t
+; RUN: %tapi installapi -x c++ -std=c++20 -arch x86_64 -install_name /System/Library/Frameworks/CPP5.framework/Versions/A/CPP5 -current_version 1 -compatibility_version 1 -mtargetos=macosx13 -isysroot %sysroot %inputs/System/Library/Frameworks/CPP5.framework -o %t/CPP5.tbd --verify-against=%inputs/System/Library/Frameworks/CPP5.framework/CPP5 --verify-mode=Pedantic 2>&1 | FileCheck -allow-empty %s
+; RUN: %readtapi --compare %t/CPP5.tbd %t/expected.tbd 
+
+CHECK-NOT: error
+CHECK-NOT: warning
+
+//--- expected.tbd
+{
+  "main_library": {
+    "exported_symbols": [
+      {
+        "data": {
+          "global": [
+            "__ZN5test24BaseD2Ev",
+            "__ZN5test13Foo4BaseD0Ev",
+            "__ZN5test24BaseD1Ev",
+            "__ZN5test13Foo4BaseD2Ev",
+            "__ZTSN5test24BaseE",
+            "__ZTIN5test24BaseE",
+            "__ZN5test24BaseD0Ev",
+            "__ZN5test13Foo4BaseD1Ev",
+            "__ZTVN5test24BaseE"
+          ]
+        }
+      }
+    ],
+    "flags": [
+      {
+        "attributes": [
+          "not_app_extension_safe"
+        ]
+      }
+    ],
+    "install_names": [
+      {
+        "name": "/System/Library/Frameworks/CPP5.framework/Versions/A/CPP5"
+      }
+    ],
+    "target_info": [
+      {
+        "min_deployment": "13",
+        "target": "x86_64-macos"
+      }
+    ]
+  },
+  "tapi_tbd_version": 5
+}
+

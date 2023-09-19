@@ -1,0 +1,23 @@
+// RUN: rm -rf %t
+// RUN: split-file %s %t
+; RUN: %tapi installapi -arch x86_64 -install_name /System/Library/Frameworks/asm.framework/Versions/A/asm -current_version 1 -compatibility_version 1 -mtargetos=macosx13 -isysroot %sysroot %inputs/System/Library/Frameworks/asm.framework -o %t.tbd --verify-mode=Pedantic --verify-against=%inputs/System/Library/Frameworks/asm.framework/asm 2>&1 | FileCheck -allow-empty %s
+
+; RUN: %readtapi --compare %t.tbd %t/expected.tbd 2>&1 | FileCheck -allow-empty %s
+
+CHECK-NOT: error:
+CHECK-NOT: warning:
+
+//--- expected.tbd
+--- !tapi-tbd
+tbd-version:     4
+targets:         [ x86_64-macos ]
+flags:           [ not_app_extension_safe ]
+install-name:    '/System/Library/Frameworks/asm.framework/Versions/A/asm'
+exports:
+  - targets:         [ x86_64-macos ]
+    objc-classes:    [ SomeClass ]
+    objc-eh-types:   [ SomeClass ]
+    objc-ivars:      [ NSString._ivar1, SomeClass._ivar1 ]
+...
+
+

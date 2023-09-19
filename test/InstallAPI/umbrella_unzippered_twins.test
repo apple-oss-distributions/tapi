@@ -1,0 +1,10 @@
+; REQUIRES: iosmac
+; RUN: %tapi installapi -arch x86_64 -install_name /System/iOSSupport/System/Library/Frameworks/Umbrella5.framework/Versions/A/Umbrella5  \
+; RUN: -current_version 1 -compatibility_version 1 -mtargetos=ios13.1-macabi -isysroot %sysroot \
+; RUN: %inputs/System/iOSSupport/System/Library/Frameworks/Umbrella5.framework -reexport_framework Twin  \
+; RUN: -iframework %inputs/System/iOSSupport/System/Library/Frameworks  -t\
+; RUN: --verify-against=%inputs/System/iOSSupport/System/Library/Frameworks/Umbrella5.framework/Umbrella5 --verify-mode=Pedantic -o %t.tbd 2>&1 | FileCheck -allow-empty %s
+
+; CHECK-NOT: error
+; CHECK-NOT: warning
+; CHECK: Inputs/System/iOSSupport/System/Library/Frameworks/Twin.framework/Twin

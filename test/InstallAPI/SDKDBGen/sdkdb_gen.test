@@ -1,0 +1,23 @@
+; RUN: rm -rf %t && mkdir -p %t
+; RUN: %tapi installapi --filetype=tbd-v4 --target=x86_64-apple-macos10.15 -install_name /System/Library/Frameworks/Test.framework/Test -current_version 1 -compatibility_version 1 %S/Inputs/Root/System/Library/Frameworks/Test.framework -sdkdb-output-dir %t -o %t/Test.tbd 2>&1 | FileCheck -allow-empty %s
+; RUN: %readtapi --compare %t/Test.tbd %S/Outputs/Test.tbd
+; RUN: %api-json-diff -partial-sdkdb %t/Test.partial.sdkdb %S/Outputs/Test.partial.sdkdb
+
+; RUN: rm -rf %t2 && mkdir -p %t2
+; RUN: XBS_TAPI_SDKDB_OUTPUT_PATH=%t2/SDKDB %tapi installapi --filetype=tbd-v4 --target=x86_64-apple-macos10.15 -install_name /System/Library/Frameworks/Test.framework/Test -current_version 1 -compatibility_version 1 %S/Inputs/Root/System/Library/Frameworks/Test.framework -o %t2/Test.tbd 2>&1 | FileCheck -allow-empty %s
+; RUN: %readtapi --compare %t2/Test.tbd %S/Outputs/Test.tbd
+; RUN: %api-json-diff -partial-sdkdb %t2/SDKDB/Test.partial.sdkdb %S/Outputs/Test.partial.sdkdb
+
+;; Not using --verify-against, do not produce output.
+; RUN: rm -rf %t3 && mkdir -p %t3
+; RUN: RC_XBS=YES LD_TRACE_FILE=%t3/.LD_TRACE_FILE %tapi installapi --filetype=tbd-v4 --target=x86_64-apple-macos10.15 -install_name /System/Library/Frameworks/Test.framework/Test -current_version 1 -compatibility_version 1 %S/Inputs/Root/System/Library/Frameworks/Test.framework -o %t3/Test.tbd 2>&1 | FileCheck -allow-empty %s
+; RUN: not cat %t3/SDKDB/Test.partial.sdkdb
+
+;; Produce SDKDB output when using --verify-against
+; RUN: RC_XBS=YES LD_TRACE_FILE=%t3/.LD_TRACE_FILE %tapi installapi -arch x86_64 -install_name /System/Library/Frameworks/Simple.framework/Versions/A/Simple -current_version 1.2.3 -compatibility_version 1 -macosx_version_min 10.12 -isysroot %sysroot %inputs/System/Library/Frameworks/Simple.framework -o %t/Simple.tbd --verify-against=%inputs/System/Library/Frameworks/Simple.framework/Simple --verify-mode=ErrorsAndWarnings --exclude-public-header=**/SimpleAPI.h --exclude-private-header=**/SimplePrivateSPI.h
+; RUN: stat -f "%%Sp" %t3/SDKDB | FileCheck --check-prefix=CHECK-PERM %s
+; RUN: %api-json-diff -partial-sdkdb %t3/SDKDB/Simple.partial.sdkdb %S/Outputs/Simple.partial.sdkdb
+
+; CHECK-NOT: error
+; CHECK-NOT: warning
+; CHECK-PERM: drwxr-xr-x

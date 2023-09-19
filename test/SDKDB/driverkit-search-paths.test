@@ -1,0 +1,31 @@
+// REQUIRES: system-darwin
+
+// RUN: rm -rf %t && mkdir -p %t
+// RUN: mkdir -p %t/SDKs/DriverKit19.0.sdk/System/DriverKit/usr/include
+// RUN: mkdir -p %t/SDKs/DriverKit19.0.sdk/System/DriverKit/usr/local/include
+// RUN: mkdir -p %t/SDKs/DriverKit19.0.sdk/System/DriverKit/usr/include/c++/v1
+// RUN: mkdir -p %t/SDKs/DriverKit19.0.sdk/System/DriverKit/System/Library/Frameworks
+// RUN: mkdir -p %t/System/Library/Frameworks/Test.framework/Headers
+// RUN: touch %t/System/Library/Frameworks/Test.framework/Headers/Test.h
+
+// RUN: RC_PROJECT_COMPILATION_PLATFORM="driverkit" RC_ARCHS="x86_64" \
+// RUN: %tapi sdkdb -x c++ -isysroot %t/SDKs/DriverKit19.0.sdk \
+// RUN:   --output %t --runtime-root %t --sdk-content-root %t -v 2>&1 \
+// RUN: | FileCheck %s
+
+CHECK:      clang Invocation:
+CHECK-NEXT:   "-isysroot" "[[SYSROOT:.*/SDKs/DriverKit19.0.sdk]]"
+CHECK-NOT:    "-iframework" "[[SYSROOT]]/System/DriverKit/System/Library/Frameworks"
+CHECK-NOT:    "-isystem" "[[SYSROOT]]/System/DriverKit/usr/include"
+CHECK-NOT:    "-isystem" "[[SYSROOT]]/System/DriverKit/usr/local/include"
+CHECK-SAME:   "-internal-isystem" "[[SYSROOT]]/System/DriverKit/usr/include/c++/v1"
+CHECK-SAME:   "-internal-isystem" "[[SYSROOT]]/System/DriverKit/usr/local/include"
+CHECK-SAME:   "-internal-externc-isystem" "[[SYSROOT]]/System/DriverKit/usr/include"
+
+CHECK:      #include <...> search starts here:
+CHECK-NEXT:  [[SYSROOT]]/System/Library/Frameworks
+CHECK-NEXT:  [[SYSROOT]]/System/DriverKit/usr/include/c++/v1
+             // Skip one line of resource dir
+CHECK-NEXT:  {{.+}}
+CHECK-NEXT:  [[SYSROOT]]/System/DriverKit/usr/include
+CHECK-NEXT:  [[SYSROOT]]/System/DriverKit/System/Library/Frameworks

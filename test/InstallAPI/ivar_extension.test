@@ -1,0 +1,6 @@
+; RUN: rm -rf %t && mkdir -p %t
+; RUN: %tapi installapi --filetype=tbd-v3 -arch x86_64 -install_name /System/Library/Frameworks/IVarExtensionTest.framework/Versions/A/IVarExtensionTest -current_version 1 -compatibility_version 1 -mtargetos=macos13 -ObjC -isysroot %sysroot %inputs/System/Library/Frameworks/IVarExtensionTest.framework -o %t/IVarExtensionTest.tbd --verify-mode=Pedantic --verify-against=%inputs/System/Library/Frameworks/IVarExtensionTest.framework/Versions/A/IVarExtensionTest 2>&1 | FileCheck -allow-empty %s
+; RUN: %readtapi --compare %p/../Outputs/Frameworks/IVarExtensionTest.framework/IVarExtensionTest.tbd %t/IVarExtensionTest.tbd
+
+; CHECK-NOT: error
+; CHECK-NOT: warning

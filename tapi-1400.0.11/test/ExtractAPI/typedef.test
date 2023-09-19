@@ -1,8 +1,0 @@
-; RUN: rm -rf %t && mkdir -p %t
-; RUN: sed -e "s:SRC_DIR:%S/Inputs/src:g" %S/Inputs/typedef_input.json > %t/typedef_input.json
-
-; RUN: %tapi extractapi -target arm64-apple-macos11 %t/typedef_input.json -o %t/output.json | FileCheck -allow-empty %s
-; RUN: diff -a %t/output.json %S/Outputs/typedef_output.json
-
-; CHECK-NOT: error:
-; CHECK-NOT: warning:

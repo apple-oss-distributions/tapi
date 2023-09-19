@@ -1,0 +1,372 @@
+{
+  "PublicSDKContentRoot": [
+    {
+      "globals": [
+        {
+          "access": "public",
+          "file": "/System/Library/Frameworks/Bulk.framework/Versions/A/Headers/Bulk.h",
+          "kind": "variable",
+          "linkage": "exported",
+          "name": "_privateGlobalVariable"
+        },
+        {
+          "access": "public",
+          "file": "/System/Library/Frameworks/Bulk.framework/Versions/A/Headers/Bulk.h",
+          "kind": "variable",
+          "linkage": "exported",
+          "name": "_publicGlobalVariable"
+        },
+        {
+          "access": "public",
+          "file": "/System/Library/Frameworks/Bulk.framework/Versions/A/Headers/Bulk.h",
+          "kind": "function",
+          "linkage": "exported",
+          "name": "_newPublicGlobalFunction"
+        }
+      ],
+      "interfaces": [
+        {
+          "access": "public",
+          "instanceMethods": [
+            {
+              "access": "public",
+              "name": "privateInstanceMethod"
+            }
+          ],
+          "properties": [
+            {
+              "access": "public",
+              "name": "privateProperty",
+              "getter": "privateProperty",
+              "setter": "setPrivateProperty:"
+            }
+          ],
+          "categories": [
+            "privateCategory"
+          ],
+          "protocols": [
+            "privateProtocol"
+          ],
+          "linkage": "exported",
+          "name": "privateInterface"
+        },
+        {
+          "access": "public",
+          "instanceMethods": [
+            {
+              "access": "public",
+              "name": "newPublicInstanceMethod"
+            }
+          ],
+          "properties": [
+            {
+              "access": "public",
+              "name": "newPublicProperty",
+              "getter": "newPublicProperty",
+              "setter": "setNewPublicProperty:"
+            }
+          ],
+          "categories": [
+            "newPublicCategory"
+          ],
+          "protocols": [
+            "newPublicProtocol"
+          ],
+          "linkage": "exported",
+          "name": "newPublicInterface"
+        }
+      ],
+      "categories": [
+        {
+          "access": "public",
+          "instanceMethods": [
+            {
+              "access": "public",
+              "name": "privateCategoryInstanceMethod"
+            }
+          ],
+          "interface": "privateInterface",
+          "name": "privateCategory"
+        },
+        {
+          "access": "public",
+          "instanceMethods": [
+            {
+              "access": "public",
+              "name": "newPublicCategoryInstanceMethod"
+            }
+          ],
+          "interface": "newPublicInterface",
+          "name": "newPublicCategory"
+        }
+      ],
+      "protocols": [
+        {
+          "access": "public",
+          "classMethods": [
+            {
+              "access": "public",
+              "name": "newPublicClassMethod"
+            }
+          ],
+          "name": "newPublicProtocol"
+        },
+        {
+          "access": "public",
+          "classMethods": [
+            {
+              "access": "public",
+              "name": "privateClassMethod"
+            }
+          ],
+          "name": "privateProtocol"
+        }
+      ],
+      "target": "arm64-apple-macos13"
+    }
+  ],
+  "RuntimeRoot": [
+    {
+      "binaryInfo": {
+        "compatibilityVersion": "1",
+        "currentVersion": "1.2.3",
+        "installName": "/System/Library/Frameworks/Bulk.framework/Versions/A/Bulk",
+        "twoLevelNamespace": true,
+        "type": "dylib"
+      },
+      "globals": [
+        {
+          "linkage": "exported",
+          "name": "_privateGlobalVariable"
+        },
+        {
+          "linkage": "exported",
+          "name": "_publicGlobalVariable"
+        },
+        {
+          "linkage": "exported",
+          "name": "_newPublicGlobalFunction"
+        }
+      ],
+      "interfaces": [
+        {
+          "instanceMethods": [
+            {
+              "name": "privateInstanceMethod"
+            },
+            {
+              "name": "privateProperty"
+            },
+            {
+              "name": "setPrivateProperty:"
+            }
+          ],
+          "properties": [
+            {
+              "name": "privateProperty",
+              "getter": "privateProperty",
+              "setter": "setPrivateProperty:"
+            }
+          ],
+          "categories": [
+            "privateCategory"
+          ],
+          "protocols": [
+            "privateProtocol"
+          ],
+          "linkage": "exported",
+          "name": "privateInterface"
+        },
+        {
+          "instanceMethods": [
+            {
+              "name": "newPublicInstanceMethod"
+            },
+            {
+              "name": "newPublicProperty"
+            },
+            {
+              "name": "setNewPublicProperty:"
+            }
+          ],
+          "properties": [
+            {
+              "name": "newPublicProperty",
+              "getter": "newPublicProperty",
+              "setter": "setNewPublicProperty:"
+            }
+          ],
+          "categories": [
+            "newPublicCategory"
+          ],
+          "protocols": [
+            "newPublicProtocol"
+          ],
+          "linkage": "exported",
+          "name": "newPublicInterface"
+        }
+      ],
+      "categories": [
+        {
+          "instanceMethods": [
+            {
+              "name": "privateCategoryInstanceMethod"
+            }
+          ],
+          "interface": "privateInterface",
+          "name": "privateCategory"
+        },
+        {
+          "instanceMethods": [
+            {
+              "name": "newPublicCategoryInstanceMethod"
+            }
+          ],
+          "interface": "newPublicInterface",
+          "name": "newPublicCategory"
+        }
+      ],
+      "protocols": [
+        {
+          "classMethods": [
+            {
+              "name": "newPublicClassMethod"
+            }
+          ],
+          "name": "newPublicProtocol"
+        },
+        {
+          "classMethods": [
+            {
+              "name": "privateClassMethod"
+            }
+          ],
+          "name": "privateProtocol"
+        }
+      ],
+      "target": "arm64-apple-macos13"
+    }
+  ],
+  "SDKContentRoot": [
+    {
+      "globals": [
+        {
+          "access": "public",
+          "file": "/System/Library/Frameworks/Bulk.framework/Versions/A/Headers/Bulk.h",
+          "kind": "variable",
+          "linkage": "exported",
+          "name": "_privateGlobalVariable"
+        },
+        {
+          "access": "public",
+          "file": "/System/Library/Frameworks/Bulk.framework/Versions/A/Headers/Bulk.h",
+          "kind": "variable",
+          "linkage": "exported",
+          "name": "_publicGlobalVariable"
+        },
+        {
+          "access": "public",
+          "file": "/System/Library/Frameworks/Bulk.framework/Versions/A/Headers/Bulk.h",
+          "kind": "function",
+          "linkage": "exported",
+          "name": "_newPublicGlobalFunction"
+        }
+      ],
+      "interfaces": [
+        {
+          "access": "public",
+          "instanceMethods": [
+            {
+              "access": "public",
+              "name": "privateInstanceMethod"
+            }
+          ],
+          "properties": [
+            {
+              "access": "public",
+              "name": "privateProperty",
+              "getter": "privateProperty",
+              "setter": "setPrivateProperty:"
+            }
+          ],
+          "categories": [
+            "privateCategory"
+          ],
+          "linkage": "exported",
+          "name": "privateInterface"
+        },
+        {
+          "access": "public",
+          "instanceMethods": [
+            {
+              "access": "public",
+              "name": "newPublicInstanceMethod"
+            }
+          ],
+          "properties": [
+            {
+              "access": "public",
+              "name": "newPublicProperty",
+              "getter": "newPublicProperty",
+              "setter": "setNewPublicProperty:"
+            }
+          ],
+          "categories": [
+            "newPublicCategory"
+          ],
+          "linkage": "exported",
+          "name": "newPublicInterface"
+        }
+      ],
+      "categories": [
+        {
+          "access": "public",
+          "instanceMethods": [
+            {
+              "access": "public",
+              "name": "privateCategoryInstanceMethod"
+            }
+          ],
+          "interface": "privateInterface",
+          "name": "privateCategory"
+        },
+        {
+          "access": "public",
+          "instanceMethods": [
+            {
+              "access": "public",
+              "name": "newPublicCategoryInstanceMethod"
+            }
+          ],
+          "interface": "newPublicInterface",
+          "name": "newPublicCategory"
+        }
+      ],
+      "protocols": [
+        {
+          "access": "public",
+          "classMethods": [
+            {
+              "access": "public",
+              "name": "newPublicClassMethod"
+            }
+          ],
+          "name": "newPublicProtocol"
+        },
+        {
+          "access": "public",
+          "classMethods": [
+            {
+              "access": "public",
+              "name": "privateClassMethod"
+            }
+          ],
+          "name": "privateProtocol"
+        }
+      ],
+      "target": "arm64-apple-macos13"
+    }
+  ],
+  "projectName": "NewBulk",
+  "version": "1.0"
+}

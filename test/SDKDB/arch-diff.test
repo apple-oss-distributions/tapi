@@ -1,0 +1,22 @@
+; RUN: rm -rf %t && mkdir -p %t
+
+; Test the input path with trailing / can generate the correct SDKDB.
+; RUN: %tapi sdkdb --action=all -o %t/ArchDiff.sdkdb -isysroot %sysroot --runtime-root %inputs/ArchDiff/ --sdk-content-root %inputs/ArchDiff/ 2>&1
+; RUN: test -e %t/ArchDiff.sdkdb
+
+; RUN: %tapi sdkdb --action=all -o - -isysroot %sysroot --runtime-root %inputs/ArchDiff --sdk-content-root %inputs/ArchDiff 2>&1 | FileCheck %s
+; RUN: %tapi sdkdb --action=all -arch x86_64 -arch x86_64h -o - -isysroot %sysroot --runtime-root %inputs/ArchDiff --sdk-content-root %inputs/ArchDiff 2>&1 | FileCheck %s
+; RUN: %tapi sdkdb --action=all -arch x86_64 -o - -isysroot %sysroot --runtime-root %inputs/ArchDiff --sdk-content-root %inputs/ArchDiff 2>&1 | FileCheck --check-prefix=X86 %s
+; RUN: %tapi sdkdb --action=all -arch x86_64h -o - -isysroot %sysroot --runtime-root %inputs/ArchDiff --sdk-content-root %inputs/ArchDiff 2>&1 | FileCheck --check-prefix=X86H %s
+; RUN: %tapi sdkdb --action=all -arch arm64 -o - -isysroot %sysroot --runtime-root %inputs/ArchDiff --sdk-content-root %inputs/ArchDiff 2>&1 | FileCheck --check-prefix=ARM64 %s
+
+; CHECK: _general_func
+; CHECK: _x86_64h_func
+
+; X86H: _x86_64h_func
+; X86H-NOT: _general_func
+
+; X86: _general_func
+; X86-NOT: _x86_64h_func
+
+; ARM64: Requested architectures don't exist

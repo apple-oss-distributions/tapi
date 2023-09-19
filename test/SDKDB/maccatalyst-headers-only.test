@@ -1,0 +1,11 @@
+; REQUIRES: iosmac
+; RUN: rm -rf %t
+; RUN: split-file %s %t
+; RUN: RC_PROJECT_COMPILATION_PLATFORM="osx" RC_ARCHS="arm64" \
+; RUN: %tapi sdkdb --action=scan-interface -o %t/Output -isysroot %t --runtime-root %t --public-sdk-content-root %t --sdk-content-root %t
+; RUN: FileCheck %s --input-file=%t/Output/partial.sdkdb
+
+; CHECK: "target": "arm64-apple-ios13.0-macabi"
+
+//--- System/iOSSupport/System/Library/Frameworks/MacCatalyst.framework/Headers/MacCatalyst.h
+extern int MacCatalystAPI(void);

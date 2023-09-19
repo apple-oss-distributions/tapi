@@ -1,0 +1,303 @@
+// RUN: rm -rf %t && mkdir -p %t
+// RUN: split-file %s %t
+
+// RUN: %tapi-mrm -o %t/baseline.sdkdb --bitcode %t/baseline.partial.sdkdb
+// RUN: %tapi-mrm -o %t/test.sdkdb --bitcode %t/test.partial.sdkdb
+
+// RUN: %tapi-sdkdb --compare --baseline %t/baseline.sdkdb %t/test.sdkdb 2>&1 | FileCheck --allow-empty --implicit-check-not warning: --implicit-check-not error: %s
+// RUN: %tapi-sdkdb --compare --no-new-api --baseline %t/baseline.sdkdb %t/test.sdkdb 2>&1 | FileCheck --check-prefix=NO-NEW-API --allow-empty --implicit-check-not warning: --implicit-check-not error: %s
+
+CHECK: warning: new library '/System/Library/Frameworks/NewLibrary.framework/Versions/A/NewLibrary' from project 'NewAPI' for target 'arm64-apple-macosx'
+CHECK: warning: new API function 'publicGlobal' in '/System/Library/Frameworks/NewAPI.framework/Versions/A/NewAPI' for target 'arm64-apple-macosx'
+CHECK: warning: new API ObjC selector 'newPublicInstanceMethod' in class 'oldPublicInterface' in '/System/Library/Frameworks/NewAPI.framework/Versions/A/NewAPI' for target 'arm64-apple-macosx'
+CHECK: warning: new API objc class 'publicInterface' in '/System/Library/Frameworks/NewAPI.framework/Versions/A/NewAPI' for target 'arm64-apple-macosx'
+CHECK: warning: new API objc category 'publicCategory(publicInterface)' in '/System/Library/Frameworks/NewAPI.framework/Versions/A/NewAPI' for target 'arm64-apple-macosx'
+CHECK: warning: new API objc protocol 'publicProtocol' in '/System/Library/Frameworks/NewAPI.framework/Versions/A/NewAPI' for target 'arm64-apple-macosx'
+
+NO-NEW-API-NOT: warning
+NO-NEW-API-NOT: error
+
+//--- baseline.partial.sdkdb
+{
+  "PublicSDKContentRoot": [
+    {
+      "interfaces": [
+        {
+          "access": "public",
+          "linkage": "exported",
+          "name": "oldPublicInterface"
+        }
+      ],
+      "target": "arm64-apple-macos13"
+    }
+  ],
+  "RuntimeRoot": [
+    {
+      "binaryInfo": {
+        "compatibilityVersion": "1",
+        "currentVersion": "1.2.3",
+        "installName": "/System/Library/Frameworks/NewAPI.framework/Versions/A/NewAPI",
+        "twoLevelNamespace": true,
+        "type": "dylib"
+      },
+      "interfaces": [
+        {
+          "linkage": "exported",
+          "name": "oldPublicInterface"
+        }
+      ],
+      "target": "arm64-apple-macos13"
+    }
+  ],
+  "SDKContentRoot": [
+    {
+      "interfaces": [
+        {
+          "access": "public",
+          "linkage": "exported",
+          "name": "oldPublicInterface"
+        }
+      ],
+      "target": "arm64-apple-macos13"
+    }
+  ],
+  "projectName": "NewAPI",
+  "version": "1.0"
+}
+
+//--- test.partial.sdkdb
+{
+  "PublicSDKContentRoot": [
+    {
+      "globals": [
+        {
+          "access": "public",
+          "file": "/System/Library/Frameworks/NewAPI.framework/Versions/A/Headers/NewAPI.h",
+          "kind": "function",
+          "linkage": "exported",
+          "name": "publicGlobal"
+        }
+      ],
+      "interfaces": [
+        {
+          "access": "public",
+          "instanceMethods": [
+            {
+              "access": "public",
+              "name": "newPublicInstanceMethod"
+            }
+          ],
+          "linkage": "exported",
+          "name": "oldPublicInterface"
+        },
+        {
+          "access": "public",
+          "instanceMethods": [
+            {
+              "access": "public",
+              "name": "publicInstanceMethod"
+            }
+          ],
+          "properties": [
+            {
+              "access": "public",
+              "name": "publicProperty",
+              "getter": "publicProperty",
+              "setter": "setPublicProperty:"
+            }
+          ],
+          "categories": [
+            "publicCategory"
+          ],
+          "protocols": [
+            "publicProtocol"
+          ],
+          "linkage": "exported",
+          "name": "publicInterface"
+        }
+      ],
+      "categories": [
+        {
+          "access": "public",
+          "instanceMethods": [
+            {
+              "access": "public",
+              "name": "publicCategoryInstanceMethod"
+            }
+          ],
+          "interface": "publicInterface",
+          "name": "publicCategory"
+        }
+      ],
+      "protocols": [
+        {
+          "access": "public",
+          "classMethods": [
+            {
+              "access": "public",
+              "name": "publicClassMethod"
+            }
+          ],
+          "name": "publicProtocol"
+        }
+      ],
+      "target": "arm64-apple-macos13"
+    }
+  ],
+  "RuntimeRoot": [
+    {
+      "binaryInfo": {
+        "compatibilityVersion": "1",
+        "currentVersion": "1.2.3",
+        "installName": "/System/Library/Frameworks/NewLibrary.framework/Versions/A/NewLibrary",
+        "twoLevelNamespace": true,
+        "type": "dylib"
+      },
+      "target": "arm64-apple-macos13"
+    },
+    {
+      "binaryInfo": {
+        "compatibilityVersion": "1",
+        "currentVersion": "1.2.3",
+        "installName": "/System/Library/Frameworks/NewAPI.framework/Versions/A/NewAPI",
+        "twoLevelNamespace": true,
+        "type": "dylib"
+      },
+      "globals": [
+        {
+          "linkage": "exported",
+          "name": "publicGlobal"
+        }
+      ],
+      "interfaces": [
+        {
+          "instanceMethods": [
+            {
+              "name": "newPublicInstanceMethod"
+            }
+          ],
+          "linkage": "exported",
+          "name": "oldPublicInterface"
+        },
+        {
+          "instanceMethods": [
+            {
+              "name": "publicInstanceMethod"
+            },
+            {
+              "name": "publicProperty"
+            },
+            {
+              "name": "setPublicProperty:"
+            }
+          ],
+          "properties": [
+            {
+              "name": "publicProperty",
+              "getter": "publicProperty",
+              "setter": "setPublicProperty:"
+            }
+          ],
+          "categories": [
+            "publicCategory"
+          ],
+          "protocols": [
+            "publicProtocol"
+          ],
+          "linkage": "exported",
+          "name": "publicInterface"
+        }
+      ],
+      "categories": [
+        {
+          "instanceMethods": [
+            {
+              "name": "publicCategoryInstanceMethod"
+            }
+          ],
+          "interface": "publicInterface",
+          "name": "publicCategory"
+        }
+      ],
+      "protocols": [
+        {
+          "classMethods": [
+            {
+              "name": "publicClassMethod"
+            }
+          ],
+          "name": "publicProtocol"
+        }
+      ],
+      "target": "arm64-apple-macos13"
+    }
+  ],
+  "SDKContentRoot": [
+    {
+      "globals": [
+        {
+          "access": "public",
+          "file": "/System/Library/Frameworks/NewAPI.framework/Versions/A/Headers/NewAPI.h",
+          "kind": "function",
+          "linkage": "exported",
+          "name": "publicGlobal"
+        }
+      ],
+      "interfaces": [
+        {
+          "access": "public",
+          "instanceMethods": [
+            {
+              "access": "public",
+              "name": "publicInstanceMethod"
+            }
+          ],
+          "properties": [
+            {
+              "access": "public",
+              "name": "publicProperty",
+              "getter": "publicProperty",
+              "setter": "setPublicProperty:"
+            }
+          ],
+          "categories": [
+            "publicCategory"
+          ],
+          "protocols": [
+            "publicProtocol"
+          ],
+          "linkage": "exported",
+          "name": "publicInterface"
+        }
+      ],
+      "categories": [
+        {
+          "access": "public",
+          "instanceMethods": [
+            {
+              "access": "public",
+              "name": "publicCategoryInstanceMethod"
+            }
+          ],
+          "interface": "publicInterface",
+          "name": "publicCategory"
+        }
+      ],
+      "protocols": [
+        {
+          "access": "public",
+          "classMethods": [
+            {
+              "access": "public",
+              "name": "publicClassMethod"
+            }
+          ],
+          "name": "publicProtocol"
+        }
+      ],
+      "target": "arm64-apple-macos13"
+    }
+  ],
+  "projectName": "NewAPI",
+  "version": "1.0"
+}

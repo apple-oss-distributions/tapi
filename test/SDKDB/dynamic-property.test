@@ -1,0 +1,66 @@
+; Test information about dynamic properties is correctly propagated to methods
+; dynamicProperty: dynamic property without getters/setters, should yield no
+;   warnings about missing implementations.
+; dynamicPropertyWithImpl: property which is declared as dynamic in binary
+;   but still has getter/setter implementations. this can happen in real
+;   projects (rdar://104616787). make sure the access value is propagated
+;   correctly.
+; RUN: rm -rf %t && split-file %s %t
+; RUN: %tapi sdkdb --action=gen-private --no-verify-api -o %t/output %S/Inputs/dynamic-property.partial.sdkdb 2>&1 | FileCheck %s --allow-empty
+; RUN: %api-json-diff --sdkdb %t/output/private.sdkdb %t/expected.sdkdb 2>&1 | FileCheck %s --allow-empty
+
+CHECK-NOT: warning
+CHECK-NOT: error
+
+//--- expected.sdkdb
+{
+  "x86_64-apple-macosx": [
+    {
+      "binaryInfo": {
+        "compatibilityVersion": "1",
+        "currentVersion": "1.2.3",
+        "installName": "/usr/lib/libproperty_test.dylib",
+        "twoLevelNamespace": true,
+        "type": "dylib"
+      },
+      "interfaces": [
+        {
+          "access": "public",
+          "instanceMethods": [
+            {
+              "access": "public",
+              "name": "dynamicPropertyWithImpl"
+            },
+            {
+              "access": "public",
+              "name": "setDynamicPropertyWithImpl:"
+            }
+          ],
+          "linkage": "exported",
+          "name": "Basic",
+          "properties": [
+            {
+              "access": "public",
+              "attr": [
+                "dynamic"
+              ],
+              "getter": "dynamicProperty",
+              "name": "dynamicProperty",
+              "setter": "setDynamicProperty:"
+            },
+            {
+              "access": "public",
+              "attr": [
+                "dynamic"
+              ],
+              "getter": "dynamicPropertyWithImpl",
+              "name": "dynamicPropertyWithImpl",
+              "setter": "setDynamicPropertyWithImpl:"
+            }
+          ],
+          "super": "NSObject"
+        }
+      ]
+    }
+  ]
+}

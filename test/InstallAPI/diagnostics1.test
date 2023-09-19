@@ -1,0 +1,8 @@
+; RUN: not %tapi installapi -x c++ --target=arm64-apple-macos13 -install_name /System/Library/Frameworks/SymbolFlags.framework/Versions/A/SymbolFlags -current_version 1 -compatibility_version 1 -isysroot %sysroot %inputs/System/Library/Frameworks/SymbolFlags.framework --verify-against=%inputs/System/Library/Frameworks/SymbolFlags.framework/SymbolFlags --demangle --verify-mode=Pedantic 2>&1 | FileCheck %s 
+
+CHECK: Flags.h:2:21: error: declaration '(tlv) val' is thread local, but symbol is not in dynamic library
+CHECK-NEXT: extern __thread int val;
+CHECK-NEXT:                     ^
+CHECK-NEXT: Flags.h:3:13: error: dynamic library symbol '(weak-def) my_weak_func()' is weak defined, but it's declaration is not
+CHECK-NEXT: extern void my_weak_func();
+CHECK-NEXT:             ^

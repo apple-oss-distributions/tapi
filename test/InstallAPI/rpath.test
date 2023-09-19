@@ -1,0 +1,60 @@
+// RUN: rm -rf %t
+// RUN: split-file %s %t
+; RUN: %tapi installapi --filetype=tbd-v5 -target arm64-apple-macos13.0 -target x86_64-apple-macos13.0 -install_name @rpath/Frameworks/RPath.framework/Versions/A/RPath -current_version 1 -compatibility_version 1 -isysroot %sysroot %inputs/System/Library/Frameworks/RPath.framework -o %t/RPath.tbd --verify-against=%inputs/System/Library/Frameworks/RPath.framework/RPath --verify-mode=Pedantic 2>&1 | FileCheck %s --check-prefix=MISSING
+
+MISSING: warning: runpath search paths missing from tapi option: '@loader_path/../../../SharedFrameworks/ [ x86_64 arm64 ]'
+
+; RUN: %tapi installapi --filetype=tbd-v5 -target arm64-apple-macos13.0 -target x86_64-apple-macos13.0 -install_name @rpath/Frameworks/RPath.framework/Versions/A/RPath -current_version 1 -compatibility_version 1 -Xarch_arm64 -rpath @loader_path/../../../SharedFrameworks/ -isysroot %sysroot %inputs/System/Library/Frameworks/RPath.framework -o %t/RPath.tbd --verify-against=%inputs/System/Library/Frameworks/RPath.framework/RPath --verify-mode=Pedantic 2>&1 | FileCheck %s --check-prefix=XARCH
+
+XARCH: warning: runpath search paths do not match: '@loader_path/../../../SharedFrameworks/ [ arm64 ]' (provided) vs '@loader_path/../../../SharedFrameworks/ [ x86_64 arm64 ]'
+
+; RUN: %tapi installapi --filetype=tbd-v5 -target arm64-apple-macos13.0 -target x86_64-apple-macos13.0 -install_name @rpath/Frameworks/RPath.framework/Versions/A/RPath -current_version 1 -compatibility_version 1 -isysroot %sysroot %inputs/System/Library/Frameworks/RPath.framework -rpath @loader_path/../../../SharedFrameworks/ -rpath @loader_path/../../PrivateFrameworks/ --verify-against=%inputs/System/Library/Frameworks/RPath.framework/RPath --verify-mode=Pedantic -o %t/RPath.tbd 2>&1 | FileCheck -allow-empty %s 
+; RUN: %readtapi --compare %t/RPath.tbd %t/expected.tbd 2>&1 | FileCheck -allow-empty %s
+CHECK-NOT: error
+CHECK-NOT: warning
+
+//--- expected.tbd
+{
+  "main_library": {
+    "exported_symbols": [
+      {
+        "data": {
+          "global": [
+            "_publicGlobalVariable"
+          ]
+        }
+      }
+    ],
+    "flags": [
+      {
+        "attributes": [
+          "not_app_extension_safe"
+        ]
+      }
+    ],
+    "install_names": [
+      {
+        "name": "@rpath/Frameworks/RPath.framework/Versions/A/RPath"
+      }
+    ],
+    "rpaths": [
+      {
+        "paths": [
+          "@loader_path/../../../SharedFrameworks/",
+          "@loader_path/../../PrivateFrameworks/"
+        ]
+      }
+    ],
+    "target_info": [
+      {
+        "min_deployment": "13.0",
+        "target": "x86_64-macos"
+      },
+      {
+        "min_deployment": "13.0",
+        "target": "arm64-macos"
+      }
+    ]
+  },
+  "tapi_tbd_version": 5
+}

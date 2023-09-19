@@ -1,0 +1,9 @@
+; RUN: rm -rf %t && mkdir -p %t/usr/include/foo && mkdir -p %t/usr/include/bar && mkdir -p %t/usr/lib
+; RUN: echo "int foo();" >> %t/usr/include/foo/foo.h
+; RUN: echo "int bar();" >> %t/usr/include/bar/bar.h
+; RUN: echo "int foo() {return 1;} int bar() {return 1;}" >> %t/foo.c 
+; RUN: %host-clang --target=x86_64-apple-macos10.10 -isysroot %sysroot -dynamiclib %t/foo.c -o %t/usr/lib/libfoo.dylib
+; RUN: %tapi installapi --target=x86_64-apple-macos10.10 -dynamiclib -install_name %/t/usr/lib/libfoo.dylib -isysroot %sysroot %t -o %t/libfoo.tbd --verify-against=%t/usr/lib/libfoo.dylib --verify-mode=Pedantic 2>&1 | FileCheck -allow-empty %s
+
+; CHECK-NOT: error
+; CHECK-NOT: warning 

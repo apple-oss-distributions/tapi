@@ -1,0 +1,297 @@
+// RUN: rm -rf %t && mkdir -p %t
+// RUN: split-file %s %t
+
+// RUN: %tapi-mrm -o %t/baseline.sdkdb --bitcode %t/baseline.partial.sdkdb
+// RUN: %tapi-mrm -o %t/test.sdkdb --bitcode %t/test.partial.sdkdb
+
+// RUN: not %tapi-sdkdb --compare --baseline %t/baseline.sdkdb %t/test.sdkdb 2>&1 | FileCheck --allow-empty --implicit-check-not warning: --implicit-check-not error: %s
+
+// All public symbols become private in the test version.
+CHECK-DAG: error: regression for API 'InPublic' in '/System/Library/Frameworks/Public.framework/Versions/A/Public' for target 'arm64-apple-macosx': api access regression
+CHECK-DAG: error: regression for API 'InPrivate' in '/System/Library/PrivateFrameworks/Private.framework/Versions/A/Private' for target 'arm64-apple-macosx': api access regression
+CHECK-DAG: error: regression for API 'InPrivateReexported' in '/System/Library/PrivateFrameworks/Private.framework/Versions/A/Private' for target 'arm64-apple-macosx': api access regression
+
+//--- baseline.partial.sdkdb
+{
+  "PublicSDKContentRoot": [
+    {
+      "globals": [
+        {
+          "access": "public",
+          "file": "/System/Library/Frameworks/Public.framework/Versions/A/Headers/Public.h",
+          "kind": "variable",
+          "linkage": "exported",
+          "name": "InPublic"
+        },
+        {
+          "access": "public",
+          "file": "/System/Library/PrivateFrameworks/Private.framework/Versions/A/Headers/Private.h",
+          "kind": "variable",
+          "linkage": "exported",
+          "name": "InPrivate"
+        },
+        {
+          "access": "public",
+          "file": "/System/Library/Frameworks/Public.framework/Versions/A/Headers/PrivateReexported.h",
+          "kind": "variable",
+          "linkage": "exported",
+          "name": "InPrivateReexported"
+        },
+        {
+          "access": "public",
+          "kind": "variable",
+          "linkage": "exported",
+          "name": "InRPath"
+        },
+        {
+          "access": "public",
+          "kind": "variable",
+          "linkage": "exported",
+          "name": "InNonsense"
+        }
+      ],
+      "target": "arm64-apple-macos13"
+    }
+  ],
+  "RuntimeRoot": [
+    {
+      "binaryInfo": {
+        "compatibilityVersion": "1",
+        "currentVersion": "1.2.3",
+        "installName": "/System/Library/Frameworks/Public.framework/Versions/A/Public",
+        "twoLevelNamespace": true,
+        "type": "dylib",
+        "reexportedLibraries": [ "/System/Library/PrivateFrameworks/Private.framework/Versions/A/Private" ]
+      },
+      "globals": [
+        {
+          "kind": "variable",
+          "linkage": "exported",
+          "name": "InPublic"
+        }
+      ],
+      "target": "arm64-apple-macos13"
+    },
+    {
+      "binaryInfo": {
+        "compatibilityVersion": "1",
+        "currentVersion": "1.2.3",
+        "installName": "/System/Library/PrivateFrameworks/Private.framework/Versions/A/Private",
+        "twoLevelNamespace": true,
+        "type": "dylib"
+      },
+      "globals": [
+        {
+          "kind": "variable",
+          "linkage": "exported",
+          "name": "InPrivate"
+        },
+        {
+          "kind": "variable",
+          "linkage": "exported",
+          "name": "InPrivateReexported"
+        }
+      ],
+      "target": "arm64-apple-macos13"
+    },
+    {
+      "binaryInfo": {
+        "compatibilityVersion": "1",
+        "currentVersion": "1.2.3",
+        "installName": "@rpath/RPath.framework/RPath",
+        "twoLevelNamespace": false,
+        "type": "dylib"
+      },
+      "globals": [
+        {
+          "kind": "variable",
+          "linkage": "exported",
+          "name": "InRPath"
+        }
+      ],
+      "target": "arm64-apple-macos13"
+    },
+    {
+      "binaryInfo": {
+        "compatibilityVersion": "1",
+        "currentVersion": "1.2.3",
+        "installName": "/Some/path/that/doesnt/make/sense.dylib",
+        "twoLevelNamespace": false,
+        "type": "dylib"
+      },
+      "globals": [
+        {
+          "kind": "variable",
+          "linkage": "exported",
+          "name": "InNonsense"
+        }
+      ],
+      "target": "arm64-apple-macos13"
+    }
+  ],
+  "SDKContentRoot": [
+    {
+      "globals": [
+        {
+          "access": "public",
+          "file": "/System/Library/Frameworks/Public.framework/Versions/A/Headers/Public.h",
+          "kind": "variable",
+          "linkage": "exported",
+          "name": "InPublic"
+        },
+        {
+          "access": "public",
+          "file": "/System/Library/PrivateFrameworks/Private.framework/Versions/A/Headers/Private.h",
+          "kind": "variable",
+          "linkage": "exported",
+          "name": "InPrivate"
+        },
+        {
+          "access": "public",
+          "file": "/System/Library/Frameworks/Public.framework/Versions/A/Headers/PrivateReexported.h",
+          "kind": "variable",
+          "linkage": "exported",
+          "name": "InPrivateReexported"
+        },
+        {
+          "access": "public",
+          "kind": "variable",
+          "linkage": "exported",
+          "name": "InRPath"
+        },
+        {
+          "access": "public",
+          "kind": "variable",
+          "linkage": "exported",
+          "name": "InNonsense"
+        }
+      ],
+      "target": "arm64-apple-macos13"
+    }
+  ],
+  "projectName": "NonPublicInstallNames",
+  "version": "1.0"
+}
+
+//--- test.partial.sdkdb
+{
+  "PublicSDKContentRoot": [],
+  "RuntimeRoot": [
+    {
+      "binaryInfo": {
+        "compatibilityVersion": "1",
+        "currentVersion": "1.2.3",
+        "installName": "/System/Library/Frameworks/Public.framework/Versions/A/Public",
+        "twoLevelNamespace": true,
+        "type": "dylib",
+        "reexportedLibraries": [ "/System/Library/PrivateFrameworks/Private.framework/Versions/A/Private" ]
+      },
+      "globals": [
+        {
+          "kind": "variable",
+          "linkage": "exported",
+          "name": "InPublic"
+        }
+      ],
+      "target": "arm64-apple-macos13"
+    },
+    {
+      "binaryInfo": {
+        "compatibilityVersion": "1",
+        "currentVersion": "1.2.3",
+        "installName": "/System/Library/PrivateFrameworks/Private.framework/Versions/A/Private",
+        "twoLevelNamespace": true,
+        "type": "dylib"
+      },
+      "globals": [
+        {
+          "kind": "variable",
+          "linkage": "exported",
+          "name": "InPrivate"
+        },
+        {
+          "kind": "variable",
+          "linkage": "exported",
+          "name": "InPrivateReexported"
+        }
+      ],
+      "target": "arm64-apple-macos13"
+    },
+    {
+      "binaryInfo": {
+        "compatibilityVersion": "1",
+        "currentVersion": "1.2.3",
+        "installName": "@rpath/RPath.framework/RPath",
+        "twoLevelNamespace": false,
+        "type": "dylib"
+      },
+      "globals": [
+        {
+          "kind": "variable",
+          "linkage": "exported",
+          "name": "InRPath"
+        }
+      ],
+      "target": "arm64-apple-macos13"
+    },
+    {
+      "binaryInfo": {
+        "compatibilityVersion": "1",
+        "currentVersion": "1.2.3",
+        "installName": "/Some/path/that/doesnt/make/sense.dylib",
+        "twoLevelNamespace": false,
+        "type": "dylib"
+      },
+      "globals": [
+        {
+          "kind": "variable",
+          "linkage": "exported",
+          "name": "InNonsense"
+        }
+      ],
+      "target": "arm64-apple-macos13"
+    }
+  ],
+  "SDKContentRoot": [
+    {
+      "globals": [
+        {
+          "access": "private",
+          "file": "/System/Library/Frameworks/Public.framework/Versions/A/Headers/Public.h",
+          "kind": "variable",
+          "linkage": "exported",
+          "name": "InPublic"
+        },
+        {
+          "access": "private",
+          "file": "/System/Library/PrivateFrameworks/Private.framework/Versions/A/Headers/Private.h",
+          "kind": "variable",
+          "linkage": "exported",
+          "name": "InPrivate"
+        },
+        {
+          "access": "private",
+          "file": "/System/Library/Frameworks/Public.framework/Versions/A/Headers/PrivateReexported.h",
+          "kind": "variable",
+          "linkage": "exported",
+          "name": "InPrivateReexported"
+        },
+        {
+          "access": "private",
+          "kind": "variable",
+          "linkage": "exported",
+          "name": "InRPath"
+        },
+        {
+          "access": "private",
+          "kind": "variable",
+          "linkage": "exported",
+          "name": "InNonsense"
+        }
+      ],
+      "target": "arm64-apple-macos13"
+    }
+  ],
+  "projectName": "NonPublicInstallNames",
+  "version": "1.0"
+}

@@ -1,0 +1,14 @@
+; RUN: rm -rf %t && mkdir -p %t/Simple/System/Library/Frameworks
+; RUN: cp -R %inputs/System/Library/Frameworks/Simple.framework %t/Simple/System/Library/Frameworks
+; RUN: %tapi sdkdb -o - --action=all --diagnostics-file=%t/diag.plist -isysroot %sysroot --runtime-root %t/Simple --sdk-content-root %t/Simple -Xparser -Wsystem-headers
+; RUN: cat %t/diag.plist | FileCheck %s
+
+; CHECK: <?xml version="1.0" encoding="UTF-8"?>
+; CHECK: <!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+; CHECK: <plist version="1.0">
+; CHECK: <array>
+; CHECK: <string>cannot find protocol definition for &apos;ForwardProcotol&apos;</string>
+; CHECK: <string>protocol &apos;ForwardProcotol&apos; has no definition</string>
+; CHECK: <string>missing symbol &apos;_otherFrameworkAPI&apos; from binary interface</string>
+; CHECK: </array>
+; CHECK: </plist>

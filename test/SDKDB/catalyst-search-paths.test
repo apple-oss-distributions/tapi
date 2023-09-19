@@ -1,0 +1,24 @@
+// REQUIRES: system-darwin
+
+// RUN: rm -rf %t && mkdir -p %t
+// RUN: mkdir -p %t/SDKs/MacOSX13.0.sdk/Library/Frameworks
+// RUN: mkdir -p %t/SDKs/MacOSX13.0.sdk/System/Library/Frameworks
+// RUN: mkdir -p %t/SDKs/MacOSX13.0.sdk/System/iOSSupport/System/Library/Frameworks
+// RUN: mkdir -p %t/SDKs/MacOSX13.0.sdk/System/iOSSupport/System/Library/PrivateFrameworks
+// RUN: mkdir -p %t/System/iOSSupport/System/Library/Frameworks/Test.framework/Headers
+// RUN: touch %t/System/iOSSupport/System/Library/Frameworks/Test.framework/Headers/Test.h
+
+// RUN: RC_ProjectName="Test_iosmac" RC_PROJECT_COMPILATION_PLATFORM="osx" RC_ARCHS="x86_64" \
+// RUN: %tapi sdkdb -x c++ -isysroot %t/SDKs/MacOSX13.0.sdk \
+// RUN:   --output %t --runtime-root %t --sdk-content-root %t -v 2>&1 \
+// RUN: | FileCheck %s
+
+CHECK:      clang Invocation:
+CHECK-NEXT:   "-isysroot" "[[SYSROOT:.*/SDKs/MacOSX13.0.sdk]]"
+
+// Check that the iOSSupport framework search paths precede the default paths.
+CHECK: #include <...> search starts here:
+CHECK:  [[SYSROOT]]/System/iOSSupport/System/Library/Frameworks
+CHECK:  [[SYSROOT]]/System/iOSSupport/System/Library/PrivateFrameworks
+CHECK:  [[SYSROOT]]/Library/Frameworks
+CHECK:  [[SYSROOT]]/System/Library/Frameworks

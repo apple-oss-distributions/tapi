@@ -1,0 +1,87 @@
+// RUN: rm -rf %t
+// RUN: split-file %s %t
+
+// RUN: sed -e "s:SRC_DIR:%t:g" %t/own_target.hmap.json.in >> \
+// RUN: %t/own_target.hmap.json
+// RUN: %hmaptool write %t/own_target.hmap.json %t/own_target.hmap
+
+// RUN: sed -e "s:SRC_DIR:%t:g" %t/all_target.hmap.json.in >> \
+// RUN: %t/all_target.hmap.json
+// RUN: %hmaptool write %t/all_target.hmap.json %t/all_target.hmap
+
+// RUN: sed -e "s:SRC_DIR:%t:g" %t/project_headers.hmap.json.in >> \
+// RUN: %t/project_headers.hmap.json
+// RUN: %hmaptool write %t/project_headers.hmap.json %t/project_headers.hmap
+
+// RUN: sed -e "s:DST_DIR:%t:g" %t/input.json.in >> %t/tmp.json
+// RUN: sed -e "s:SRC_DIR:%t:g" %t/tmp.json >> %t/input.json
+
+
+// RUN: %tapi installapi -target arm64-apple-macos12 -install_name /System/Library/Frameworks/tmp.framework/Versions/A/tmp -current_version 1 -compatibility_version 1 --product-name=foo -isysroot %sysroot -iquote %t/project_headers.hmap -I%t/own_target.hmap -I%t/all_target.hmap %t/input.json -o %t/output.tbd | FileCheck -allow-empty %s
+
+// RUN: %readtapi --compare %t/expected.tbd %t/output.tbd
+
+// CHECK-NOT: error:
+// CHECK-NOT: warning:
+
+//--- own_target.hmap.json.in
+{
+  "mappings" :
+      {
+        "public.h" : "foo/public.h"
+      }
+}
+
+//--- all_target.hmap.json.in
+{
+  "mappings" :
+      {
+        "foo/public.h" : "SRC_DIR/FooSource/public.h"
+      }
+}
+
+//--- project_headers.hmap.json.in
+{
+  "mappings" :
+      {
+        "project.h" : "SRC_DIR/FooSource/project.h"
+      }
+}
+
+//--- input.json.in
+{
+  "version" : "3",
+  "headers" : [
+    {
+      "type" : "public",
+      "path" : "DST_DIR/usr/include/public.h"
+    },
+    {
+      "type" : "project",
+      "path" : "SRC_DIR/FooSource/project.h"
+    }
+  ]
+}
+
+//--- FooSource/public.h
+
+extern int foo();
+
+//--- FooSource/project.h
+
+extern int fooInternal();
+
+//--- usr/include/public.h
+
+extern int bar();
+
+//--- expected.tbd
+--- !tapi-tbd
+tbd-version:     4
+targets:         [ arm64-macos ]
+flags:           [ not_app_extension_safe ]
+install-name:    '/System/Library/Frameworks/tmp.framework/Versions/A/tmp'
+exports:
+  - targets:         [ arm64-macos ]
+    symbols:         [ _foo, _fooInternal ]
+...

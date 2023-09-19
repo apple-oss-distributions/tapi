@@ -1,0 +1,45 @@
+// RUN: rm -rf %t
+// RUN: split-file %s %t
+
+// RUN: sed -e "s:DST_DIR:%t:g" %t/input.json.in >> %t/input.json
+// RUN: %tapi installapi -target arm64-apple-macos12 -install_name /usr/local/lib/libfoo.dylib -dynamiclib -current_version 1 -compatibility_version 1 -isysroot %sysroot %t/input.json -o %t/output.tbd -public-umbrella-header %t/usr/local/include/foo/tmp.h  2>&1 | FileCheck -allow-empty %s
+
+// RUN: %readtapi --compare %t/expected.tbd %t/output.tbd
+
+// CHECK-NOT: error:
+// CHECK-NOT: warning:
+
+//--- input.json.in
+{
+  "version" : "3",
+  "headers" : [
+    {
+      "type" : "public",
+      "path" : "DST_DIR/usr/local/include/foo/tmpExtras.h"
+    },
+    {
+      "type" : "public",
+      "path" : "DST_DIR/usr/local/include/foo/tmp.h"
+    }
+  ]
+}
+
+//--- usr/local/include/foo/tmpExtras.h
+inline int bar(){
+  return foo();
+};
+
+//--- usr/local/include/foo/tmp.h
+
+extern int foo();
+
+//--- expected.tbd
+--- !tapi-tbd
+tbd-version:     4
+targets:         [ arm64-macos ]
+flags:           [ not_app_extension_safe ]
+install-name:    '/usr/local/lib/libfoo.dylib'
+exports:
+  - targets:         [ arm64-macos ]
+    symbols:         [ _foo ]
+...

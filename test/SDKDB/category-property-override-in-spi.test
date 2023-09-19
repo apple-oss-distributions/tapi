@@ -1,0 +1,92 @@
+; RUN: rm -rf %t && mkdir -p %t/CategoryPropertyOverrideInSPI/System/Library/Frameworks
+; RUN: cp -R %inputs/System/Library/Frameworks/CategoryPropertyOverrideInSPI.framework %t/CategoryPropertyOverrideInSPI/System/Library/Frameworks
+; RUN: %tapi sdkdb --action=all --no-verify-api --private-headers -o - -isysroot %sysroot --runtime-root %t/CategoryPropertyOverrideInSPI --sdk-content-root %t/CategoryPropertyOverrideInSPI 2>&1 | FileCheck %s
+
+CHECK: {
+CHECK-NEXT:   "public": true,
+CHECK-NEXT:   "x86_64-apple-macosx": [
+CHECK-NEXT:     {
+CHECK-NEXT:       "binaryInfo": {
+CHECK-NEXT:         "compatibilityVersion": "1",
+CHECK-NEXT:         "currentVersion": "1.2.3",
+CHECK-NEXT:         "installName": "/System/Library/Frameworks/CategoryPropertyOverrideInSPI.framework/Versions/A/CategoryPropertyOverrideInSPI",
+CHECK-NEXT:         "twoLevelNamespace": true,
+CHECK-NEXT:         "type": "dylib"
+CHECK-NEXT:       },
+CHECK-NEXT:       "interfaces": [
+CHECK-NEXT:         {
+CHECK-NEXT:           "instanceMethods": [
+CHECK-NEXT:             {
+CHECK-NEXT:               "name": "MyProperty"
+CHECK-NEXT:             }
+CHECK-NEXT:           ],
+CHECK-NEXT:           "linkage": "exported",
+CHECK-NEXT:           "name": "MyClass",
+CHECK-NEXT:           "properties": [
+CHECK-NEXT:             {
+CHECK-NEXT:               "attr": [
+CHECK-NEXT:                 "readonly"
+CHECK-NEXT:               ],
+CHECK-NEXT:               "getter": "MyProperty",
+CHECK-NEXT:               "name": "MyProperty"
+CHECK-NEXT:             }
+CHECK-NEXT:           ],
+CHECK-NEXT:           "super": ""
+CHECK-NEXT:         }
+CHECK-NEXT:       ]
+CHECK-NEXT:     }
+CHECK-NEXT:   ]
+CHECK-NEXT: }
+CHECK-NEXT: {
+CHECK-NEXT:   "x86_64-apple-macosx": [
+CHECK-NEXT:     {
+CHECK-NEXT:       "binaryInfo": {
+CHECK-NEXT:         "compatibilityVersion": "1",
+CHECK-NEXT:         "currentVersion": "1.2.3",
+CHECK-NEXT:         "installName": "/System/Library/Frameworks/CategoryPropertyOverrideInSPI.framework/Versions/A/CategoryPropertyOverrideInSPI",
+CHECK-NEXT:         "twoLevelNamespace": true,
+CHECK-NEXT:         "type": "dylib"
+CHECK-NEXT:       },
+CHECK-NEXT: "categories": [
+CHECK-NEXT:   {
+CHECK-NEXT:     "interface": "MyClass",
+CHECK-NEXT:     "ivars": [
+CHECK-NEXT:       {
+CHECK-NEXT:         "linkage": "internal",
+CHECK-NEXT:         "name": "_MyProperty"
+CHECK-NEXT:       }
+CHECK-NEXT:     ],
+CHECK-NEXT:     "name": ""
+CHECK-NEXT:   }
+CHECK-NEXT: ],
+CHECK-NEXT:       "interfaces": [
+CHECK-NEXT:         {
+CHECK-NEXT:           "access": "public",
+CHECK-NEXT:           "instanceMethods": [
+CHECK-NEXT:             {
+CHECK-NEXT:               "access": "public",
+CHECK-NEXT:               "name": "MyProperty"
+CHECK-NEXT:             },
+CHECK-NEXT:             {
+CHECK-NEXT:               "access": "private",
+CHECK-NEXT:               "name": "setMyProperty:"
+CHECK-NEXT:             }
+CHECK-NEXT:           ],
+CHECK-NEXT:           "linkage": "exported",
+CHECK-NEXT:           "name": "MyClass",
+CHECK-NEXT:           "properties": [
+CHECK-NEXT:             {
+CHECK-NEXT:               "access": "public",
+CHECK-NEXT:               "attr": [
+CHECK-NEXT:                 "readonly"
+CHECK-NEXT:               ],
+CHECK-NEXT:               "getter": "MyProperty",
+CHECK-NEXT:               "name": "MyProperty"
+CHECK-NEXT:             }
+CHECK-NEXT:           ],
+CHECK-NEXT:           "super": ""
+CHECK-NEXT:         }
+CHECK-NEXT:       ]
+CHECK-NEXT:     }
+CHECK-NEXT:   ]
+CHECK-NEXT: }

@@ -1,0 +1,9 @@
+--- !tapi-tbd
+tbd-version:     4
+targets:         [ x86_64-macos ]
+flags:           [ not_app_extension_safe ]
+install-name:    '/System/Library/PrivateFrameworks/Test.framework/Test'
+exports:
+  - targets:         [ x86_64-macos ]
+    symbols:         [ _foo, _private_impl ]
+...

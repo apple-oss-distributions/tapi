@@ -1,0 +1,142 @@
+; RUN: %tapi-mrm -o %t.1 --diag=%t.1.diag  %S/Inputs/Duplicates-1.partial.sdkdb %S/Inputs/Duplicates-2.partial.sdkdb
+; RUN: cat %t.1 | FileCheck %s
+; RUN: cat %t.1.diag | FileCheck %s --check-prefix=CHECK-DIAG-FILE
+
+; RUN: %tapi-mrm -o %t.2 --diag=%t.2.diag  %S/Inputs/Duplicates-2.partial.sdkdb %S/Inputs/Duplicates-1.partial.sdkdb
+; RUN: cat %t.2 | FileCheck %s
+; RUN: cat %t.2.diag | FileCheck %s --check-prefix=CHECK-DIAG-FILE
+
+; CHECK:      {
+; CHECK-NEXT:   "x86_64-apple-macosx": [
+; CHECK-NEXT:     {
+; CHECK-NEXT:       "binaryInfo": {
+; CHECK-NEXT:         "compatibilityVersion": "1",
+; CHECK-NEXT:         "currentVersion": "1",
+; CHECK-NEXT:         "installName": "/System/Library/Frameworks/Basic.framework/Basic",
+; CHECK-NEXT:         "twoLevelNamespace": true,
+; CHECK-NEXT:         "type": "dylib"
+; CHECK-NEXT:       },
+; CHECK-NEXT:       "interfaces": [
+; CHECK-NEXT:         {
+; CHECK-NEXT:           "access": "public",
+; CHECK-NEXT:           "linkage": "exported",
+; CHECK-NEXT:           "name": "Basic",
+; CHECK-NEXT:           "super": "NSObject"
+; CHECK-NEXT:         }
+; CHECK-NEXT:       ]
+; CHECK-NEXT:     },
+; CHECK-NEXT:     {
+; CHECK-NEXT:       "binaryInfo": {
+; CHECK-NEXT:         "compatibilityVersion": "1",
+; CHECK-NEXT:         "currentVersion": "1",
+; CHECK-NEXT:         "installName": "/usr/lib/libtest.dylib",
+; CHECK-NEXT:         "twoLevelNamespace": true,
+; CHECK-NEXT:         "type": "dylib"
+; CHECK-NEXT:       },
+; CHECK-NEXT:       "categories": [
+; CHECK-NEXT:         {
+; CHECK-NEXT:           "access": "public",
+; CHECK-NEXT:           "interface": "Basic",
+; CHECK-NEXT:           "name": "Test"
+; CHECK-NEXT:         }
+; CHECK-NEXT:       ]
+; CHECK-NEXT:     },
+; CHECK-NEXT:     {
+; CHECK-NEXT:       "binaryInfo": {
+; CHECK-NEXT:         "compatibilityVersion": "1",
+; CHECK-NEXT:         "currentVersion": "1",
+; CHECK-NEXT:         "installName": "/System/Library/PrivateFrameworks/Basic.framework/Basic",
+; CHECK-NEXT:         "twoLevelNamespace": true,
+; CHECK-NEXT:         "type": "dylib"
+; CHECK-NEXT:       },
+; CHECK-NEXT:       "interfaces": [
+; CHECK-NEXT:         {
+; CHECK-NEXT:           "linkage": "exported",
+; CHECK-NEXT:           "name": "Basic",
+; CHECK-NEXT:           "super": "NSObject"
+; CHECK-NEXT:         }
+; CHECK-NEXT:       ]
+; CHECK-NEXT:     },
+; CHECK-NEXT:     {
+; CHECK-NEXT:       "binaryInfo": {
+; CHECK-NEXT:         "compatibilityVersion": "1",
+; CHECK-NEXT:         "currentVersion": "1",
+; CHECK-NEXT:         "installName": "/usr/local/lib/libtest.dylib",
+; CHECK-NEXT:         "twoLevelNamespace": true,
+; CHECK-NEXT:         "type": "dylib"
+; CHECK-NEXT:       },
+; CHECK-NEXT:       "protocols": [
+; CHECK-NEXT:         {
+; CHECK-NEXT:           "access": "public",
+; CHECK-NEXT:           "name": "Test"
+; CHECK-NEXT:         }
+; CHECK-NEXT:       ]
+; CHECK-NEXT:     },
+; CHECK-NEXT:     {
+; CHECK-NEXT:       "binaryInfo": {
+; CHECK-NEXT:         "compatibilityVersion": "1",
+; CHECK-NEXT:         "currentVersion": "1",
+; CHECK-NEXT:         "installName": "@rpath/libtest.dylib",
+; CHECK-NEXT:         "twoLevelNamespace": true,
+; CHECK-NEXT:         "type": "dylib"
+; CHECK-NEXT:       },
+; CHECK-NEXT:       "protocols": [
+; CHECK-NEXT:         {
+; CHECK-NEXT:           "access": "public",
+; CHECK-NEXT:           "name": "Test"
+; CHECK-NEXT:         }
+; CHECK-NEXT:       ]
+; CHECK-NEXT:     },
+; CHECK-NEXT:     {
+; CHECK-NEXT:       "binaryInfo": {
+; CHECK-NEXT:         "compatibilityVersion": "1",
+; CHECK-NEXT:         "currentVersion": "1",
+; CHECK-NEXT:         "installName": "",
+; CHECK-NEXT:         "twoLevelNamespace": true,
+; CHECK-NEXT:         "type": "bundle"
+; CHECK-NEXT:       },
+; CHECK-NEXT:       "categories": [
+; CHECK-NEXT:         {
+; CHECK-NEXT:           "interface": "Basic",
+; CHECK-NEXT:           "name": "Test"
+; CHECK-NEXT:         }
+; CHECK-NEXT:       ]
+; CHECK-NEXT:     },
+; CHECK-NEXT:     {
+; CHECK-NEXT:       "binaryInfo": {
+; CHECK-NEXT:         "compatibilityVersion": "1",
+; CHECK-NEXT:         "currentVersion": "1",
+; CHECK-NEXT:         "installName": "",
+; CHECK-NEXT:         "twoLevelNamespace": true,
+; CHECK-NEXT:         "type": "invalid"
+; CHECK-NEXT:       },
+; CHECK-NEXT:       "protocols": [
+; CHECK-NEXT:         {
+; CHECK-NEXT:           "access": "public",
+; CHECK-NEXT:           "name": "Test"
+; CHECK-NEXT:         }
+; CHECK-NEXT:       ]
+; CHECK-NEXT:     }
+; CHECK-NEXT:   ],
+; CHECK-NEXT:   "x86_64h-apple-macosx": [
+; CHECK-NEXT:     {
+; CHECK-NEXT:       "binaryInfo": {
+; CHECK-NEXT:         "compatibilityVersion": "1",
+; CHECK-NEXT:         "currentVersion": "1",
+; CHECK-NEXT:         "installName": "/System/Library/Frameworks/Basic.framework/Basic",
+; CHECK-NEXT:         "twoLevelNamespace": true,
+; CHECK-NEXT:         "type": "dylib"
+; CHECK-NEXT:       },
+; CHECK-NEXT:       "interfaces": [
+; CHECK-NEXT:         {
+; CHECK-NEXT:           "linkage": "exported",
+; CHECK-NEXT:           "name": "Basic",
+; CHECK-NEXT:           "super": "NSObject"
+; CHECK-NEXT:         }
+; CHECK-NEXT:       ]
+; CHECK-NEXT:     }
+; CHECK-NEXT:   ]
+; CHECK-NEXT: }
+
+
+; CHECK-DIAG-FILE: <string>duplicated ObjC interface &apos;Basic&apos; inside SDKDB</string>

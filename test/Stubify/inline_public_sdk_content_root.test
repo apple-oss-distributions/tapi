@@ -1,0 +1,14 @@
+; Create the split SDKContentRoot as B&I
+; RUN: rm -rf %t && mkdir -p %t/SDKContentRoot && mkdir -p %t/PublicSDKContentRoot
+; RUN: cp -R %S/InlineIOSSupport/Inputs/ %t/SDKContentRoot && cp -R %S/InlineIOSSupport/Inputs/ %t/PublicSDKContentRoot
+; RUN: rm -rf %t/PublicSDKContentRoot/System/iOSSupport/System/Library/PrivateFrameworks
+
+; RUN: %tapi stubify --filetype=tbd-v3 --inline-private-frameworks -isysroot %t/SDKContentRoot -isysroot %sysroot %t/PublicSDKContentRoot 2>&1 | FileCheck -allow-empty %s
+; RUN: %readtapi --compare %t/PublicSDKContentRoot/System/iOSSupport/System/Library/Frameworks/Public.framework/Versions/A/Public.tbd %S/InlineIOSSupport/Outputs/Public.tbd
+
+; RUN: %tapi stubify --filetype=tbd-v3 --inline-private-frameworks  --delete-private-frameworks -isysroot %t/SDKContentRoot -isysroot %sysroot %t/PublicSDKContentRoot 2>&1 | FileCheck -allow-empty %s
+; RUN: not test -d %t/PublicSDKContentRoot/System/iOSSupport/System/Library/PrivateFrameworks
+; RUN: test -d %t/SDKContentRoot/System/iOSSupport/System/Library/PrivateFrameworks
+
+; CHECK-NOT: error
+; CHECK-NOT: warning

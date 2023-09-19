@@ -1,0 +1,140 @@
+; RUN: rm -rf %t
+; RUN: split-file %s %t
+; RUN: cp -r %inputs/Export/ %t/
+;; Create a header cannot be parsed
+; RUN: echo "#error cannot parse" > %t/System/Library/Frameworks/Export.framework/Versions/A/Headers/error.h
+; RUN: RC_ProjectName=TestError %tapi sdkdb -o %t/result.sdkdb --action=interface-scan \
+; RUN:   -isysroot %sysroot  --runtime-root %t --sdk-content-root %t 2>&1 | FileCheck %s --check-prefix=TAPI
+; RUN: %api-json-diff -partial-sdkdb %t/result.sdkdb/partial.sdkdb %t/expected.json 2>&1 | FileCheck %s --allow-empty
+
+TAPI: 1 error generated
+CHECK-NOT: error: 
+CHECK-NOT: warning: 
+
+//--- expected.json
+{
+  "PublicSDKContentRoot": [],
+  "RuntimeRoot": [
+    {
+      "binaryInfo": {
+        "compatibilityVersion": "1",
+        "currentVersion": "1",
+        "installName": "/System/Library/Frameworks/Export.framework/Versions/A/Export",
+        "twoLevelNamespace": true,
+        "type": "dylib"
+      },
+      "globals": [
+        {
+          "kind": "variable",
+          "linkage": "exported",
+          "name": "_public_sym1"
+        }
+      ],
+      "interfaces": [
+        {
+          "instanceMethods": [
+            {
+              "name": "method"
+            }
+          ],
+          "linkage": "exported",
+          "name": "A",
+          "super": ""
+        },
+        {
+          "instanceMethods": [
+            {
+              "name": "method"
+            }
+          ],
+          "linkage": "exported",
+          "name": "C",
+          "super": "A"
+        }
+      ],
+      "target": "x86_64-apple-macos13"
+    },
+    {
+      "binaryInfo": {
+        "compatibilityVersion": "1",
+        "currentVersion": "1",
+        "installName": "/System/Library/Frameworks/Export.framework/Versions/A/Export",
+        "twoLevelNamespace": true,
+        "type": "dylib"
+      },
+      "globals": [
+        {
+          "kind": "variable",
+          "linkage": "exported",
+          "name": "_public_sym1"
+        }
+      ],
+      "interfaces": [
+        {
+          "instanceMethods": [
+            {
+              "name": "method"
+            }
+          ],
+          "linkage": "exported",
+          "name": "A",
+          "super": ""
+        },
+        {
+          "instanceMethods": [
+            {
+              "name": "method"
+            }
+          ],
+          "linkage": "exported",
+          "name": "C",
+          "super": "A"
+        }
+      ],
+      "target": "x86_64-apple-macos13"
+    },
+    {
+      "binaryInfo": {
+        "compatibilityVersion": "1",
+        "currentVersion": "1",
+        "installName": "/System/Library/Frameworks/Export.framework/Versions/A/Export",
+        "twoLevelNamespace": true,
+        "type": "dylib"
+      },
+      "globals": [
+        {
+          "kind": "variable",
+          "linkage": "exported",
+          "name": "_public_sym1"
+        }
+      ],
+      "interfaces": [
+        {
+          "instanceMethods": [
+            {
+              "name": "method"
+            }
+          ],
+          "linkage": "exported",
+          "name": "A",
+          "super": ""
+        },
+        {
+          "instanceMethods": [
+            {
+              "name": "method"
+            }
+          ],
+          "linkage": "exported",
+          "name": "C",
+          "super": "A"
+        }
+      ],
+      "target": "x86_64-apple-macos13"
+    }
+  ],
+  "SDKContentRoot": [],
+  "error": true,
+  "projectName": "TestError",
+  "version": "1.0"
+}

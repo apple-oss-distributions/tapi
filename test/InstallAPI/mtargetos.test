@@ -1,0 +1,14 @@
+; RUN: rm -rf %t && mkdir -p %t
+; RUN: cp -r %T/../../../Inputs/System/Library/Frameworks/SimpleFat.framework %t/
+; RUN: %tapi installapi -arch x86_64 -arch arm64 -mtargetos=macosx13 -install_name /System/Library/Frameworks/SimpleFat.framework/Versions/A/SimpleFat -current_version 1 -compatibility_version 1 -verify-against %t/SimpleFat.framework/SimpleFat -isysroot %sysroot  %t/SimpleFat.framework -o %t/SimpleFat.framework/Foo.tbd 2>&1 | FileCheck --allow-empty %s
+
+; RUN: not %tapi installapi --target=arm64-apple-ios14 -mtargetos=ios14 2>&1 | FileCheck --check-prefix=NO_MIX %s
+; RUN: not %tapi installapi -arch x86_64 -mtargetos=darwin20 2>&1 | FileCheck --check-prefix=INVALID_ARG %s
+; RUN: not %tapi installapi -arch x86_64 -macosx_version_min 10.12 2>&1 | FileCheck --check-prefix=DEPRECATED %s
+
+CHECK-NOT: error:
+CHECK-NOT: warning: 
+
+NO_MIX: error: cannot specify '-mtargetos=ios14' along with '--target=arm64-apple-ios14' 
+INVALID_ARG: error: invalid OS value 'darwin20' in '-mtargetos=darwin20'
+DEPRECATED: warning: platform specific option for deployment target '-macosx_version_min 10.12' is deprecated, use -mtargetos. 

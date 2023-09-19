@@ -1,0 +1,34 @@
+// Check failure to merge with inconsisent Swift TBD
+; RUN: not %tapi installapi -arch x86_64 --filetype=tbd-v4 -install_name /System/Library/Frameworks/Swift.framework/Versions/A/Swift -current_version 1 -compatibility_version 1 -mtargetos=macosx13 -swift-installapi-interface %S/../Inputs/Swift/Swift-API.tbd -swift-installapi-interface %S/../Inputs/Swift/Swift-API.2.tbd -isysroot %sysroot %inputs/System/Library/Frameworks/Swift.framework -o %t.tbd --verify-mode=Pedantic --verify-against=%inputs/System/Library/Frameworks/Swift.framework/Swift 2>&1 | FileCheck -allow-empty %s
+; CHECK: error: unable to merge {{.*}}Swift-API.tbd': 'two level namespace flags do not match'
+
+// Check verification when missing Swift TBD but contains swift mangled symbols
+; RUN: not %tapi installapi -arch x86_64 -install_name /System/Library/Frameworks/Swift.framework/Versions/A/Swift -current_version 1  -compatibility_version 1 -mtargetos=macosx13 -isysroot %sysroot %inputs/System/Library/Frameworks/Swift.framework -o %t.tbd --verify-mode=Pedantic --verify-against=%inputs/System/Library/Frameworks/Swift.framework/Swift 2>&1 | FileCheck %s --check-prefix NO-IGNORE-FILE
+
+
+; NO-IGNORE-FILE: error: swift generated text based file doesn't have symbol '_$S6Swifty3fooSiyF', but found in dynamic library
+; NO-IGNORE-FILE: error: swift generated text based file doesn't have symbol '_$s6Swifty3fooSiyF', but found in dynamic library
+; NO-IGNORE-FILE: error: no declaration found for exported symbol '_ignore_another_symbol' in dynamic library
+; NO-IGNORE-FILE: error: no declaration found for exported symbol '_ignore_symbol' in dynamic library
+
+// Check valid pass
+; RUN: cp %S/../Inputs/Swift/Swift-API.tbd %t.Swift-API.tbd
+; RUN: sed -i.bu "s/, flat_namespace//" %t.Swift-API.tbd 
+
+; RUN: %tapi installapi -arch x86_64 --filetype=tbd-v4 -install_name /System/Library/Frameworks/Swift.framework/Versions/A/Swift -current_version 1 -compatibility_version 1 -mtargetos=macosx13 -swift-installapi-interface %t.Swift-API.tbd -swift-installapi-interface %S/../Inputs/Swift/Swift-API.2.tbd -isysroot %sysroot %inputs/System/Library/Frameworks/Swift.framework -o %t.tbd --verify-mode=Pedantic --verify-against=%inputs/System/Library/Frameworks/Swift.framework/Swift 2>&1 | FileCheck -allow-empty %s --check-prefix VALID-TBD
+
+; VALID-TBD-NOT: error:
+; VALID-TBD-NOT: warning:
+
+; RUN: %readtapi --compare %t.tbd %S/../Outputs/Frameworks/Swift.framework/Swift.tbd | FileCheck %s -allow-empty --check-prefix TBD-OUTPUT
+
+; TBD-OUTPUT-NOT: error:
+; TBD-OUTPUT-NOT: warning:
+
+// Check -verify-swift option (i.e. True Pedantic checking) 
+
+; RUN: not %tapi installapi -arch x86_64 --filetype=tbd-v4 -install_name /System/Library/Frameworks/Swift.framework/Versions/A/Swift -current_version 1 -compatibility_version 1 -mtargetos=macosx13 -swift-installapi-interface %t.Swift-API.tbd -swift-installapi-interface %S/../Inputs/Swift/Swift-API.2.tbd -isysroot %sysroot %inputs/System/Library/Frameworks/Swift.framework -o %t.tbd --verify-mode=Pedantic --verify-against=%inputs/System/Library/Frameworks/Swift.framework/Swift -verify-swift 2>&1 | FileCheck -allow-empty %s --check-prefix MISSING-SIMS 
+
+; MISSING-SIMS: error: dynamic library doesn't have symbol '_$s6Swifty3SymbolNotInDylib', but found in swift interface
+
+

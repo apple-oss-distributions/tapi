@@ -1,0 +1,223 @@
+{
+  "PublicSDKContentRoot": [
+    {
+      "globals": [
+        {
+          "access": "public",
+          "file": "/System/Library/Frameworks/NewFramework.framework/Versions/A/Headers/NewFramework.h",
+          "kind": "variable",
+          "linkage": "exported",
+          "name": "_newPublicGlobalVariable"
+        },
+        {
+          "access": "public",
+          "file": "/System/Library/Frameworks/NewFramework.framework/Versions/A/Headers/NewFramework.h",
+          "kind": "function",
+          "linkage": "exported",
+          "name": "_newPublicGlobalFunction"
+        }
+      ],
+      "interfaces": [
+        {
+          "access": "public",
+          "instanceMethods": [
+            {
+              "access": "public",
+              "name": "newPublicInstanceMethod"
+            }
+          ],
+          "properties": [
+            {
+              "access": "public",
+              "name": "newPublicProperty",
+              "getter": "newPublicProperty",
+              "setter": "setNewPublicProperty:"
+            }
+          ],
+          "categories": [
+            "newPublicCategory"
+          ],
+          "protocols": [
+            "newPublicProtocol"
+          ],
+          "linkage": "exported",
+          "name": "newPublicInterface"
+        }
+      ],
+      "categories": [
+        {
+          "access": "public",
+          "instanceMethods": [
+            {
+              "access": "public",
+              "name": "newPublicCategoryInstanceMethod"
+            }
+          ],
+          "interface": "newPublicInterface",
+          "name": "newPublicCategory"
+        }
+      ],
+      "protocols": [
+        {
+          "access": "public",
+          "classMethods": [
+            {
+              "access": "public",
+              "name": "newPublicClassMethod"
+            }
+          ],
+          "name": "newPublicProtocol"
+        }
+      ],
+      "target": "arm64-apple-macos13"
+    }
+  ],
+  "RuntimeRoot": [
+    {
+      "binaryInfo": {
+        "compatibilityVersion": "1",
+        "currentVersion": "1.2.3",
+        "installName": "/System/Library/Frameworks/NewFramework.framework/Versions/A/NewFramework",
+        "twoLevelNamespace": true,
+        "type": "dylib"
+      },
+      "globals": [
+        {
+          "linkage": "exported",
+          "name": "_newPublicGlobalVariable"
+        },
+        {
+          "linkage": "exported",
+          "name": "_newPublicGlobalFunction"
+        }
+      ],
+      "interfaces": [
+        {
+          "instanceMethods": [
+            {
+              "name": "newPublicInstanceMethod"
+            },
+            {
+              "name": "newPublicProperty"
+            },
+            {
+              "name": "setNewPublicProperty:"
+            }
+          ],
+          "properties": [
+            {
+              "name": "newPublicProperty",
+              "getter": "newPublicProperty",
+              "setter": "setNewPublicProperty:"
+            }
+          ],
+          "categories": [
+            "newPublicCategory"
+          ],
+          "protocols": [
+            "newPublicProtocol"
+          ],
+          "linkage": "exported",
+          "name": "newPublicInterface"
+        }
+      ],
+      "categories": [
+        {
+          "instanceMethods": [
+            {
+              "name": "newPublicCategoryInstanceMethod"
+            }
+          ],
+          "interface": "newPublicInterface",
+          "name": "newPublicCategory"
+        }
+      ],
+      "protocols": [
+        {
+          "classMethods": [
+            {
+              "name": "newPublicClassMethod"
+            }
+          ],
+          "name": "newPublicProtocol"
+        }
+      ],
+      "target": "arm64-apple-macos13"
+    }
+  ],
+  "SDKContentRoot": [
+    {
+      "globals": [
+        {
+          "access": "public",
+          "file": "/System/Library/Frameworks/NewFramework.framework/Versions/A/Headers/NewFramework.h",
+          "kind": "variable",
+          "linkage": "exported",
+          "name": "_newPublicGlobalVariable"
+        },
+        {
+          "access": "public",
+          "file": "/System/Library/Frameworks/NewFramework.framework/Versions/A/Headers/NewFramework.h",
+          "kind": "function",
+          "linkage": "exported",
+          "name": "_newPublicGlobalFunction"
+        }
+      ],
+      "interfaces": [
+        {
+          "access": "public",
+          "instanceMethods": [
+            {
+              "access": "public",
+              "name": "newPublicInstanceMethod"
+            }
+          ],
+          "properties": [
+            {
+              "access": "public",
+              "name": "newPublicProperty",
+              "getter": "newPublicProperty",
+              "setter": "setNewPublicProperty:"
+            }
+          ],
+          "categories": [
+            "newPublicCategory"
+          ],
+          "protocols": [
+            "newPublicProtocol"
+          ],
+          "linkage": "exported",
+          "name": "newPublicInterface"
+        }
+      ],
+      "categories": [
+        {
+          "access": "public",
+          "instanceMethods": [
+            {
+              "access": "public",
+              "name": "newPublicCategoryInstanceMethod"
+            }
+          ],
+          "interface": "newPublicInterface",
+          "name": "newPublicCategory"
+        }
+      ],
+      "protocols": [
+        {
+          "access": "public",
+          "classMethods": [
+            {
+              "access": "public",
+              "name": "newPublicClassMethod"
+            }
+          ],
+          "name": "newPublicProtocol"
+        }
+      ],
+      "target": "arm64-apple-macos13"
+    }
+  ],
+  "projectName": "NewProject",
+  "version": "1.0"
+}

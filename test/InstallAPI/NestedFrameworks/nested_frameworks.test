@@ -1,0 +1,10 @@
+; RUN: rm -rf %t && mkdir %t
+; RUN: yaml2obj %S/Inputs/Nested.yaml -o %t/Nested
+
+; RUN: %tapi installapi --filetype=tbd-v4 --target=arm64-apple-ios7 -install_name /System/Library/Frameworks/Simple.framework/Frameworks/Nested.framework/Nested -current_version 0 -compatibility_version 0 %S/Inputs/Simple.framework/Frameworks/Nested.framework  --verify-against=%t/Nested --verify-mode=Pedantic -o %t/Nested.tbd 2>&1 | FileCheck -allow-empty %s
+; RUN: %readtapi --compare %S/Outputs/Nested.tbd %t/Nested.tbd 2>&1 | FileCheck -allow-empty %s 
+
+
+; CHECK-NOT: error
+; CHECK-NOT: warning
+

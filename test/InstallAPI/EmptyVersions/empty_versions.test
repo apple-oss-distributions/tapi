@@ -1,0 +1,20 @@
+; RUN: rm -rf %t
+; RUN: split-file %s %t
+; RUN: %tapi installapi  --filetype=tbd-v4 -target x86_64-apple-macosx.10.15 -install_name /System/Library/Frameworks/Empty.framework/Empty -isysroot %sysroot %S/Inputs/Empty.framework -F %S/Inputs/ -o %t/EmptyVersion.tbd 2>&1 | FileCheck -allow-empty %s --check-prefix=CHECK-DIAGNOSTICS
+; RUN: %readtapi --compare %t/EmptyVersion.tbd %t/expected.tbd | FileCheck %s --allow-empty
+
+; CHECK-DIAGNOSTICS:  warning: ignoring the Versions directory within framework because it contains no parsable files: {{.*}}/Empty.framework/Versions/A'
+; CHECK-NOT: error:
+
+;--- expected.tbd
+--- !tapi-tbd
+tbd-version:     4
+targets:         [ x86_64-macos ]
+flags:           [ not_app_extension_safe ]
+install-name:    '/System/Library/Frameworks/Empty.framework/Empty'
+current-version: 0
+compatibility-version: 0
+exports:
+  - targets:         [ x86_64-macos ]
+    symbols:         [ _Symbol ]
+...

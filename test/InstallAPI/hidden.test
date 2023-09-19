@@ -1,0 +1,17 @@
+; RUN: rm -rf %t
+; RUN: split-file %s %t
+; RUN: %tapi installapi -demangle -arch x86_64 -install_name /System/Library/Frameworks/Hidden.framework/Versions/A/Hidden -current_version 1 -compatibility_version 1 -mtargetos=macos13 -isysroot %sysroot %inputs/System/Library/Frameworks/Hidden.framework -o %t/Hidden.tbd --verify-against=%inputs/System/Library/Frameworks/Hidden.framework/Hidden --verify-mode=Pedantic 2>&1 | FileCheck -allow-empty %s
+; RUN: %readtapi --compare %t/Hidden.tbd %t/expected.tbd 
+
+; CHECK-NOT: error
+; CHECK:  warning: use of __private_extern__ on a declaration may not produce external symbol private to the linkage unit and is deprecated [-Wprivate-extern]
+
+
+//--- expected.tbd
+--- !tapi-tbd
+tbd-version:     4
+targets:         [ x86_64-macos ]
+flags:           [ not_app_extension_safe ]
+install-name:    '/System/Library/Frameworks/Hidden.framework/Versions/A/Hidden'
+...
+

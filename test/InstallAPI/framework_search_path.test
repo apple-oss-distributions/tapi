@@ -1,0 +1,5 @@
+; RUN: not %tapi installapi -arch x86_64 -install_name /System/Library/Frameworks/Umbrella3.framework/Versions/A/Umbrella3 -current_version 1 -compatibility_version 1 -macosx_version_min 13 -isysroot %inputs -F %S/SearchPathTest -iframework %inputs/System/Library/Frameworks %inputs/System/Library/Frameworks/Umbrella3.framework --verify-mode=Pedantic --verify-against=%inputs/System/Library/Frameworks/Umbrella3.framework/Umbrella3 -reexport_framework Foo -reexport_framework Bar -reexport-lBaz -o %t.tbd 2>&1 | FileCheck -allow-empty %s
+
+CHECK: Foo.h:1:12: error: declaration has external linkage, but dynamic library doesn't have symbol 'foo'
+CHECK-NEXT: extern int foo();
+

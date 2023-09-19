@@ -1,0 +1,41 @@
+; RUN: rm -rf %t
+; RUN: split-file %s %t
+
+; RUN: sed -e "s:DST_DIR:%t:g" %t/input.json.in >> %t/input.json
+
+; RUN: %tapi installapi --filetype=tbd-v4 --target=x86_64-apple-macos -install_name /System//Library/Frameworks/Foo.framework/Foo -current_version 1 -compatibility_version 1 -isysroot %sysroot -I%t/Sources/ -iquote %t/Sources/ -F %t/Frameworks --verify-mode=Pedantic -filelist %t/input.json -o %t/Foo.frameworks/Foo.tbd 2>&1 | FileCheck -allow-empty %s
+
+; RUN: %readtapi --compare %t/expected.tbd %t/Foo.frameworks/Foo.tbd
+
+; CHECK-NOT: error: 
+; CHECK-NOT: warning: 
+
+//--- input.json.in
+{
+  "version" : "3",
+  "headers" : [
+    {
+      "type" : "public",
+      "path" : "DST_DIR/Frameworks/Foo.framework/Headers/Public.h"
+    }
+  ]
+}
+
+//--- Sources/Foo/Public.h
+
+extern int foo();
+
+//--- Frameworks/Foo.framework/Headers/Public.h
+
+extern int bar();
+
+//--- expected.tbd
+--- !tapi-tbd
+tbd-version:     4
+targets:         [ x86_64-macos ]
+flags:           [ not_app_extension_safe ]
+install-name:    '/System//Library/Frameworks/Foo.framework/Foo'
+exports:
+  - targets:         [ x86_64-macos ]
+    symbols:         [ _foo ]
+...

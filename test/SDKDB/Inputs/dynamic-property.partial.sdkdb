@@ -1,0 +1,85 @@
+{
+  "PublicSDKContentRoot": [
+    {
+      "categories": [],
+      "globals": [],
+      "interfaces": [
+        {
+          "access": "public",
+          "linkage": "exported",
+          "file": "Basic.h",
+          "name": "Basic",
+          "properties": [
+            {
+              "access": "public",
+              "file": "Basic.h",
+              "getter": "dynamicProperty",
+              "name": "dynamicProperty",
+              "setter": "setDynamicProperty:"
+            },
+            {
+              "access": "public",
+              "file": "Basic.h",
+              "getter": "dynamicPropertyWithImpl",
+              "name": "dynamicPropertyWithImpl",
+              "setter": "setDynamicPropertyWithImpl:"
+            }
+          ],
+          "super": "NSObject"
+        }
+      ],
+      "protocols": [],
+      "target": "x86_64-apple-macos10.10"
+    }
+  ],
+  "RuntimeRoot": [
+    {
+      "binaryInfo": {
+        "compatibilityVersion": "1",
+        "currentVersion": "1.2.3",
+        "installName": "/usr/lib/libproperty_test.dylib",
+        "twoLevelNamespace": true,
+        "type": "dylib"
+      },
+      "categories": [],
+      "globals": [],
+      "interfaces": [
+        {
+          "instanceMethods": [
+            {
+              "name": "dynamicPropertyWithImpl"
+            },
+            {
+              "name": "setDynamicPropertyWithImpl:"
+            }
+          ],
+          "classMethods": [],
+          "linkage": "exported",
+          "name": "Basic",
+          "properties": [
+            {
+              "attr": [
+                "dynamic"
+              ],
+              "getter": "dynamicProperty",
+              "name": "dynamicProperty",
+              "setter": "setDynamicProperty:"
+            },
+            {
+              "attr": [
+                "dynamic"
+              ],
+              "getter": "dynamicPropertyWithImpl",
+              "name": "dynamicPropertyWithImpl",
+              "setter": "setDynamicPropertyWithImpl:"
+            }
+          ],
+          "super": "NSObject"
+        }
+      ],
+      "protocols": [],
+      "target": "x86_64-apple-macos10.10"
+    }
+  ],
+  "SDKContentRoot": []
+}

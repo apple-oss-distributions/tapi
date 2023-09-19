@@ -1,0 +1,216 @@
+// RUN: rm -rf %t
+// RUN: split-file %s %t
+// RUN: %tapi-binary-reader --no-print -json=%t/swift.json  %S/Inputs/swift.dylib 2>&1 | FileCheck %s --allow-empty
+// RUN: %api-json-diff %t/swift.json %t/expected.json 2>&1 | FileCheck %s --allow-empty
+
+// test swift generics and potentially defined selectors
+
+// CHECK-NOT: error: 
+// CHECK-NOT: warning: 
+
+//--- expected.json
+{
+  "api_json_version": 1,
+  "binaryInfo": {
+    "compatibilityVersion": "1",
+    "currentVersion": "1",
+    "installName": "@rpath/SwiftGenerics.framework/Versions/A/SwiftGenerics",
+    "swiftABI": 7,
+    "twoLevelNamespace": true,
+    "type": "dylib",
+    "uuid": "1A28F36A-4C06-3B4A-AC9B-263F1EC0648B"
+  },
+  "globals": [
+    {
+      "kind": "function",
+      "linkage": "internal",
+      "name": "/Users/steven/Library/Developer/Xcode/DerivedData/SwiftGenerics-dmhloeqnflhirgdrxxjlkbxaxkxe/Build/Intermediates.noindex/SwiftGenerics.build/Release/SwiftGenerics.build/Objects-normal/x86_64/SwiftGenerics.swiftmodule"
+    },
+    {
+      "linkage": "exported",
+      "name": "_$s13SwiftGenerics7myClassCACyxGycfC"
+    },
+    {
+      "linkage": "exported",
+      "name": "_$s13SwiftGenerics7myClassCACyxGycfc"
+    },
+    {
+      "linkage": "exported",
+      "name": "_$s13SwiftGenerics7myClassCMa"
+    },
+    {
+      "linkage": "exported",
+      "name": "_$s13SwiftGenerics7myClassCMn"
+    },
+    {
+      "linkage": "exported",
+      "name": "_$s13SwiftGenerics7myClassCfD"
+    },
+    {
+      "kind": "variable",
+      "linkage": "internal",
+      "name": "_$s13SwiftGenericsMXM"
+    },
+    {
+      "kind": "variable",
+      "linkage": "exported",
+      "name": "_SwiftGenericsVersionNumber"
+    },
+    {
+      "kind": "variable",
+      "linkage": "exported",
+      "name": "_SwiftGenericsVersionString"
+    },
+    {
+      "kind": "variable",
+      "linkage": "internal",
+      "name": "___swift_reflection_version"
+    },
+    {
+      "kind": "variable",
+      "linkage": "external",
+      "name": "__objc_empty_cache"
+    },
+    {
+      "kind": "variable",
+      "linkage": "external",
+      "name": "__swift_FORCE_LOAD_$_swiftCoreFoundation"
+    },
+    {
+      "kind": "variable",
+      "linkage": "internal",
+      "name": "__swift_FORCE_LOAD_$_swiftCoreFoundation_$_SwiftGenerics"
+    },
+    {
+      "kind": "variable",
+      "linkage": "external",
+      "name": "__swift_FORCE_LOAD_$_swiftCoreGraphics"
+    },
+    {
+      "kind": "variable",
+      "linkage": "internal",
+      "name": "__swift_FORCE_LOAD_$_swiftCoreGraphics_$_SwiftGenerics"
+    },
+    {
+      "kind": "variable",
+      "linkage": "external",
+      "name": "__swift_FORCE_LOAD_$_swiftDarwin"
+    },
+    {
+      "kind": "variable",
+      "linkage": "internal",
+      "name": "__swift_FORCE_LOAD_$_swiftDarwin_$_SwiftGenerics"
+    },
+    {
+      "kind": "variable",
+      "linkage": "external",
+      "name": "__swift_FORCE_LOAD_$_swiftDispatch"
+    },
+    {
+      "kind": "variable",
+      "linkage": "internal",
+      "name": "__swift_FORCE_LOAD_$_swiftDispatch_$_SwiftGenerics"
+    },
+    {
+      "kind": "variable",
+      "linkage": "external",
+      "name": "__swift_FORCE_LOAD_$_swiftFoundation"
+    },
+    {
+      "kind": "variable",
+      "linkage": "internal",
+      "name": "__swift_FORCE_LOAD_$_swiftFoundation_$_SwiftGenerics"
+    },
+    {
+      "kind": "variable",
+      "linkage": "external",
+      "name": "__swift_FORCE_LOAD_$_swiftIOKit"
+    },
+    {
+      "kind": "variable",
+      "linkage": "internal",
+      "name": "__swift_FORCE_LOAD_$_swiftIOKit_$_SwiftGenerics"
+    },
+    {
+      "kind": "variable",
+      "linkage": "external",
+      "name": "__swift_FORCE_LOAD_$_swiftObjectiveC"
+    },
+    {
+      "kind": "variable",
+      "linkage": "internal",
+      "name": "__swift_FORCE_LOAD_$_swiftObjectiveC_$_SwiftGenerics"
+    },
+    {
+      "kind": "variable",
+      "linkage": "external",
+      "name": "__swift_FORCE_LOAD_$_swiftXPC"
+    },
+    {
+      "kind": "variable",
+      "linkage": "internal",
+      "name": "__swift_FORCE_LOAD_$_swiftXPC_$_SwiftGenerics"
+    },
+    {
+      "kind": "variable",
+      "linkage": "external",
+      "name": "_objc_allocWithZone"
+    },
+    {
+      "kind": "variable",
+      "linkage": "external",
+      "name": "_objc_msgSend"
+    },
+    {
+      "kind": "variable",
+      "linkage": "external",
+      "name": "_objc_msgSendSuper2"
+    },
+    {
+      "kind": "variable",
+      "linkage": "external",
+      "name": "_swift_allocateGenericClassMetadata"
+    },
+    {
+      "kind": "variable",
+      "linkage": "external",
+      "name": "_swift_getGenericMetadata"
+    },
+    {
+      "kind": "variable",
+      "linkage": "external",
+      "name": "_swift_initClassMetadata2"
+    },
+    {
+      "kind": "variable",
+      "linkage": "external",
+      "name": "_swift_isaMask"
+    },
+    {
+      "kind": "variable",
+      "linkage": "internal",
+      "name": "_symbolic So8NSObjectC"
+    },
+    {
+      "kind": "variable",
+      "linkage": "internal",
+      "name": "_symbolic _____ 13SwiftGenerics7myClassC"
+    },
+    {
+      "kind": "variable",
+      "linkage": "external",
+      "name": "dyld_stub_binder"
+    }
+  ],
+  "interfaces": [
+    {
+      "linkage": "external",
+      "name": "NSObject",
+      "super": ""
+    }
+  ],
+  "potentiallyDefinedSelectors": [
+    "init"
+  ],
+  "target": "x86_64-apple-macos10.15"
+}

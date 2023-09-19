@@ -1,0 +1,857 @@
+// RUN: rm -rf %t && mkdir -p %t
+// RUN: split-file %s %t
+
+// RUN: %tapi-mrm -o %t/baseline.sdkdb --bitcode %t/baseline.partial.sdkdb
+// RUN: %tapi-mrm -o %t/test.sdkdb --bitcode %t/test.partial.sdkdb
+
+// RUN: %tapi-sdkdb --compare --baseline %t/baseline.sdkdb %t/test.sdkdb --config-file %t/config.json 2>&1 | FileCheck --allow-empty --implicit-check-not warning: --implicit-check-not error: %s
+
+//--- config.json
+{
+  "version": "1",
+  "expectedChanges": [
+    {
+      "name": "/System/Library/Frameworks/New.framework/Versions/A/New",
+      "type": "library",
+      "change": "add",
+      "targets": [
+        "arm64-apple-macosx",
+        "arm64-apple-ios"
+      ]
+    },
+    {
+      "name": "/System/Library/Frameworks/Removed.framework/Versions/A/Removed",
+      "type": "library",
+      "change": "remove",
+      "targets": [
+        "arm64-apple-macosx",
+        "arm64-apple-ios"
+      ]
+    },
+    {
+      "name": "publicGlobal",
+      "type": "global",
+      "change": "updateAccess",
+      "installName": "/System/Library/Frameworks/Config.framework/Versions/A/Config",
+      "targets": [
+        "arm64-apple-macosx"
+      ]
+    },
+    {
+      "name": "newPublicGlobal",
+      "type": "global",
+      "change": "add",
+      "installName": "/System/Library/Frameworks/Config.framework/Versions/A/Config",
+      "targets": [
+        "arm64-apple-macosx"
+      ]
+    },
+    {
+      "name": "publicInterface",
+      "type": "interface",
+      "change": "updateAccess",
+      "installName": "/System/Library/Frameworks/Config.framework/Versions/A/Config",
+      "targets": [
+        "arm64-apple-macosx"
+      ]
+    },
+    {
+      "name": "publicInstanceMethod",
+      "type": "selector",
+      "change": "updateAccess",
+      "container": "publicInterface",
+      "installName": "/System/Library/Frameworks/Config.framework/Versions/A/Config",
+      "targets": [
+        "arm64-apple-macosx"
+      ]
+    },
+    {
+      "name": "publicProperty",
+      "type": "selector",
+      "change": "updateAccess",
+      "container": "publicInterface",
+      "installName": "/System/Library/Frameworks/Config.framework/Versions/A/Config",
+      "targets": [
+        "arm64-apple-macosx"
+      ]
+    },
+    {
+      "name": "setPublicProperty:",
+      "type": "selector",
+      "change": "updateAccess",
+      "container": "publicInterface",
+      "installName": "/System/Library/Frameworks/Config.framework/Versions/A/Config",
+      "targets": [
+        "arm64-apple-macosx"
+      ]
+    },
+    {
+      "name": "newPublicInterface",
+      "type": "interface",
+      "change": "add",
+      "installName": "/System/Library/Frameworks/Config.framework/Versions/A/Config",
+      "targets": [
+        "arm64-apple-macosx"
+      ]
+    },
+    {
+      "name": "publicCategory(publicInterface)",
+      "type": "category",
+      "change": "remove",
+      "installName": "/System/Library/Frameworks/Config.framework/Versions/A/Config",
+      "targets": [
+        "arm64-apple-macosx"
+      ]
+    },
+    {
+      "name": "newPublicCategory(newPublicInterface)",
+      "type": "category",
+      "change": "add",
+      "installName": "/System/Library/Frameworks/Config.framework/Versions/A/Config",
+      "targets": [
+        "arm64-apple-macosx"
+      ]
+    },
+    {
+      "name": "publicProtocol",
+      "type": "protocol",
+      "change": "remove",
+      "installName": "/System/Library/Frameworks/Config.framework/Versions/A/Config",
+      "targets": [
+        "arm64-apple-macosx"
+      ]
+    },
+    {
+      "name": "newPublicProtocol",
+      "type": "protocol",
+      "change": "add",
+      "installName": "/System/Library/Frameworks/Config.framework/Versions/A/Config",
+      "targets": [
+        "arm64-apple-macosx"
+      ]
+    }
+  ]
+}
+
+//--- baseline.partial.sdkdb
+{
+  "PublicSDKContentRoot": [
+    {
+      "globals": [
+        {
+          "access": "public",
+          "file": "/System/Library/Frameworks/Config.framework/Versions/A/Headers/Config.h",
+          "kind": "function",
+          "linkage": "exported",
+          "name": "publicGlobal"
+        }
+      ],
+      "interfaces": [
+        {
+          "access": "public",
+          "instanceMethods": [
+            {
+              "access": "public",
+              "name": "publicInstanceMethod"
+            }
+          ],
+          "properties": [
+            {
+              "access": "public",
+              "name": "publicProperty",
+              "getter": "publicProperty",
+              "setter": "setPublicProperty:"
+            }
+          ],
+          "categories": [
+            "publicCategory"
+          ],
+          "protocols": [
+            "publicProtocol"
+          ],
+          "linkage": "exported",
+          "name": "publicInterface"
+        }
+      ],
+      "categories": [
+        {
+          "access": "public",
+          "instanceMethods": [
+            {
+              "access": "public",
+              "name": "publicCategoryInstanceMethod"
+            }
+          ],
+          "interface": "publicInterface",
+          "name": "publicCategory"
+        }
+      ],
+      "protocols": [
+        {
+          "access": "public",
+          "classMethods": [
+            {
+              "access": "public",
+              "name": "publicClassMethod"
+            }
+          ],
+          "name": "publicProtocol"
+        }
+      ],
+      "target": "arm64-apple-macos13"
+    }
+  ],
+  "RuntimeRoot": [
+    {
+      "binaryInfo": {
+        "compatibilityVersion": "1",
+        "currentVersion": "1",
+        "installName": "/System/Library/Frameworks/Removed.framework/Versions/A/Removed",
+        "twoLevelNamespace": true,
+        "type": "dylib"
+      },
+      "target": "arm64-apple-macos13"
+    },
+    {
+      "binaryInfo": {
+        "compatibilityVersion": "1",
+        "currentVersion": "1",
+        "installName": "/System/Library/Frameworks/Removed.framework/Versions/A/Removed",
+        "twoLevelNamespace": true,
+        "type": "dylib"
+      },
+      "target": "arm64-apple-ios16"
+    },
+    {
+      "binaryInfo": {
+        "compatibilityVersion": "1",
+        "currentVersion": "1.2.3",
+        "installName": "/System/Library/Frameworks/Config.framework/Versions/A/Config",
+        "twoLevelNamespace": true,
+        "type": "dylib"
+      },
+      "globals": [
+        {
+          "linkage": "exported",
+          "name": "privateGlobal"
+        },
+        {
+          "linkage": "exported",
+          "name": "publicGlobal"
+        }
+      ],
+      "interfaces": [
+        {
+          "instanceMethods": [
+            {
+              "name": "publicInstanceMethod"
+            },
+            {
+              "name": "publicProperty"
+            },
+            {
+              "name": "setPublicProperty:"
+            }
+          ],
+          "properties": [
+            {
+              "name": "publicProperty",
+              "getter": "publicProperty",
+              "setter": "setPublicProperty:"
+            }
+          ],
+          "categories": [
+            "publicCategory"
+          ],
+          "protocols": [
+            "publicProtocol"
+          ],
+          "linkage": "exported",
+          "name": "publicInterface"
+        },
+        {
+          "instanceMethods": [
+            {
+              "name": "privateInstanceMethod"
+            },
+            {
+              "name": "privateProperty"
+            },
+            {
+              "name": "setPrivateProperty:"
+            }
+          ],
+          "properties": [
+            {
+              "name": "privateProperty",
+              "getter": "privateProperty",
+              "setter": "setPrivateProperty:"
+            }
+          ],
+          "categories": [
+            "privateCategory"
+          ],
+          "protocols": [
+            "privateProtocol"
+          ],
+          "linkage": "exported",
+          "name": "privateInterface"
+        }
+      ],
+      "categories": [
+        {
+          "instanceMethods": [
+            {
+              "name": "publicCategoryInstanceMethod"
+            }
+          ],
+          "interface": "publicInterface",
+          "name": "publicCategory"
+        },
+        {
+          "instanceMethods": [
+            {
+              "name": "privateCategoryInstanceMethod"
+            }
+          ],
+          "interface": "privateInterface",
+          "name": "privateCategory"
+        }
+      ],
+      "protocols": [
+        {
+          "classMethods": [
+            {
+              "name": "publicClassMethod"
+            }
+          ],
+          "name": "publicProtocol"
+        },
+        {
+          "classMethods": [
+            {
+              "name": "privateClassMethod"
+            }
+          ],
+          "name": "privateProtocol"
+        }
+      ],
+      "target": "arm64-apple-macos13"
+    }
+  ],
+  "SDKContentRoot": [
+    {
+      "globals": [
+        {
+          "access": "private",
+          "file": "/System/Library/Frameworks/Config.framework/Versions/A/PrivateHeaders/Config.h",
+          "kind": "variable",
+          "linkage": "exported",
+          "name": "privateGlobal"
+        },
+        {
+          "access": "public",
+          "file": "/System/Library/Frameworks/Config.framework/Versions/A/Headers/Config.h",
+          "kind": "function",
+          "linkage": "exported",
+          "name": "publicGlobal"
+        }
+      ],
+      "interfaces": [
+        {
+          "access": "public",
+          "instanceMethods": [
+            {
+              "access": "public",
+              "name": "publicInstanceMethod"
+            }
+          ],
+          "properties": [
+            {
+              "access": "public",
+              "name": "publicProperty",
+              "getter": "publicProperty",
+              "setter": "setPublicProperty:"
+            }
+          ],
+          "categories": [
+            "publicCategory"
+          ],
+          "protocols": [
+            "publicProtocol"
+          ],
+          "linkage": "exported",
+          "name": "publicInterface"
+        },
+        {
+          "access": "private",
+          "instanceMethods": [
+            {
+              "access": "private",
+              "name": "privateInstanceMethod"
+            }
+          ],
+          "properties": [
+            {
+              "access": "private",
+              "name": "privateProperty",
+              "getter": "privateProperty",
+              "setter": "setPrivateProperty:"
+            }
+          ],
+          "categories": [
+            "privateCategory"
+          ],
+          "protocols": [
+            "privateProtocol"
+          ],
+          "linkage": "exported",
+          "name": "privateInterface"
+        }
+      ],
+      "categories": [
+        {
+          "access": "public",
+          "instanceMethods": [
+            {
+              "access": "public",
+              "name": "publicCategoryInstanceMethod"
+            }
+          ],
+          "interface": "publicInterface",
+          "name": "publicCategory"
+        },
+        {
+          "access": "private",
+          "instanceMethods": [
+            {
+              "access": "private",
+              "name": "privateCategoryInstanceMethod"
+            }
+          ],
+          "interface": "privateInterface",
+          "name": "privateCategory"
+        }
+      ],
+      "protocols": [
+        {
+          "access": "public",
+          "classMethods": [
+            {
+              "access": "public",
+              "name": "publicClassMethod"
+            }
+          ],
+          "name": "publicProtocol"
+        },
+        {
+          "access": "private",
+          "classMethods": [
+            {
+              "access": "private",
+              "name": "privateClassMethod"
+            }
+          ],
+          "name": "privateProtocol"
+        }
+      ],
+      "target": "arm64-apple-macos13"
+    }
+  ],
+  "projectName": "Config",
+  "version": "1.0"
+}
+
+//--- test.partial.sdkdb
+{
+  "PublicSDKContentRoot": [
+    {
+      "globals": [
+        {
+          "access": "public",
+          "file": "/System/Library/Frameworks/Config.framework/Versions/A/Headers/Config.h",
+          "kind": "function",
+          "linkage": "exported",
+          "name": "newPublicGlobal"
+        }
+      ],
+      "interfaces": [
+        {
+          "access": "public",
+          "instanceMethods": [
+            {
+              "access": "public",
+              "name": "newPublicInstanceMethod"
+            }
+          ],
+          "properties": [
+            {
+              "access": "public",
+              "name": "newPublicProperty",
+              "getter": "newPublicProperty",
+              "setter": "setNewPublicProperty:"
+            }
+          ],
+          "categories": [
+            "newPublicCategory"
+          ],
+          "protocols": [
+            "newPublicProtocol"
+          ],
+          "linkage": "exported",
+          "name": "newPublicInterface"
+        }
+      ],
+      "categories": [
+        {
+          "access": "public",
+          "instanceMethods": [
+            {
+              "access": "public",
+              "name": "newPublicCategoryInstanceMethod"
+            }
+          ],
+          "interface": "newPublicInterface",
+          "name": "newPublicCategory"
+        }
+      ],
+      "protocols": [
+        {
+          "access": "public",
+          "classMethods": [
+            {
+              "access": "public",
+              "name": "newPublicClassMethod"
+            }
+          ],
+          "name": "newPublicProtocol"
+        }
+      ],
+      "target": "arm64-apple-macos13"
+    }
+  ],
+  "RuntimeRoot": [
+    {
+      "binaryInfo": {
+        "compatibilityVersion": "1",
+        "currentVersion": "1",
+        "installName": "/System/Library/Frameworks/New.framework/Versions/A/New",
+        "twoLevelNamespace": true,
+        "type": "dylib"
+      },
+      "target": "arm64-apple-macos13"
+    },
+    {
+      "binaryInfo": {
+        "compatibilityVersion": "1",
+        "currentVersion": "1",
+        "installName": "/System/Library/Frameworks/New.framework/Versions/A/New",
+        "twoLevelNamespace": true,
+        "type": "dylib"
+      },
+      "target": "arm64-apple-ios"
+    },
+    {
+      "binaryInfo": {
+        "compatibilityVersion": "1",
+        "currentVersion": "1.2.3",
+        "installName": "/System/Library/Frameworks/Config.framework/Versions/A/Config",
+        "twoLevelNamespace": true,
+        "type": "dylib"
+      },
+      "globals": [
+        {
+          "linkage": "exported",
+          "name": "privateGlobal"
+        },
+        {
+          "linkage": "exported",
+          "name": "newPublicGlobal"
+        },
+        {
+          "linkage": "exported",
+          "name": "publicGlobal"
+        }
+      ],
+      "interfaces": [
+        {
+          "instanceMethods": [
+            {
+              "name": "publicInstanceMethod"
+            },
+            {
+              "name": "publicProperty"
+            },
+            {
+              "name": "setPublicProperty:"
+            }
+          ],
+          "properties": [
+            {
+              "name": "publicProperty",
+              "getter": "publicProperty",
+              "setter": "setPublicProperty:"
+            }
+          ],
+          "categories": [
+            "publicCategory"
+          ],
+          "protocols": [
+            "publicProtocol"
+          ],
+          "linkage": "exported",
+          "name": "publicInterface"
+        },
+        {
+          "instanceMethods": [
+            {
+              "name": "newPublicInstanceMethod"
+            },
+            {
+              "name": "newPublicProperty"
+            },
+            {
+              "name": "setNewPublicProperty:"
+            }
+          ],
+          "properties": [
+            {
+              "name": "newPublicProperty",
+              "getter": "newPublicProperty",
+              "setter": "setNewPublicProperty:"
+            }
+          ],
+          "categories": [
+            "newPublicCategory"
+          ],
+          "protocols": [
+            "newPublicProtocol"
+          ],
+          "linkage": "exported",
+          "name": "newPublicInterface"
+        },
+        {
+          "instanceMethods": [
+            {
+              "name": "privateInstanceMethod"
+            },
+            {
+              "name": "privateProperty"
+            },
+            {
+              "name": "setPrivateProperty:"
+            }
+          ],
+          "properties": [
+            {
+              "name": "privateProperty",
+              "getter": "privateProperty",
+              "setter": "setPrivateProperty:"
+            }
+          ],
+          "categories": [
+            "privateCategory"
+          ],
+          "protocols": [
+            "privateProtocol"
+          ],
+          "linkage": "exported",
+          "name": "privateInterface"
+        }
+      ],
+      "categories": [
+        {
+          "instanceMethods": [
+            {
+              "name": "newPublicCategoryInstanceMethod"
+            }
+          ],
+          "interface": "newPublicInterface",
+          "name": "newPublicCategory"
+        },
+        {
+          "instanceMethods": [
+            {
+              "name": "privateCategoryInstanceMethod"
+            }
+          ],
+          "interface": "privateInterface",
+          "name": "privateCategory"
+        }
+      ],
+      "protocols": [
+        {
+          "classMethods": [
+            {
+              "name": "newPublicClassMethod"
+            }
+          ],
+          "name": "newPublicProtocol"
+        },
+        {
+          "classMethods": [
+            {
+              "name": "privateClassMethod"
+            }
+          ],
+          "name": "privateProtocol"
+        }
+      ],
+      "target": "arm64-apple-macos13"
+    }
+  ],
+  "SDKContentRoot": [
+    {
+      "globals": [
+        {
+          "access": "private",
+          "file": "/System/Library/Frameworks/Config.framework/Versions/A/PrivateHeaders/Config.h",
+          "kind": "variable",
+          "linkage": "exported",
+          "name": "privateGlobal"
+        },
+        {
+          "access": "public",
+          "file": "/System/Library/Frameworks/Config.framework/Versions/A/Headers/Config.h",
+          "kind": "function",
+          "linkage": "exported",
+          "name": "newPublicGlobal"
+        },
+        {
+          "access": "private",
+          "file": "/System/Library/Frameworks/Config.framework/Versions/A/Headers/Config.h",
+          "kind": "function",
+          "linkage": "exported",
+          "name": "publicGlobal"
+        }
+      ],
+      "interfaces": [
+        {
+          "access": "public",
+          "instanceMethods": [
+            {
+              "access": "public",
+              "name": "newPublicInstanceMethod"
+            }
+          ],
+          "properties": [
+            {
+              "access": "public",
+              "name": "newPublicProperty",
+              "getter": "newPublicProperty",
+              "setter": "setNewPublicProperty:"
+            }
+          ],
+          "categories": [
+            "newPublicCategory"
+          ],
+          "protocols": [
+            "newPublicProtocol"
+          ],
+          "linkage": "exported",
+          "name": "newPublicInterface"
+        },
+        {
+          "access": "private",
+          "instanceMethods": [
+            {
+              "access": "private",
+              "name": "publicInstanceMethod"
+            }
+          ],
+          "properties": [
+            {
+              "access": "private",
+              "name": "publicProperty",
+              "getter": "publicProperty",
+              "setter": "setPublicProperty:"
+            }
+          ],
+          "categories": [
+            "newPublicCategory"
+          ],
+          "protocols": [
+            "newPublicProtocol"
+          ],
+          "linkage": "exported",
+          "name": "publicInterface"
+        },
+        {
+          "access": "private",
+          "instanceMethods": [
+            {
+              "access": "private",
+              "name": "privateInstanceMethod"
+            }
+          ],
+          "properties": [
+            {
+              "access": "private",
+              "name": "privateProperty",
+              "getter": "privateProperty",
+              "setter": "setPrivateProperty:"
+            }
+          ],
+          "categories": [
+            "privateCategory"
+          ],
+          "protocols": [
+            "privateProtocol"
+          ],
+          "linkage": "exported",
+          "name": "privateInterface"
+        }
+      ],
+      "categories": [
+        {
+          "access": "public",
+          "instanceMethods": [
+            {
+              "access": "public",
+              "name": "newPublicCategoryInstanceMethod"
+            }
+          ],
+          "interface": "newPublicInterface",
+          "name": "newPublicCategory"
+        },
+        {
+          "access": "private",
+          "instanceMethods": [
+            {
+              "access": "private",
+              "name": "privateCategoryInstanceMethod"
+            }
+          ],
+          "interface": "privateInterface",
+          "name": "privateCategory"
+        }
+      ],
+      "protocols": [
+        {
+          "access": "public",
+          "classMethods": [
+            {
+              "access": "public",
+              "name": "newPublicClassMethod"
+            }
+          ],
+          "name": "newPublicProtocol"
+        },
+        {
+          "access": "private",
+          "classMethods": [
+            {
+              "access": "private",
+              "name": "privateClassMethod"
+            }
+          ],
+          "name": "privateProtocol"
+        }
+      ],
+      "target": "arm64-apple-macos13"
+    }
+  ],
+  "projectName": "Config",
+  "version": "1.0"
+}
+

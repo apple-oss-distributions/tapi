@@ -1,0 +1,10 @@
+; RUN: rm -rf %t && mkdir -p %t/ThreadLocal.framework/
+; RUN: yaml2obj %S/../Inputs/thread_local.yaml -o %t/ThreadLocal.framework/ThreadLocal
+; RUN: mkdir -p %t/ThreadLocal.framework/Headers 
+; RUN: echo "extern __thread int MySymbol;" >> %t/ThreadLocal.framework/Headers/ThreadLocal.h
+; RUN: %tapi installapi -isysroot %sysroot --filetype=tbd-v4 --verify-mode=Pedantic --verify-against=%t/ThreadLocal.framework/ThreadLocal  --target=x86_64-apple-macos11 -install_name /System/Library/Frameworks/ThreadLocal.framework/ThreadLocal -o %t/ThreadLocal.framework/ThreadLocal.tbd %t/ThreadLocal.framework | FileCheck %s --allow-empty
+; RUN: cat %t/ThreadLocal.framework/ThreadLocal.tbd | FileCheck %s --check-prefix=CHECK-TBD
+
+; CHECK-NOT: error: 
+; CHECK-NOT: warning:
+; CHECK-TBD: thread-local-symbols: [ _MySymbol ]

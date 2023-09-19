@@ -1,0 +1,8 @@
+; RUN: rm -rf %t && mkdir %t
+; RUN: not %tapi installapi --target=arm64-apple-macos13 --target=x86_64-apple-macos13 --target-variant=x86_64-apple-ios16.0-macabi  --target-variant=arm64-apple-ios16.0-macabi -install_name /System/Library/Frameworks/Mismatch.framework/Versions/A/Mismatch -current_version 1 -compatibility_version 1 -isysroot %sysroot %inputs/System/Library/Frameworks/Mismatch.framework --verify-against=%inputs/System/Library/Frameworks/Mismatch.framework/Mismatch --verify-mode=Pedantic --serialize-diagnostics %t/tmp/InstallAPI-Mismatch.dia 
+
+; RUN: c-index-test -read-diagnostics %t/tmp/InstallAPI-Mismatch.dia 2>&1 | FileCheck %s --check-prefix=DIAGS
+
+DIAGS: Mismatch_Private.h:2:12: error: declaration has external linkage, but symbol has internal linkage in dynamic library 'bar'
+DIAGS-NEXT: Number FIXITs = 0
+DIAGS: Number of diagnostics: 36

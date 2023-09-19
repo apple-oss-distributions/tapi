@@ -1,0 +1,25 @@
+; RUN: %tapi installapi -arch x86_64 -install_name /System/Library/Frameworks/Simple.framework/Versions/A/Simple -current_version 1.2.3 -compatibility_version 1 -macosx_version_min 10.12 -isysroot %sysroot %inputs/System/Library/Frameworks/Simple.framework -o %t/Simple.tbd --verify-against=%inputs/System/Library/Frameworks/Simple.framework/Simple --verify-mode=Pedantic --extra-public-header=%p/../Inputs/Simple/SimpleInternalAPI2.h --extra-public-header=%p/../Inputs/Simple/SimpleInternalAPI.h --extra-public-header=%p/../Inputs/Simple/Extra --extra-private-header=%p/../Inputs/Simple/SimpleInternalSPI.h --exclude-public-header=**/SimpleAPI.h --exclude-private-header=**/SimplePrivateSPI.h 2>&1 | FileCheck -check-prefix=PEDANTIC -allow-empty %s
+
+; PEDANTIC-NOT: error
+; PEDANTIC: warning: cannot find protocol definition for 'ForwardProcotol'
+
+; RUN: STAT_FILE_TIME=$(stat -f '%m %B'  %t/Simple.tbd)
+
+// Run and compare Stubify write. 
+; RUN: %tapi stubify --filetype=tbd-v5 %t/Simple.tbd -o %t/SimpleStub.tbd
+; RUN: STAT_STUB_FILE_TIME=$(stat -f '%m %B'  %t/SimpleStub.tbd)
+
+// Rerun to check if file has changed.
+; RUN: %tapi installapi -arch x86_64 -install_name /System/Library/Frameworks/Simple.framework/Versions/A/Simple -current_version 1.2.3 -compatibility_version 1 -macosx_version_min 10.12 -isysroot %sysroot %inputs/System/Library/Frameworks/Simple.framework -o %t/Simple.tbd --verify-against=%inputs/System/Library/Frameworks/Simple.framework/Simple --verify-mode=Pedantic --extra-public-header=%p/../Inputs/Simple/SimpleInternalAPI2.h --extra-public-header=%p/../Inputs/Simple/SimpleInternalAPI.h --extra-public-header=%p/../Inputs/Simple/Extra --extra-private-header=%p/../Inputs/Simple/SimpleInternalSPI.h --exclude-public-header=**/SimpleAPI.h --exclude-private-header=**/SimplePrivateSPI.h 2>&1 | FileCheck -check-prefix=PEDANTIC -allow-empty %s
+; RUN: %tapi installapi -arch x86_64 -install_name /System/Library/Frameworks/Simple.framework/Versions/A/Simple -current_version 1.2.3 -compatibility_version 1 -macosx_version_min 10.12 -isysroot %sysroot %inputs/System/Library/Frameworks/Simple.framework -o %t/Simple.tbd --verify-against=%inputs/System/Library/Frameworks/Simple.framework/Simple --verify-mode=Pedantic --extra-public-header=%p/../Inputs/Simple/SimpleInternalAPI2.h --extra-public-header=%p/../Inputs/Simple/SimpleInternalAPI.h --extra-public-header=%p/../Inputs/Simple/Extra --extra-private-header=%p/../Inputs/Simple/SimpleInternalSPI.h --exclude-public-header=**/SimpleAPI.h --exclude-private-header=**/SimplePrivateSPI.h 2>&1 | FileCheck -check-prefix=PEDANTIC -allow-empty %s
+
+; RUN: STAT_FILE_TIME2=$(stat -f '%m %B' %t/Simple.tbd)
+; RUN: test "$STAT_FILE_TIME" == "$STAT_FILE_TIME2" | FileCheck %s --allow-empty 
+
+; RUN: %tapi stubify --filetype=tbd-v5 %t/Simple.tbd -o %t/SimpleStub.tbd
+; RUN: %tapi stubify --filetype=tbd-v5 %t/Simple.tbd -o %t/SimpleStub.tbd
+; RUN: STAT_STUB_FILE_TIME2=$(stat -f '%m %B'  %t/SimpleStub.tbd)
+
+; RUN: test "$STAT_STUB_FILE_TIME" == "$STAT_STUB_FILE_TIME2" | FileCheck %s --allow-empty 
+
+; CHECK-NOT: error

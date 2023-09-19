@@ -1,0 +1,7 @@
+; RUN: rm -rf %t && mkdir -p %t
+; RUN: %tapi installapi --filetype=tbd-v4 --target=x86_64-apple-macos10.15 -install_name /System/Library/PrivateFrameworks/Test.framework/Test -current_version 1 -compatibility_version 1 %S/Inputs/Root/System/Library/PrivateFrameworks/Test.framework -sdkdb-output-dir %t -o %t/Test.tbd 2>&1 | FileCheck -allow-empty %s
+; RUN: %readtapi --compare %t/Test.tbd %S/Outputs/Test-3.tbd
+; RUN: diff -a %t/Test.partial.sdkdb %S/Outputs/Test-3.partial.sdkdb
+
+; CHECK-NOT: error
+; CHECK-NOT: warning

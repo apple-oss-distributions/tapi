@@ -1,0 +1,126 @@
+// RUN: rm -rf %t && mkdir -p %t
+// RUN: split-file %s %t
+
+// RUN: %tapi-mrm -o %t/baseline.sdkdb --bitcode %t/baseline.partial.sdkdb
+// RUN: %tapi-mrm -o %t/test.sdkdb --bitcode %t/test.partial.sdkdb
+
+// RUN: %tapi-sdkdb --compare --baseline %t/baseline.sdkdb %t/test.sdkdb 2>&1 | FileCheck --check-prefix=NO-COMPARE --allow-empty --implicit-check-not warning: --implicit-check-not error: %s
+// RUN: not %tapi-sdkdb --compare --compare-frontend-api --baseline %t/baseline.sdkdb %t/test.sdkdb 2>&1 | FileCheck --check-prefix=COMPARE --allow-empty --implicit-check-not warning: --implicit-check-not error: %s
+
+NO-COMPARE-NOT: warning
+NO-COMPARE-NOT: error
+
+COMPARE: error: missing enum constant 'Case2' for target 'arm64-apple-macosx'
+COMPARE: warning: new API enum constant 'NewCase' for target 'arm64-apple-macosx'
+COMPARE: warning: new API typedef 'NewTypedef' for target 'arm64-apple-macosx'
+COMPARE: error: missing typedef 'Typedef2' for target 'arm64-apple-macosx'
+
+//--- baseline.partial.sdkdb
+{
+  "PublicSDKContentRoot": [],
+  "RuntimeRoot": [
+    {
+      "binaryInfo": {
+        "compatibilityVersion": "1",
+        "currentVersion": "1.2.3",
+        "installName": "/System/Library/Frameworks/Frontend.framework/Versions/A/Frontend",
+        "twoLevelNamespace": true,
+        "type": "dylib"
+      },
+      "target": "arm64-apple-macos13"
+    }
+  ],
+  "SDKContentRoot": [
+    {
+      "enums": [
+        {
+          "access": "public",
+          "name": "Enum",
+          "constants": [
+            {
+              "access": "public",
+              "name": "Case1"
+            },
+            {
+              "access": "public",
+              "name": "Case2"
+            }
+          ]
+        }
+      ],
+      "typedefs": [
+        {
+          "access": "public",
+          "name": "Typedef",
+          "type": "Enum"
+        },
+        {
+          "access": "public",
+          "name": "Typedef2",
+          "type": "int"
+        }
+      ],
+      "target": "arm64-apple-macos13"
+    }
+  ],
+  "projectName": "Frontend",
+  "version": "1.0"
+}
+
+//--- test.partial.sdkdb
+{
+  "PublicSDKContentRoot": [],
+  "RuntimeRoot": [
+    {
+      "binaryInfo": {
+        "compatibilityVersion": "1",
+        "currentVersion": "1.2.3",
+        "installName": "/System/Library/Frameworks/Frontend.framework/Versions/A/Frontend",
+        "twoLevelNamespace": true,
+        "type": "dylib"
+      },
+      "target": "arm64-apple-macos13"
+    }
+  ],
+  "SDKContentRoot": [
+    {
+      "enums": [
+        {
+          "access": "public",
+          "name": "Enum",
+          "constants": [
+            {
+              "access": "public",
+              "name": "Case1"
+            }
+          ]
+        },
+        {
+          "access": "public",
+          "name": "NewEnum",
+          "constants": [
+            {
+              "access": "public",
+              "name": "NewCase"
+            }
+          ]
+        }
+      ],
+      "typedefs": [
+        {
+          "access": "public",
+          "name": "Typedef",
+          "type": "Enum"
+        },
+        {
+          "access": "public",
+          "name": "NewTypedef",
+          "type": "NewEnum"
+        }
+      ],
+      "target": "arm64-apple-macos13"
+    }
+  ],
+  "projectName": "Frontend",
+  "version": "1.0"
+}

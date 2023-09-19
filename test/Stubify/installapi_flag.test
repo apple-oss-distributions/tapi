@@ -1,0 +1,13 @@
+; RUN: rm -rf %t && mkdir -p %t/sysroot
+; RUN: cp -R %p/../Inputs/InstallAPIFlag/ %t/sysroot/
+# Inlining should always be enabled now that there is no difference between installapi time vs install time build TBD.
+; RUN: %tapi stubify --filetype=tbd-v3 --inline-private-frameworks -isysroot %t/sysroot %t/sysroot/ 2>&1 | FileCheck -allow-empty %s 
+; RUN: %readtapi --compare %p/../Outputs/Stubify/libinstallapi.tbd %t/sysroot/usr/lib/libinstallapi.tbd
+; RUN: %tapi stubify --filetype=tbd-v3 --set-installapi-flag --inline-private-frameworks -isysroot %t/sysroot %t/sysroot/ 2>&1 | FileCheck %s --check-prefix=DEPRECATED
+; RUN: %readtapi --compare %p/../Outputs/Stubify/libinstallapi.tbd %t/sysroot/usr/lib/libinstallapi.tbd
+
+; CHECK-NOT: error
+; CHECK-NOT: warning
+
+; DEPRECATED: warning: set-installapi-flag is deprecated and will be ignored.
+

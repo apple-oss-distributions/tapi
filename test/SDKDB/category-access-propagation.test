@@ -1,0 +1,185 @@
+; RUN: rm -rf %t
+; RUN: split-file %s %t
+; RUN: mkdir -p %t/CategoryAccessPropagation/System/Library/Frameworks
+; RUN: cp -R %inputs/System/Library/Frameworks/CategoryAccessPropagation.framework %t/CategoryAccessPropagation/System/Library/Frameworks
+
+; RUN: %tapi sdkdb --action=all --no-verify-api --private-headers -o %t/output -isysroot %sysroot --runtime-root %t/CategoryAccessPropagation --sdk-content-root %t/CategoryAccessPropagation 2>&1 | FileCheck %s --allow-empty
+
+; RUN: %api-json-diff --sdkdb %t/output/public.sdkdb %t/public.sdkdb 2>&1 | FileCheck %s --allow-empty
+; RUN: %api-json-diff --sdkdb %t/output/private.sdkdb %t/private.sdkdb 2>&1 | FileCheck %s --allow-empty
+
+CHECK-NOT: error
+CHECK-NOT: warning
+
+//--- public.sdkdb
+{
+  "public": true,
+  "x86_64-apple-macosx": [
+    {
+      "binaryInfo": {
+        "compatibilityVersion": "1",
+        "currentVersion": "1.2.3",
+        "installName": "/System/Library/Frameworks/CategoryAccessPropagation.framework/Versions/A/CategoryAccessPropagation",
+        "twoLevelNamespace": true,
+        "type": "dylib"
+      },
+      "categories": [
+        {
+          "instanceMethods": [
+            {
+              "name": "methodFromCategory"
+            },
+            {
+              "name": "propertyFromCategory"
+            },
+            {
+              "name": "methodFromProtocol"
+            }
+          ],
+          "interface": "ParentClass",
+          "name": "MyCategory",
+          "properties": [
+            {
+              "attr": [
+                "readonly"
+              ],
+              "getter": "propertyFromCategory",
+              "name": "propertyFromCategory"
+            }
+          ],
+          "protocols": [
+            "SampleProtocol"
+          ]
+        }
+      ],
+      "interfaces": [
+        {
+          "instanceMethods": [
+            {
+              "name": "methodFromCategory"
+            },
+            {
+              "name": "propertyFromCategory"
+            },
+            {
+              "name": "methodFromProtocol"
+            }
+          ],
+          "linkage": "exported",
+          "name": "ChildClass",
+          "super": "ParentClass"
+        },
+        {
+          "categories": [
+            "MyCategory"
+          ],
+          "linkage": "exported",
+          "name": "ParentClass",
+          "super": ""
+        }
+      ],
+      "protocols": [
+        {
+          "instanceMethods": [
+            {
+              "name": "methodFromProtocol"
+            }
+          ],
+          "name": "SampleProtocol"
+        }
+      ]
+    }
+  ]
+}
+
+//--- private.sdkdb
+{
+  "x86_64-apple-macosx": [
+    {
+      "binaryInfo": {
+        "compatibilityVersion": "1",
+        "currentVersion": "1.2.3",
+        "installName": "/System/Library/Frameworks/CategoryAccessPropagation.framework/Versions/A/CategoryAccessPropagation",
+        "twoLevelNamespace": true,
+        "type": "dylib"
+      },
+      "categories": [
+        {
+          "access": "public",
+          "instanceMethods": [
+            {
+              "access": "public",
+              "name": "methodFromCategory"
+            },
+            {
+              "access": "public",
+              "name": "propertyFromCategory"
+            },
+            {
+              "access": "public",
+              "name": "methodFromProtocol"
+            }
+          ],
+          "interface": "ParentClass",
+          "name": "MyCategory",
+          "properties": [
+            {
+              "access": "public",
+              "attr": [
+                "readonly"
+              ],
+              "getter": "propertyFromCategory",
+              "name": "propertyFromCategory"
+            }
+          ],
+          "protocols": [
+            "SampleProtocol"
+          ]
+        }
+      ],
+      "interfaces": [
+        {
+          "access": "public",
+          "instanceMethods": [
+            {
+              "access": "public",
+              "name": "methodFromCategory"
+            },
+            {
+              "access": "public",
+              "name": "propertyFromCategory"
+            },
+            {
+              "access": "public",
+              "name": "methodFromProtocol"
+            }
+          ],
+          "linkage": "exported",
+          "name": "ChildClass",
+          "super": "ParentClass"
+        },
+        {
+          "access": "public",
+          "categories": [
+            "MyCategory"
+          ],
+          "linkage": "exported",
+          "name": "ParentClass",
+          "super": ""
+        }
+      ],
+      "protocols": [
+        {
+          "access": "public",
+          "instanceMethods": [
+            {
+              "access": "public",
+              "name": "methodFromProtocol"
+            }
+          ],
+          "name": "SampleProtocol"
+        }
+      ]
+    }
+  ]
+}

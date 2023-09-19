@@ -1,0 +1,880 @@
+; RUN: rm -rf %t
+; RUN: split-file %s %t
+; RUN:  mkdir -p %t/Simple/System/Library/Frameworks
+; RUN: cp -R %inputs/System/Library/Frameworks/Simple.framework %t/Simple/System/Library/Frameworks
+; RUN: %tapi sdkdb --action=all --no-verify-api --private-headers -o %t/result.sdkdb -isysroot %sysroot --runtime-root %t/Simple --sdk-content-root %t/Simple 2>&1 | FileCheck %s --allow-empty
+; RUN: %api-json-diff -sdkdb %t/result.sdkdb/public.sdkdb %t/expected_public.sdkdb 2>&1 | FileCheck %s --allow-empty
+; RUN: %api-json-diff -sdkdb %t/result.sdkdb/private.sdkdb %t/expected_private.sdkdb 2>&1 | FileCheck %s --allow-empty
+CHECK-NOT: warning: missing ObjC method 'dynamicProp' in class 'Basic3' from binary interface
+CHECK-NOT: warning: missing ObjC method 'setDynamicProp:' in class 'Basic3' from binary interface
+CHECK-NOT: warning: missing ObjC method 'bMethod' in class 'A' from binary interface
+
+//--- expected_public.sdkdb
+{
+  "public": true,
+  "x86_64-apple-macosx": [
+    {
+      "binaryInfo": {
+        "compatibilityVersion": "1",
+        "currentVersion": "1.2.3",
+        "installName": "/System/Library/Frameworks/Simple.framework/Versions/A/Simple",
+        "twoLevelNamespace": true,
+        "type": "dylib"
+      },
+      "categories": [
+        {
+          "interface": "Basic6",
+          "ivars": [],
+          "name": ""
+        },
+        {
+          "instanceMethods": [
+            {
+              "name": "supportsSimple"
+            }
+          ],
+          "interface": "NSManagedObject",
+          "name": "Simple"
+        }
+      ],
+      "globals": [
+        {
+          "kind": "variable",
+          "linkage": "exported",
+          "name": "_publicGlobalVariable"
+        },
+        {
+          "kind": "variable",
+          "linkage": "exported",
+          "name": "_weakPublicGlobalVariable",
+          "weakDefined": true
+        }
+      ],
+      "interfaces": [
+        {
+          "instanceMethods": [
+            {
+              "introduced": "10.11",
+              "name": "aMethod"
+            }
+          ],
+          "linkage": "exported",
+          "name": "A",
+          "super": "NSObject"
+        },
+        {
+          "hasException": true,
+          "linkage": "exported",
+          "name": "Base",
+          "super": "NSObject"
+        },
+        {
+          "linkage": "exported",
+          "name": "Basic1",
+          "super": ""
+        },
+        {
+          "linkage": "exported",
+          "name": "Basic2",
+          "super": "NSObject"
+        },
+        {
+          "instanceMethods": [
+            {
+              "name": "property1"
+            },
+            {
+              "name": "setProperty1:"
+            },
+            {
+              "name": "property2"
+            },
+            {
+              "name": "isProperty3"
+            },
+            {
+              "name": "setProperty3:"
+            }
+          ],
+          "linkage": "exported",
+          "name": "Basic3",
+          "properties": [
+            {
+              "getter": "property1",
+              "name": "property1",
+              "setter": "setProperty1:"
+            },
+            {
+              "attr": [
+                "readonly"
+              ],
+              "getter": "property2",
+              "name": "property2"
+            },
+            {
+              "getter": "isProperty3",
+              "name": "property3",
+              "setter": "setProperty3:"
+            },
+            {
+              "attr": [
+                "dynamic"
+              ],
+              "getter": "dynamicProp",
+              "name": "dynamicProp",
+              "setter": "setDynamicProp:"
+            }
+          ],
+          "super": "NSObject"
+        },
+        {
+          "ivars": [],
+          "linkage": "exported",
+          "name": "Basic4",
+          "super": "NSObject"
+        },
+        {
+          "ivars": [],
+          "linkage": "exported",
+          "name": "Basic4_2",
+          "super": "NSObject"
+        },
+        {
+          "classMethods": [
+            {
+              "name": "aClassMethod"
+            }
+          ],
+          "instanceMethods": [
+            {
+              "name": "anInstanceMethod"
+            }
+          ],
+          "linkage": "exported",
+          "name": "Basic5",
+          "super": "NSObject"
+        },
+        {
+          "instanceMethods": [
+            {
+              "name": "property2"
+            },
+            {
+              "name": "setProperty2:"
+            },
+            {
+              "name": "anInstanceMethodFromACategory"
+            },
+            {
+              "name": "anInstanceMethodFromAnExtension"
+            },
+            {
+              "name": "property1"
+            },
+            {
+              "name": "setProperty1:"
+            }
+          ],
+          "ivars": [],
+          "linkage": "exported",
+          "name": "Basic6",
+          "properties": [
+            {
+              "getter": "property2",
+              "name": "property2",
+              "setter": "setProperty2:"
+            }
+          ],
+          "super": "NSObject"
+        },
+        {
+          "classMethods": [
+            {
+              "name": "useSameName"
+            }
+          ],
+          "linkage": "exported",
+          "name": "Basic8",
+          "super": "NSObject"
+        },
+        {
+          "instanceMethods": [
+            {
+              "introduced": "10.10",
+              "name": "aProperty"
+            },
+            {
+              "introduced": "10.8",
+              "name": "setAProperty:"
+            }
+          ],
+          "linkage": "exported",
+          "name": "Basic9",
+          "properties": [
+            {
+              "getter": "aProperty",
+              "introduced": "10.10",
+              "name": "aProperty",
+              "setter": "setAProperty:"
+            },
+            {
+              "attr": [
+                "readonly"
+              ],
+              "getter": "aProperty",
+              "name": "aProperty"
+            }
+          ],
+          "super": "NSObject"
+        },
+        {
+          "instanceMethods": [
+            {
+              "name": "foo"
+            },
+            {
+              "dynamic": true,
+              "name": "addChildObject:"
+            },
+            {
+              "dynamic": true,
+              "name": "removeChildObject:"
+            },
+            {
+              "dynamic": true,
+              "name": "addChild:"
+            },
+            {
+              "dynamic": true,
+              "name": "removeChild:"
+            }
+          ],
+          "linkage": "exported",
+          "name": "ExternalManagedObject",
+          "super": "NSManagedObject"
+        },
+        {
+          "instanceMethods": [
+            {
+              "name": "baseMethod"
+            },
+            {
+              "name": "protocolMethod"
+            },
+            {
+              "name": "barMethod"
+            }
+          ],
+          "linkage": "exported",
+          "name": "FooClass",
+          "protocols": [
+            "FooProtocol",
+            "BarProtocol",
+            "ForwardProcotol"
+          ],
+          "super": ""
+        },
+        {
+          "linkage": "exported",
+          "name": "Simple",
+          "super": "NSObject"
+        },
+        {
+          "hasException": true,
+          "linkage": "exported",
+          "name": "SubClass",
+          "super": "Base"
+        }
+      ],
+      "protocols": [
+        {
+          "instanceMethods": [
+            {
+              "name": "barMethod"
+            }
+          ],
+          "name": "BarProtocol"
+        },
+        {
+          "instanceMethods": [
+            {
+              "name": "baseMethod"
+            }
+          ],
+          "name": "BaseProtocol"
+        },
+        {
+          "instanceMethods": [
+            {
+              "name": "protocolMethod"
+            }
+          ],
+          "introduced": "10.11",
+          "name": "FooProtocol",
+          "protocols": [
+            "BaseProtocol"
+          ]
+        }
+      ]
+    },
+    {
+      "protocols": [
+        {
+          "file": "/System/Library/Frameworks/Simple.framework/Versions/A/Headers/Basic.h",
+          "instanceMethods": [
+            {
+              "file": "/System/Library/Frameworks/Simple.framework/Versions/A/Headers/Basic.h",
+              "name": "aMethod"
+            }
+          ],
+          "name": "_A"
+        }
+      ]
+    }
+  ]
+}
+//--- expected_private.sdkdb
+{
+  "x86_64-apple-macosx": [
+    {
+      "binaryInfo": {
+        "compatibilityVersion": "1",
+        "currentVersion": "1.2.3",
+        "installName": "/System/Library/Frameworks/Simple.framework/Versions/A/Simple",
+        "twoLevelNamespace": true,
+        "type": "dylib"
+      },
+      "categories": [
+        {
+          "interface": "Basic3",
+          "ivars": [
+            {
+              "linkage": "internal",
+              "name": "property1"
+            },
+            {
+              "linkage": "internal",
+              "name": "property2"
+            },
+            {
+              "linkage": "internal",
+              "name": "property3"
+            }
+          ],
+          "name": ""
+        },
+        {
+          "interface": "Basic4",
+          "ivars": [
+            {
+              "linkage": "internal",
+              "name": "ivar3"
+            },
+            {
+              "linkage": "internal",
+              "name": "ivar4"
+            }
+          ],
+          "name": ""
+        },
+        {
+          "interface": "Basic4_1",
+          "ivars": [
+            {
+              "linkage": "internal",
+              "name": "ivar1"
+            },
+            {
+              "linkage": "internal",
+              "name": "ivar2"
+            },
+            {
+              "linkage": "internal",
+              "name": "ivar3"
+            },
+            {
+              "linkage": "internal",
+              "name": "ivar4"
+            }
+          ],
+          "name": ""
+        },
+        {
+          "interface": "Basic4_2",
+          "ivars": [
+            {
+              "linkage": "internal",
+              "name": "ivar4"
+            },
+            {
+              "linkage": "internal",
+              "name": "ivar3"
+            }
+          ],
+          "name": ""
+        },
+        {
+          "access": "public",
+          "interface": "Basic6",
+          "ivars": [
+            {
+              "linkage": "internal",
+              "name": "property1"
+            }
+          ],
+          "name": ""
+        },
+        {
+          "interface": "Basic9",
+          "ivars": [
+            {
+              "linkage": "internal",
+              "name": "_aProperty"
+            }
+          ],
+          "name": ""
+        },
+        {
+          "access": "public",
+          "instanceMethods": [
+            {
+              "access": "public",
+              "name": "supportsSimple"
+            }
+          ],
+          "interface": "NSManagedObject",
+          "name": "Simple"
+        }
+      ],
+      "globals": [
+        {
+          "kind": "variable",
+          "linkage": "exported",
+          "name": "_extraGlobalAPI1"
+        },
+        {
+          "kind": "variable",
+          "linkage": "exported",
+          "name": "_extraGlobalAPI2"
+        },
+        {
+          "access": "private",
+          "kind": "variable",
+          "linkage": "exported",
+          "name": "_privateGlobalVariable"
+        },
+        {
+          "access": "public",
+          "kind": "variable",
+          "linkage": "exported",
+          "name": "_publicGlobalVariable"
+        },
+        {
+          "access": "private",
+          "kind": "variable",
+          "linkage": "exported",
+          "name": "_weakPrivateGlobalVariable",
+          "weakDefined": true
+        },
+        {
+          "access": "public",
+          "kind": "variable",
+          "linkage": "exported",
+          "name": "_weakPublicGlobalVariable",
+          "weakDefined": true
+        }
+      ],
+      "interfaces": [
+        {
+          "access": "public",
+          "instanceMethods": [
+            {
+              "access": "public",
+              "introduced": "10.11",
+              "name": "aMethod"
+            }
+          ],
+          "linkage": "exported",
+          "name": "A",
+          "super": "NSObject"
+        },
+        {
+          "access": "public",
+          "hasException": true,
+          "linkage": "exported",
+          "name": "Base",
+          "super": "NSObject"
+        },
+        {
+          "access": "public",
+          "linkage": "exported",
+          "name": "Basic1",
+          "super": ""
+        },
+        {
+          "access": "public",
+          "linkage": "exported",
+          "name": "Basic2",
+          "super": "NSObject"
+        },
+        {
+          "access": "public",
+          "instanceMethods": [
+            {
+              "access": "public",
+              "name": "property1"
+            },
+            {
+              "access": "public",
+              "name": "setProperty1:"
+            },
+            {
+              "access": "public",
+              "name": "property2"
+            },
+            {
+              "access": "public",
+              "name": "isProperty3"
+            },
+            {
+              "access": "public",
+              "name": "setProperty3:"
+            }
+          ],
+          "linkage": "exported",
+          "name": "Basic3",
+          "properties": [
+            {
+              "access": "public",
+              "getter": "property1",
+              "name": "property1",
+              "setter": "setProperty1:"
+            },
+            {
+              "access": "public",
+              "attr": [
+                "readonly"
+              ],
+              "getter": "property2",
+              "name": "property2"
+            },
+            {
+              "access": "public",
+              "getter": "isProperty3",
+              "name": "property3",
+              "setter": "setProperty3:"
+            },
+            {
+              "access": "public",
+              "attr": [
+                "dynamic"
+              ],
+              "getter": "dynamicProp",
+              "name": "dynamicProp",
+              "setter": "setDynamicProp:"
+            }
+          ],
+          "super": "NSObject"
+        },
+        {
+          "access": "public",
+          "ivars": [
+            {
+              "linkage": "exported",
+              "name": "ivar1"
+            },
+            {
+              "linkage": "exported",
+              "name": "ivar2"
+            }
+          ],
+          "linkage": "exported",
+          "name": "Basic4",
+          "super": "NSObject"
+        },
+        {
+          "access": "public",
+          "ivars": [
+            {
+              "linkage": "exported",
+              "name": "ivar1"
+            },
+            {
+              "linkage": "exported",
+              "name": "ivar2"
+            }
+          ],
+          "linkage": "exported",
+          "name": "Basic4_2",
+          "super": "NSObject"
+        },
+        {
+          "access": "public",
+          "classMethods": [
+            {
+              "access": "public",
+              "name": "aClassMethod"
+            }
+          ],
+          "instanceMethods": [
+            {
+              "access": "public",
+              "name": "anInstanceMethod"
+            }
+          ],
+          "linkage": "exported",
+          "name": "Basic5",
+          "super": "NSObject"
+        },
+        {
+          "access": "public",
+          "instanceMethods": [
+            {
+              "access": "public",
+              "name": "property2"
+            },
+            {
+              "access": "public",
+              "name": "setProperty2:"
+            },
+            {
+              "access": "public",
+              "name": "anInstanceMethodFromACategory"
+            },
+            {
+              "access": "public",
+              "name": "anInstanceMethodFromAnExtension"
+            },
+            {
+              "access": "public",
+              "name": "property1"
+            },
+            {
+              "access": "public",
+              "name": "setProperty1:"
+            }
+          ],
+          "ivars": [
+            {
+              "linkage": "exported",
+              "name": "ivar1"
+            }
+          ],
+          "linkage": "exported",
+          "name": "Basic6",
+          "properties": [
+            {
+              "access": "public",
+              "getter": "property2",
+              "name": "property2",
+              "setter": "setProperty2:"
+            },
+            {
+              "getter": "property1",
+              "name": "property1",
+              "setter": "setProperty1:"
+            }
+          ],
+          "super": "NSObject"
+        },
+        {
+          "access": "public",
+          "classMethods": [
+            {
+              "access": "public",
+              "name": "useSameName"
+            }
+          ],
+          "instanceMethods": [
+            {
+              "name": "useSameName"
+            }
+          ],
+          "linkage": "exported",
+          "name": "Basic8",
+          "super": "NSObject"
+        },
+        {
+          "access": "public",
+          "instanceMethods": [
+            {
+              "access": "public",
+              "introduced": "10.10",
+              "name": "aProperty"
+            },
+            {
+              "access": "public",
+              "introduced": "10.8",
+              "name": "setAProperty:"
+            }
+          ],
+          "linkage": "exported",
+          "name": "Basic9",
+          "properties": [
+            {
+              "access": "public",
+              "getter": "aProperty",
+              "introduced": "10.10",
+              "name": "aProperty",
+              "setter": "setAProperty:"
+            },
+            {
+              "access": "public",
+              "attr": [
+                "readonly"
+              ],
+              "getter": "aProperty",
+              "name": "aProperty"
+            }
+          ],
+          "super": "NSObject"
+        },
+        {
+          "access": "public",
+          "instanceMethods": [
+            {
+              "access": "public",
+              "name": "foo"
+            },
+            {
+              "access": "public",
+              "dynamic": true,
+              "name": "addChildObject:"
+            },
+            {
+              "access": "public",
+              "dynamic": true,
+              "name": "removeChildObject:"
+            },
+            {
+              "access": "public",
+              "dynamic": true,
+              "name": "addChild:"
+            },
+            {
+              "access": "public",
+              "dynamic": true,
+              "name": "removeChild:"
+            }
+          ],
+          "linkage": "exported",
+          "name": "ExternalManagedObject",
+          "super": "NSManagedObject"
+        },
+        {
+          "access": "public",
+          "instanceMethods": [
+            {
+              "name": "privateProcotolMethod"
+            },
+            {
+              "access": "public",
+              "name": "baseMethod"
+            },
+            {
+              "access": "public",
+              "name": "protocolMethod"
+            },
+            {
+              "access": "public",
+              "name": "barMethod"
+            }
+          ],
+          "linkage": "exported",
+          "name": "FooClass",
+          "protocols": [
+            "FooProtocol",
+            "BarProtocol",
+            "ForwardProcotol"
+          ],
+          "super": ""
+        },
+        {
+          "access": "public",
+          "linkage": "exported",
+          "name": "Simple",
+          "super": "NSObject"
+        },
+        {
+          "hasException": true,
+          "linkage": "exported",
+          "name": "SimpleInternalAPI",
+          "super": "NSObject"
+        },
+        {
+          "hasException": true,
+          "linkage": "exported",
+          "name": "SimpleInternalSPI",
+          "super": "NSObject"
+        },
+        {
+          "access": "public",
+          "hasException": true,
+          "linkage": "exported",
+          "name": "SubClass",
+          "super": "Base"
+        }
+      ],
+      "protocols": [
+        {
+          "access": "public",
+          "instanceMethods": [
+            {
+              "access": "public",
+              "name": "barMethod"
+            }
+          ],
+          "name": "BarProtocol"
+        },
+        {
+          "access": "public",
+          "instanceMethods": [
+            {
+              "access": "public",
+              "name": "baseMethod"
+            }
+          ],
+          "name": "BaseProtocol"
+        },
+        {
+          "access": "public",
+          "instanceMethods": [
+            {
+              "access": "public",
+              "name": "protocolMethod"
+            }
+          ],
+          "introduced": "10.11",
+          "name": "FooProtocol",
+          "protocols": [
+            "BaseProtocol"
+          ]
+        },
+        {
+          "instanceMethods": [
+            {
+              "name": "privateProcotolMethod"
+            }
+          ],
+          "name": "PrivateProtocol"
+        }
+      ]
+    },
+    {
+      "protocols": [
+        {
+          "access": "public",
+          "file": "/System/Library/Frameworks/Simple.framework/Versions/A/Headers/Basic.h",
+          "instanceMethods": [
+            {
+              "access": "public",
+              "file": "/System/Library/Frameworks/Simple.framework/Versions/A/Headers/Basic.h",
+              "name": "aMethod"
+            }
+          ],
+          "name": "_A"
+        }
+      ]
+    }
+  ]
+}

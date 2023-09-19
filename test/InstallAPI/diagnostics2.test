@@ -1,0 +1,11 @@
+; RUN: rm -rf %t && mkdir %t 
+; RUN: cp -r %T/../../../Inputs/System/Library/Frameworks/SimpleMismatch.framework %t/
+; RUN: dsymutil %t/SimpleMismatch.framework/SimpleMismatch -o %t/SimpleMismatch.framework.dSYM
+; RUN: not %tapi installapi -arch x86_64 -arch arm64 -mtargetos=macosx13 -install_name /System/Library/Frameworks/SimpleMismatch.framework/Versions/A/SimpleMismatch -current_version 1 -compatibility_version 1 -verify-against %t/SimpleMismatch.framework/SimpleMismatch --verify-mode=Pedantic -isysroot %sysroot  %t/SimpleMismatch.framework -o %t/SimpleMismatch.framework/SimpleMismatch.tbd --dSYM=%t/SimpleMismatch.framework.dSYM 2>&1 | FileCheck %s
+
+CHECK: warning: violations found for x86_64
+CHECK-NEXT: simple.m:6:0: error: no declaration found for exported symbol 'bar' in dynamic library
+CHECK-NEXT: simple.m:1:0: error: no declaration found for exported symbol 'foo' in dynamic library
+CHECK-NEXT: warning: violations found for arm64
+CHECK-NEXT: simple.m:6:0: error: no declaration found for exported symbol 'bar' in dynamic library
+CHECK-NEXT: simple.m:1:0: error: no declaration found for exported symbol 'foo' in dynamic library
