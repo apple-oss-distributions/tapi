@@ -32,7 +32,8 @@ InterfaceFileManager::InterfaceFileManager(FileManager &fm,
   _registry.addJSONWriters();
 }
 
-Expected<APIs &> InterfaceFileManager::readFile(const std::string &path) {
+Expected<APIs &> InterfaceFileManager::readFile(const std::string &path,
+                                                const ReadFlags flags) {
   auto file = _fm.getFile(path);
   if (!file)
     return errorCodeToError(file.getError());
@@ -43,8 +44,7 @@ Expected<APIs &> InterfaceFileManager::readFile(const std::string &path) {
   if (!bufferOrErr)
     return errorCodeToError(bufferOrErr.getError());
 
-  auto apis =
-      _registry.readFile(std::move(bufferOrErr.get()), ReadFlags::Symbols);
+  auto apis = _registry.readFile(std::move(bufferOrErr.get()), flags);
   if (!apis)
     return apis.takeError();
 
@@ -76,6 +76,9 @@ InterfaceFileManager::shouldWrite(const std::string &path,
                                           /*IsVolatile=*/isVolatile);
   if (auto err = bufferOrErr.getError())
     return WriteAction::NewFile;
+
+  if (bufferOrErr.get()->getBufferSize() == 0)
+    return WriteAction::ReplaceFile;
 
   auto existingIFOrErr = _registry.readTextFile(std::move(bufferOrErr.get()));
   if (auto err = existingIFOrErr.takeError()) {

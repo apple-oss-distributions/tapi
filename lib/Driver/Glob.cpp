@@ -11,6 +11,7 @@
 ///
 //===----------------------------------------------------------------------===//
 
+#include "llvm/ADT/SmallString.h"
 #include <tapi/Driver/Glob.h>
 
 using namespace llvm;

@@ -17,4 +17,5 @@ set(LLVM_DISTRIBUTION_COMPONENTS
   tapi
   tapi-docs
   tapi-sdkdb
+  ${LLVM_TOOLCHAIN_TOOLS}
   CACHE STRING "" FORCE)

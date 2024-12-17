@@ -119,6 +119,7 @@ template <> struct MappingTraits<FrameworkConfiguration> {
     io.mapOptional("macros", config.macros);
     io.mapOptional("public-header", config.publicHeaderConfiguration);
     io.mapOptional("private-header", config.privateHeaderConfiguration);
+    io.mapOptional("scan-swift-module", config.scanSwiftModule);
     io.mapOptional("use-overlay", config.useOverlay, true);
     io.mapOptional("clang-extra-args", config.clangExtraArgs);
   }
@@ -134,8 +135,12 @@ template <> struct MappingTraits<ProjectConfiguration> {
     io.mapOptional("macros", config.macros);
     io.mapOptional("iosmac", config.isiOSMac);
     io.mapOptional("zippered", config.isZippered);
+    io.mapOptional("scan-swift-module", config.scanSwiftModule);
     io.mapOptional("use-overlay", config.useOverlay, true);
     io.mapOptional("iosmac-umbrella-only", config.useUmbrellaOnly);
+    io.mapOptional("scan-public-headers-in-sdk-content-root", config.scanPublicHeadersInSDKContentRoot);
+    io.mapOptional("ignore-existing-partial-sdkdbs",
+                   config.ignoreExistingPartialSDKDBs);
     io.mapOptional("root-mask", config.rootMaskPaths);
     io.mapOptional("sdk-mask", config.sdkMaskPaths);
     io.mapOptional("public-header", config.publicHeaderConfiguration);

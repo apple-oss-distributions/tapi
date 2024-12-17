@@ -63,8 +63,8 @@ public:
   }
 
 private:
-  llvm::Optional<clang::SourceLocation> sourceLoc;
-  llvm::Optional<clang::PresumedLoc> presumedLoc;
+  std::optional<clang::SourceLocation> sourceLoc;
+  std::optional<clang::PresumedLoc> presumedLoc;
   std::string file;
   unsigned line;
   unsigned col;

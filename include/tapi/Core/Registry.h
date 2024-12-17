@@ -33,6 +33,7 @@ class Registry;
 
 enum class ReadFlags {
   Header,
+  DefinedSymbols,
   Symbols,
   DebugInfo,
   ObjCMetadata,

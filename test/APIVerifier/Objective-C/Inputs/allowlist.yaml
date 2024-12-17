@@ -1,7 +1,0 @@
----
-ignore-objc-class: 
-  - B
-bridge-objc-class: 
-  - base:            Base1
-    to:              Base2
-...

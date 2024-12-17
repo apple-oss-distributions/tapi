@@ -749,9 +749,8 @@ static bool IsStructurallyEquivalent(StructuralEquivalenceContext &Context,
         cast<SubstTemplateTypeParmType>(T1);
     const SubstTemplateTypeParmType *Subst2 =
         cast<SubstTemplateTypeParmType>(T2);
-    if (!Context.checkStructurallyEquivalent(
-            QualType(Subst1->getReplacedParameter(), 0),
-            QualType(Subst2->getReplacedParameter(), 0)))
+    if (!Context.checkStructurallyEquivalent(Subst1->getAssociatedDecl(),
+                                             Subst2->getAssociatedDecl()))
       return false;
     if (!Context.checkStructurallyEquivalent(Subst1->getReplacementType(),
                                              Subst2->getReplacementType()))
@@ -764,9 +763,8 @@ static bool IsStructurallyEquivalent(StructuralEquivalenceContext &Context,
         cast<SubstTemplateTypeParmPackType>(T1);
     const SubstTemplateTypeParmPackType *Subst2 =
         cast<SubstTemplateTypeParmPackType>(T2);
-    if (!Context.checkStructurallyEquivalent(
-            QualType(Subst1->getReplacedParameter(), 0),
-            QualType(Subst2->getReplacedParameter(), 0)))
+    if (!Context.checkStructurallyEquivalent(Subst1->getAssociatedDecl(),
+                                             Subst2->getAssociatedDecl()))
       return false;
     if (!IsStructurallyEquivalent(Context, Subst1->getArgumentPack(),
                                   Subst2->getArgumentPack()))
@@ -781,11 +779,11 @@ static bool IsStructurallyEquivalent(StructuralEquivalenceContext &Context,
     if (!IsStructurallyEquivalent(Context, Spec1->getTemplateName(),
                                   Spec2->getTemplateName()))
       return false;
-    if (Spec1->getNumArgs() != Spec2->getNumArgs())
+    if (Spec1->template_arguments().size() != Spec2->template_arguments().size())
       return false;
-    for (unsigned I = 0, N = Spec1->getNumArgs(); I != N; ++I) {
-      if (!IsStructurallyEquivalent(Context, Spec1->getArg(I),
-                                    Spec2->getArg(I)))
+    for (unsigned I = 0, N = Spec1->template_arguments().size(); I != N; ++I) {
+      if (!IsStructurallyEquivalent(Context, Spec1->template_arguments()[I],
+                                    Spec2->template_arguments()[I]))
         return false;
     }
     break;
@@ -847,11 +845,11 @@ static bool IsStructurallyEquivalent(StructuralEquivalenceContext &Context,
     if (!IsStructurallyEquivalent(Spec1->getIdentifier(),
                                   Spec2->getIdentifier()))
       return false;
-    if (Spec1->getNumArgs() != Spec2->getNumArgs())
+    if (Spec1->template_arguments().size() != Spec2->template_arguments().size())
       return false;
-    for (unsigned I = 0, N = Spec1->getNumArgs(); I != N; ++I) {
-      if (!IsStructurallyEquivalent(Context, Spec1->getArg(I),
-                                    Spec2->getArg(I)))
+    for (unsigned I = 0, N = Spec1->template_arguments().size(); I != N; ++I) {
+      if (!IsStructurallyEquivalent(Context, Spec1->template_arguments()[I],
+                                    Spec2->template_arguments()[I]))
         return false;
     }
     break;
@@ -1500,9 +1498,9 @@ static bool IsStructurallyEquivalent(StructuralEquivalenceContext &Context,
   if (D1->isAnonymousStructOrUnion() && D2->isAnonymousStructOrUnion()) {
     // If both anonymous structs/unions are in a record context, make sure
     // they occur in the same location in the context records.
-    if (Optional<unsigned> Index1 =
+    if (std::optional<unsigned> Index1 =
             StructuralEquivalenceContext::findUntaggedStructOrUnionIndex(D1)) {
-      if (Optional<unsigned> Index2 =
+      if (std::optional<unsigned> Index2 =
               StructuralEquivalenceContext::findUntaggedStructOrUnionIndex(
                   D2)) {
         if (*Index1 != *Index2)
@@ -1926,14 +1924,15 @@ bool StructuralEquivalenceContext::isKnowEqual(const Decl *D1,
   return EqualDecls.count({D1, D2});
 }
 
-Optional<unsigned> StructuralEquivalenceContext::findUntaggedStructOrUnionIndex(
+std::optional<unsigned>
+StructuralEquivalenceContext::findUntaggedStructOrUnionIndex(
     const RecordDecl *Anon) {
   ASTContext &Context = Anon->getASTContext();
   QualType AnonTy = Context.getRecordType(Anon);
 
   auto *Owner = dyn_cast<RecordDecl>(Anon->getDeclContext());
   if (!Owner)
-    return None;
+    return std::nullopt;
 
   unsigned Index = 0;
   for (const auto *D : Owner->noload_decls()) {

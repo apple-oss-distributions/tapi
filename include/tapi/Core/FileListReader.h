@@ -42,7 +42,7 @@ public:
   struct HeaderInfo {
     HeaderType type;
     std::string path;
-    llvm::Optional<clang::Language> language;
+    std::optional<clang::Language> language;
     bool isSwiftCompatibilityHeader;
   };
 

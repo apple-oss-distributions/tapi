@@ -1,16 +1,12 @@
-add_llvm_component_library(LLVMObjCMetadata
-  ObjCMetadata.cpp
-  ObjCMachOBinary.cpp
+set (LLVM_LINK_COMPONENTS 
+  Object
+  Support
+  )
 
-  ADDITIONAL_HEADER_DIRS
-  ${LLVM_MAIN_INCLUDE_DIR}/llvm/ObjCMetadata
+
+add_tapi_library(tapiObjCMetadata
+  ObjCMetadata.cpp
 
   DEPENDS
   intrinsics_gen
-
-  LINK_COMPONENTS
-  Analysis
-  Core
-  Object
-  Support
   )

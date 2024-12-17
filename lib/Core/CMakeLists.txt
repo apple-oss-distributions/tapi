@@ -1,7 +1,7 @@
 set( LLVM_LINK_COMPONENTS
   Object
-  ObjCMetadata
   BinaryFormat
+  TargetParser
   TextAPI
   DebugInfoDWARF
   )
@@ -34,4 +34,5 @@ add_tapi_library(tapiCore
 
   LINK_LIBS
   clangBasic
+  tapiObjCMetadata
   )

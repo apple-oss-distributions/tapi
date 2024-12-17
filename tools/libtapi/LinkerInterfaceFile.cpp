@@ -83,6 +83,7 @@ public:
   unsigned _swiftABIVersion;
   bool _hasTwoLevelNamespace{false};
   bool _isAppExtensionSafe{false};
+  bool _isOSLibNotForSharedCache{false};
   bool _hasWeakDefExports{false};
   bool _installPathOverride{false};
 
@@ -91,6 +92,7 @@ public:
   std::vector<std::string> _ignoreExports;
   std::vector<std::string> _inlinedFrameworkNames;
   std::vector<std::string> _rPaths;
+  std::vector<std::string> _relinkedLibraries;
 
   // All exports and reexports.
   // TODO: Treat them seperately to match TextFile output.
@@ -175,7 +177,9 @@ static Architecture getArchForCPU(cpu_type_t cpuType, cpu_subtype_t cpuSubType,
   if (archs.has(arch))
     return arch;
 
-  return AK_unknown;
+  if (enforceCpuSubType)
+    return AK_unknown;
+  return arch;
 }
 
 LinkerInterfaceFile::LinkerInterfaceFile() noexcept
@@ -268,11 +272,8 @@ bool LinkerInterfaceFile::Impl::init(
       continue;
     uint32_t platform = static_cast<uint32_t>(target.Platform);
     _platforms.emplace_back(platform);
-
-    PackedVersion tmp;
-    tmp.parse32(target.MinDeployment.getAsString());
-    PackedVersion32 minDeployment = tmp.rawValue();
-
+    PackedVersion32 minDeployment =
+        PackedVersion(target.MinDeployment).rawValue();
     _platformAndMinOS.emplace_back(platform, minDeployment);
   }
   llvm::sort(_platforms);
@@ -281,6 +282,7 @@ bool LinkerInterfaceFile::Impl::init(
   _compatibilityVersion = interface->getCompatibilityVersion();
   _hasTwoLevelNamespace = interface->isTwoLevelNamespace();
   _isAppExtensionSafe = interface->isApplicationExtensionSafe();
+  _isOSLibNotForSharedCache = interface->isOSLibNotForSharedCache();
   _swiftABIVersion = interface->getSwiftABIVersion();
   for (const auto &it : interface->umbrellas()) {
     if (it.first.Arch != arch)
@@ -291,7 +293,7 @@ bool LinkerInterfaceFile::Impl::init(
 
   // Pre-scan for special linker symbols.
   for (const auto *symbol : interface->exports()) {
-    if (symbol->getKind() != SymbolKind::GlobalSymbol)
+    if (symbol->getKind() != EncodeKind::GlobalSymbol)
       continue;
 
     if (!symbol->hasArchitecture(arch))
@@ -313,13 +315,13 @@ bool LinkerInterfaceFile::Impl::init(
       continue;
 
     switch (symbol->getKind()) {
-    case SymbolKind::GlobalSymbol:
+    case EncodeKind::GlobalSymbol:
       if (symbol->getName().startswith("$ld$") &&
           !symbol->getName().startswith("$ld$previous"))
         continue;
       addSymbol(symbol->getName(), symbol->getFlags());
       break;
-    case SymbolKind::ObjectiveCClass:
+    case EncodeKind::ObjectiveCClass:
       if (useObjC1ABI) {
         addSymbol(".objc_class_name_" + symbol->getName().str(),
                   symbol->getFlags());
@@ -330,11 +332,11 @@ bool LinkerInterfaceFile::Impl::init(
                   symbol->getFlags());
       }
       break;
-    case SymbolKind::ObjectiveCClassEHType:
+    case EncodeKind::ObjectiveCClassEHType:
       addSymbol("_OBJC_EHTYPE_$_" + symbol->getName().str(),
                 symbol->getFlags());
       break;
-    case SymbolKind::ObjectiveCInstanceVariable:
+    case EncodeKind::ObjectiveCInstanceVariable:
       addSymbol("_OBJC_IVAR_$_" + symbol->getName().str(), symbol->getFlags());
       break;
     }
@@ -348,11 +350,11 @@ bool LinkerInterfaceFile::Impl::init(
       continue;
 
     switch (symbol->getKind()) {
-    case SymbolKind::GlobalSymbol:
+    case EncodeKind::GlobalSymbol:
       _undefineds.emplace_back(symbol->getName(),
                                static_cast<SymbolFlags>(symbol->getFlags()));
       break;
-    case SymbolKind::ObjectiveCClass:
+    case EncodeKind::ObjectiveCClass:
       if (useObjC1ABI) {
         _undefineds.emplace_back(".objc_class_name_" + symbol->getName().str(),
                                  static_cast<SymbolFlags>(symbol->getFlags()));
@@ -363,11 +365,11 @@ bool LinkerInterfaceFile::Impl::init(
                                  static_cast<SymbolFlags>(symbol->getFlags()));
       }
       break;
-    case SymbolKind::ObjectiveCClassEHType:
+    case EncodeKind::ObjectiveCClassEHType:
       _undefineds.emplace_back("_OBJC_EHTYPE_$_" + symbol->getName().str(),
                                static_cast<SymbolFlags>(symbol->getFlags()));
       break;
-    case SymbolKind::ObjectiveCInstanceVariable:
+    case EncodeKind::ObjectiveCInstanceVariable:
       _undefineds.emplace_back("_OBJC_IVAR_$_" + symbol->getName().str(),
                                static_cast<SymbolFlags>(symbol->getFlags()));
       break;
@@ -473,6 +475,10 @@ bool LinkerInterfaceFile::isApplicationExtensionSafe() const noexcept {
   return _pImpl->_isAppExtensionSafe;
 }
 
+bool LinkerInterfaceFile::isNotForDyldSharedCache() const noexcept {
+  return _pImpl->_isOSLibNotForSharedCache;
+}
+
 bool LinkerInterfaceFile::hasAllowableClients() const noexcept {
   return !_pImpl->_allowableClients.empty();
 }
@@ -502,6 +508,11 @@ LinkerInterfaceFile::reexportedLibraries() const noexcept {
 
 const std::vector<std::string> &LinkerInterfaceFile::rPaths() const noexcept {
   return _pImpl->_rPaths;
+}
+
+const std::vector<std::string> &
+LinkerInterfaceFile::relinkedLibraries() const noexcept {
+  return _pImpl->_relinkedLibraries;
 }
 
 const std::vector<std::string> &

@@ -127,7 +127,7 @@ bool ObjCContainerRecord::operator==(const ObjCContainerRecord &other) const {
 bool ObjCInterfaceRecord::operator==(const ObjCInterfaceRecord &other) const {
   if (!ObjCContainerRecord::operator==(other))
     return false;
-  if (hasExceptionAttribute != other.hasExceptionAttribute)
+  if (linkages != other.linkages)
     return false;
   if (superClass != other.superClass)
     return false;
@@ -177,9 +177,9 @@ ObjCInstanceVariableRecord *ObjCInstanceVariableRecord::create(
 ObjCInterfaceRecord *ObjCInterfaceRecord::create(
     BumpPtrAllocator &allocator, StringRef name, APILinkage linkage, APILoc loc,
     const AvailabilityInfo &availability, APIAccess access,
-    StringRef superClass, const Decl *decl) {
+    StringRef superClass, const Decl *decl, ObjCIFSymbolKind symType) {
   return new (allocator) ObjCInterfaceRecord{
-      name, linkage, loc, availability, access, superClass, decl};
+      name, linkage, loc, availability, access, superClass, decl, symType};
 }
 
 ObjCCategoryRecord *
@@ -221,34 +221,69 @@ bool API::updateAPILinkage(APIRecord *record, APILinkage linkage) {
   record->linkage = linkage;
   return true;
 }
+
+bool ObjCInterfaceRecord::isExportedSymbol(ObjCIFSymbolKind currentType) const {
+  return getLinkageForSymbol(currentType) >= APILinkage::Reexported;
+}
+
+APILinkage
+ObjCInterfaceRecord::getLinkageForSymbol(ObjCIFSymbolKind currentType) const {
+  assert(currentType <= ObjCIFSymbolKind::EHType &&
+         "expected single ObjCIFSymbolKind enum value");
+  if (currentType == ObjCIFSymbolKind::Class)
+    return linkages.Class;
+
+  if (currentType == ObjCIFSymbolKind::MetaClass)
+    return linkages.MetaClass;
+
+  if (currentType == ObjCIFSymbolKind::EHType)
+    return linkages.EHType;
+
+  llvm_unreachable("unexpected ObjCIFSymbolKind");
+}
+
+void ObjCInterfaceRecord::updateLinkageForSymbols(ObjCIFSymbolKind symType,
+                                                  APILinkage link) {
+  if ((symType & ObjCIFSymbolKind::Class) == ObjCIFSymbolKind::Class)
+    linkages.Class = std::max(link, linkages.Class);
+  if ((symType & ObjCIFSymbolKind::MetaClass) == ObjCIFSymbolKind::MetaClass)
+    linkages.MetaClass = std::max(link, linkages.MetaClass);
+  if ((symType & ObjCIFSymbolKind::EHType) == ObjCIFSymbolKind::EHType)
+    linkages.EHType = std::max(link, linkages.EHType);
+
+  // Obj-C Classes represent multiple symbols that could have competing
+  // linkages, in this case assign the largest one, when querying the linkage of
+  // the record itself.
+  linkage =
+      std::max(linkages.Class, std::max(linkages.MetaClass, linkages.EHType));
+}
+
 APIRecord *API::addGlobalFromBinary(StringRef name, SymbolFlags flags,
                                     APILoc loc, GVKind kind,
                                     APILinkage linkage) {
   // See if there is a specific APIRecord type to capture instead.
-  auto [apiName, symbolKind] = parseSymbol(name);
+  auto [apiName, symbolKind, interfaceType] = MachO::parseSymbol(name);
   name = apiName;
   switch (symbolKind) {
-  case SymbolKind::GlobalSymbol:
+  case EncodeKind::GlobalSymbol:
     return addGlobal(name, flags, loc, AvailabilityInfo(), APIAccess::Unknown,
                      nullptr, kind, linkage);
-  case SymbolKind::ObjectiveCClass: {
-    auto *record = addObjCInterface(name, loc, AvailabilityInfo(),
-                                    APIAccess::Unknown, linkage, {}, nullptr);
-    // Obj-C Classes represent multiple symbols that could have competing
-    // linkages, in this case assign the largest one.
-    if (linkage >= APILinkage::Reexported)
-      updateAPILinkage(record, linkage);
+  case EncodeKind::ObjectiveCClass: {
+    return addObjCInterface(name, loc, AvailabilityInfo(), APIAccess::Unknown,
+                            linkage, {}, nullptr, interfaceType);
+  }
+  case EncodeKind::ObjectiveCClassEHType: {
+    auto *record =
+        addObjCInterface(name, loc, AvailabilityInfo(), APIAccess::Unknown,
+                         linkage, {}, nullptr, interfaceType);
+
+    // When classes without ehtype are used in try/catch blocks
+    // a weak-defined symbol is exported.
+    if ((flags & SymbolFlags::WeakDefined) == SymbolFlags::WeakDefined)
+      record->flags = SymbolFlags::WeakDefined;
     return record;
   }
-  case SymbolKind::ObjectiveCClassEHType: {
-    auto *record = addObjCInterface(name, loc, AvailabilityInfo(),
-                                    APIAccess::Unknown, linkage, {}, nullptr);
-    record->hasExceptionAttribute = true;
-    if (linkage >= APILinkage::Reexported)
-      updateAPILinkage(record, linkage);
-    return record;
-  }
-  case SymbolKind::ObjectiveCInstanceVariable: {
+  case EncodeKind::ObjectiveCInstanceVariable: {
     auto [superClass, ivar] = name.split('.');
     // Attempt to find super class.
     ObjCContainerRecord *container = findObjCInterface(superClass);
@@ -348,18 +383,18 @@ EnumConstantRecord *API::addEnumConstant(EnumRecord *record, StringRef name,
   return constant;
 }
 
-ObjCInterfaceRecord *API::addObjCInterface(StringRef name, APILoc loc,
-                                           const AvailabilityInfo &availability,
-                                           APIAccess access, APILinkage linkage,
-                                           StringRef superClass,
-                                           const Decl *decl) {
+ObjCInterfaceRecord *API::addObjCInterface(
+    StringRef name, APILoc loc, const AvailabilityInfo &availability,
+    APIAccess access, APILinkage linkage, StringRef superClass,
+    const Decl *decl, ObjCIFSymbolKind symType, bool overrideLinkage) {
   name = copyString(name);
   superClass = copyString(superClass);
   auto result = interfaces.insert({name, nullptr});
 
   if (result.second) {
-    auto *record = ObjCInterfaceRecord::create(
-        allocator, name, linkage, loc, availability, access, superClass, decl);
+    auto *record =
+        ObjCInterfaceRecord::create(allocator, name, linkage, loc, availability,
+                                    access, superClass, decl, symType);
     result.first->second = record;
   }
 
@@ -368,6 +403,8 @@ ObjCInterfaceRecord *API::addObjCInterface(StringRef name, APILoc loc,
     result.first->second->superClass = superClass;
   }
 
+  if (overrideLinkage || result.second)
+    result.first->second->updateLinkageForSymbols(symType, linkage);
   return result.first->second;
 }
 

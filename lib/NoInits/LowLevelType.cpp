@@ -6,7 +6,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "llvm/Support/LowLevelTypeImpl.h"
+#include "llvm/CodeGen/LowLevelType.h"
 #include "llvm/Support/raw_ostream.h"
 using namespace llvm;
 

@@ -45,7 +45,7 @@ struct HeaderFile {
   std::string relativePath;
   std::string includeName;
   HeaderType type;
-  llvm::Optional<clang::Language> language;
+  std::optional<clang::Language> language;
   bool isUmbrellaHeader{false};
   bool isExcluded{false};
   bool isExtra{false};
@@ -55,23 +55,21 @@ struct HeaderFile {
   HeaderFile(StringRef fullPath, HeaderType type,
              StringRef relativePath = StringRef(),
              StringRef includeName = StringRef(),
-             llvm::Optional<clang::Language> language = llvm::None,
+             std::optional<clang::Language> language = std::nullopt,
              bool isSwiftCompatibilityHeader = false)
       : fullPath(fullPath), relativePath(relativePath),
         includeName(includeName), type(type), language(language),
         isSwiftCompatibilityHeader(isSwiftCompatibilityHeader) {}
 
   bool useIncludeName() const {
-    // If this is a extra-included header it can be a SRCROOT path
-    // so lets be conserative for now.
-    return type != HeaderType::Project && !isExtra && !includeName.empty();
+    return type != HeaderType::Project && !includeName.empty();
   }
 
   void print(raw_ostream &os) const;
   friend bool operator<(const HeaderFile &lhs, const HeaderFile &rhs);
 };
 
-llvm::Optional<std::string> createIncludeHeaderName(const StringRef dstRoot);
+std::optional<std::string> createIncludeHeaderName(const StringRef dstRoot);
 
 // Sort by type first.
 inline bool operator<(const HeaderFile &lhs, const HeaderFile &rhs) {

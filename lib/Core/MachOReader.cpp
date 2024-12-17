@@ -12,7 +12,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "tapi/Core/MachOReader.h"
-#include "tapi/ObjCMetadata/ObjCMachOBinary.h"
+#include "tapi/ObjCMetadata/ObjCMetadata.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/BinaryFormat/Magic.h"
 #include "llvm/DebugInfo/DWARF/DWARFCompileUnit.h"
@@ -126,8 +126,8 @@ static Error readMachOHeader(MachOObjectFile *object, API &api) {
     case MachO::LC_ID_DYLIB: {
       auto DLLC = object->getDylibIDLoadCommand(LCI);
       binaryInfo.installName = api.copyString(LCI.Ptr + DLLC.dylib.name);
-      binaryInfo.currentVersion = PackedVersion(DLLC.dylib.current_version);
-      binaryInfo.compatibilityVersion = PackedVersion(DLLC.dylib.compatibility_version);
+      binaryInfo.currentVersion = DLLC.dylib.current_version;
+      binaryInfo.compatibilityVersion = DLLC.dylib.compatibility_version;
       break;
     }
     case MachO::LC_REEXPORT_DYLIB: {
@@ -162,6 +162,12 @@ static Error readMachOHeader(MachOObjectFile *object, API &api) {
     case MachO::LC_RPATH: {
       auto RPLC = object->getRpathCommand(LCI);
       binaryInfo.rpaths.emplace_back(api.copyString(LCI.Ptr + RPLC.path));
+      break;
+    }
+    case MachO::LC_SEGMENT_SPLIT_INFO: {
+      auto SSILC = object->getLinkeditDataLoadCommand(LCI);
+      if (SSILC.datasize == 0)
+        binaryInfo.isOSLibNotForSharedCache = true;
       break;
     }
     default:
@@ -220,19 +226,20 @@ accumulateLocs(MachOObjectFile &obj,
     }
     auto address = *addressOrErr;
 
-    auto *dwarfCU = diCtx->getCompileUnitForAddress(address);
-    if (!dwarfCU)
-      continue;
-
     auto typeOrErr = symbol.getType();
     if (!typeOrErr) {
       consumeError(typeOrErr.takeError());
       continue;
     }
-    const auto type = *typeOrErr;
-    const DWARFDie &die = (type & SymbolRef::ST_Function)
-                              ? dwarfCU->getSubroutineForAddress(address)
-                              : dwarfCU->getVariableForAddress(address);
+    const bool isCode = (*typeOrErr & SymbolRef::ST_Function);
+
+    auto *dwarfCU = isCode ? diCtx->getCompileUnitForCodeAddress(address)
+                           : diCtx->getCompileUnitForDataAddress(address);
+    if (!dwarfCU)
+      continue;
+
+    const DWARFDie &die = isCode ? dwarfCU->getSubroutineForAddress(address)
+                                 : dwarfCU->getVariableForAddress(address);
     const auto file = die.getDeclFile(
         llvm::DILineInfoSpecifier::FileLineInfoKind::AbsoluteFilePath);
     const auto line = die.getDeclLine();
@@ -243,10 +250,10 @@ accumulateLocs(MachOObjectFile &obj,
       continue;
     }
     auto name = *nameOrErr;
-    auto [symName, _] = parseSymbol(name);
+    auto sym = parseSymbol(name);
 
     if (!file.empty() && line != 0)
-      locMap[symName.str()] = APILoc(file, line, 0);
+      locMap[sym.Name.str()] = APILoc(file, line, 0);
   }
 
   return locMap;
@@ -402,7 +409,7 @@ static ObjCPropertyRecord::AttributeKind getAttributeKind(StringRef attr) {
 
 static Error readObjectiveCMetadata(MachOObjectFile *object, API &api) {
   auto error = Error::success();
-  MachOMetadata metadata(object, error);
+  ObjCMetaDataReader metadata(object, error);
   if (error)
     return std::move(error);
 
@@ -429,7 +436,9 @@ static Error readObjectiveCMetadata(MachOObjectFile *object, API &api) {
     // FIXME: Re-adding classes should not assume additional attributes.
     auto *objcClass = api.addObjCInterface(
         *className, APILoc(), AvailabilityInfo(), APIAccess::Unknown,
-        APILinkage::Exported, *superClassName, nullptr);
+        APILinkage::Exported, *superClassName, nullptr,
+        ObjCIFSymbolKind::Class | ObjCIFSymbolKind::MetaClass,
+        /*overrideLinkage=*/false);
 
     auto properties = objcClassMeta->properties();
     if (!properties)
@@ -789,6 +798,17 @@ std::vector<Triple> constructTripleFromMachO(MachOObjectFile *object) {
         break;
       case MachO::PLATFORM_DRIVERKIT:
         triples.emplace_back(arch, "apple", "driverkit" + OSVersion);
+        break;
+      case MachO::PLATFORM_XROS:
+        triples.emplace_back(arch, "apple",
+                             Triple::getOSTypeName(Triple::XROS) +
+                             OSVersion);
+        break;
+      case MachO::PLATFORM_XROS_SIMULATOR:
+        triples.emplace_back(arch, "apple",
+                             Triple::getOSTypeName(Triple::XROS) +
+                             OSVersion,
+                             "simulator");
         break;
       default:
         break; // skip.

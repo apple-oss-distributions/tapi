@@ -21,14 +21,14 @@
 #include "tapi/Defines.h"
 #include "clang/AST/DeclObjC.h"
 #include "llvm/ADT/MapVector.h"
-#include "llvm/ADT/Optional.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/ADT/StringSet.h"
-#include "llvm/ADT/Triple.h"
 #include "llvm/Support/Error.h"
+#include "llvm/TargetParser/Triple.h"
 #include "llvm/TextAPI/InterfaceFile.h"
 #include "llvm/TextAPI/PackedVersion.h"
 #include <iterator>
+#include <optional>
 
 using clang::Decl;
 
@@ -142,8 +142,7 @@ struct GlobalRecord : APIRecord {
   GlobalRecord(StringRef name, SymbolFlags flags, APILoc loc,
                const AvailabilityInfo &availability, APIAccess access,
                const Decl *decl, GVKind kind, APILinkage linkage)
-      : APIRecord({name, loc, decl, availability, linkage,
-                   flags | SymbolFlags::Data, access}),
+      : APIRecord({name, loc, decl, availability, linkage, flags, access}),
         kind(kind) {}
 
   static GlobalRecord *create(llvm::BumpPtrAllocator &allocator, StringRef name,
@@ -284,20 +283,46 @@ struct ObjCProtocolRecord : ObjCContainerRecord {
 };
 
 struct ObjCInterfaceRecord : ObjCContainerRecord {
+private:
+  struct Linkages {
+    APILinkage Class = APILinkage::Unknown;
+    APILinkage MetaClass = APILinkage::Unknown;
+    APILinkage EHType = APILinkage::Unknown;
+    bool operator==(const Linkages &other) const {
+      return std::tie(Class, MetaClass, EHType) ==
+             std::tie(other.Class, other.MetaClass, other.EHType);
+    }
+    bool operator!=(const Linkages &other) const { return !(*this == other); }
+  };
+  Linkages linkages;
+
+public:
   std::vector<const ObjCCategoryRecord *> categories;
   StringRef superClass;
-  bool hasExceptionAttribute = false;
 
   ObjCInterfaceRecord(StringRef name, APILinkage linkage, APILoc loc,
                       const AvailabilityInfo &availability, APIAccess access,
-                      StringRef superClass, const Decl *decl)
+                      StringRef superClass, const Decl *decl,
+                      ObjCIFSymbolKind symType)
       : ObjCContainerRecord(name, linkage, loc, availability, access, decl),
         superClass(superClass) {}
 
   static ObjCInterfaceRecord *
   create(llvm::BumpPtrAllocator &allocator, StringRef name, APILinkage linkage,
          APILoc loc, const AvailabilityInfo &availability, APIAccess access,
-         StringRef superClass, const Decl *decl);
+         StringRef superClass, const Decl *decl, ObjCIFSymbolKind symType);
+
+  bool hasExceptionAttribute() const {
+    return linkages.EHType != APILinkage::Unknown;
+  }
+  bool isCompleteInterface() const {
+    return linkages.Class >= APILinkage::Reexported &&
+           linkages.MetaClass >= APILinkage::Reexported;
+  }
+
+  APILinkage getLinkageForSymbol(ObjCIFSymbolKind currentType) const;
+  void updateLinkageForSymbols(ObjCIFSymbolKind symType, APILinkage link);
+  bool isExportedSymbol(ObjCIFSymbolKind currentType) const;
 
   bool operator==(const ObjCInterfaceRecord &other) const;
 };
@@ -325,10 +350,12 @@ struct BinaryInfo {
   uint8_t swiftABIVersion = 0;
   bool isTwoLevelNamespace = false;
   bool isAppExtensionSafe = false;
+  bool isOSLibNotForSharedCache = false;
   StringRef parentUmbrella;
   std::vector<StringRef> allowableClients;
   std::vector<StringRef> reexportedLibraries;
   std::vector<StringRef> rpaths;
+  std::vector<StringRef> relinkedLibraries;
   StringRef installName;
   StringRef uuid;
   StringRef path;
@@ -434,7 +461,9 @@ public:
   ObjCInterfaceRecord *addObjCInterface(StringRef name, APILoc loc,
                                         const AvailabilityInfo &availability,
                                         APIAccess access, APILinkage linkage,
-                                        StringRef superClass, const Decl *decl);
+                                        StringRef superClass, const Decl *decl,
+                                        ObjCIFSymbolKind symType,
+                                        bool overrideLinkage = true);
   ObjCCategoryRecord *addObjCCategory(StringRef interface, StringRef name,
                                       APILoc loc,
                                       const AvailabilityInfo &availability,
@@ -500,9 +529,9 @@ public:
     return *binaryInfo;
   }
 
-  llvm::Optional<StringRef> getInstallName() const {
+  std::optional<StringRef> getInstallName() const {
     if (!hasBinaryInfo())
-      return llvm::None;
+      return std::nullopt;
     return getBinaryInfo().installName;
   }
 

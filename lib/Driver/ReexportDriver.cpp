@@ -73,6 +73,7 @@ bool Driver::Reexport::run(DiagnosticsEngine &diag, Options &opts) {
   job.systemFrameworkPaths =
       getAllPaths(opts.frontendOptions.systemFrameworkPaths);
   job.systemIncludePaths = opts.frontendOptions.systemIncludePaths;
+  job.afterIncludePaths = opts.frontendOptions.afterIncludePaths;
   job.quotedIncludePaths = opts.frontendOptions.quotedIncludePaths;
   job.frameworkPaths = opts.frontendOptions.frameworkPaths;
   job.includePaths = opts.frontendOptions.includePaths;

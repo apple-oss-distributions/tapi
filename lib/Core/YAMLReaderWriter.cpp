@@ -32,12 +32,12 @@ bool YAMLDocumentHandler::canRead(MemoryBufferRef memBufferRef,
   if (!(types & FileType::TBD_V1))
     return false;
 
-  auto result = TextAPIReader::get(memBufferRef);
+  auto result = TextAPIReader::canRead(memBufferRef);
   if (!result) {
     consumeError(result.takeError());
     return false;
   }
-  return *result && (*result)->getFileType() == FileType::TBD_V1;
+  return *result == FileType::TBD_V1;
 }
 
 FileType YAMLDocumentHandler::getFileType(MemoryBufferRef memBufferRef) const {
@@ -67,13 +67,12 @@ bool YAMLDocumentHandler::canRead(MemoryBufferRef memBufferRef,
   if (!(types & FileType::TBD_V2))
     return false;
 
-  auto result = TextAPIReader::get(memBufferRef);
+  auto result = TextAPIReader::canRead(memBufferRef);
   if (!result) {
     consumeError(result.takeError());
     return false;
   }
-  
-  return *result && (*result)->getFileType() == FileType::TBD_V2;
+  return *result == FileType::TBD_V2;
 }
 
 FileType YAMLDocumentHandler::getFileType(MemoryBufferRef memBufferRef) const {
@@ -98,13 +97,12 @@ bool YAMLDocumentHandler::canRead(MemoryBufferRef memBufferRef,
   if (!(types & FileType::TBD_V3))
     return false;
 
-  auto result = TextAPIReader::get(memBufferRef);
+  auto result = TextAPIReader::canRead(memBufferRef);
   if (!result) {
     consumeError(result.takeError());
     return false;
   }
-  
-  return *result && (*result)->getFileType() == FileType::TBD_V3;
+  return *result == FileType::TBD_V3;
 }
 
 FileType YAMLDocumentHandler::getFileType(MemoryBufferRef memBufferRef) const {
@@ -131,12 +129,12 @@ bool YAMLDocumentHandler::canRead(MemoryBufferRef memBufferRef,
   if (!(types & FileType::TBD_V4))
     return false;
 
-  auto result = TextAPIReader::get(memBufferRef);
+  auto result = TextAPIReader::canRead(memBufferRef);
   if (!result) {
     consumeError(result.takeError());
     return false;
   }
-  return *result && (*result)->getFileType() == FileType::TBD_V4;
+  return *result == FileType::TBD_V4;
 }
 
 FileType YAMLDocumentHandler::getFileType(MemoryBufferRef memBufferRef) const {
@@ -209,6 +207,7 @@ void addInterfaceFileToAPIs(APIs &apis, const InterfaceFile *interface) {
     binaryInfo.swiftABIVersion = interface->getSwiftABIVersion();
     binaryInfo.isTwoLevelNamespace = interface->isTwoLevelNamespace();
     binaryInfo.isAppExtensionSafe = interface->isApplicationExtensionSafe();
+    binaryInfo.isOSLibNotForSharedCache = interface->isOSLibNotForSharedCache();
     binaryInfo.path = api->copyString(interface->getPath());
     binaryInfo.installName = api->copyString(interface->getInstallName());
 
@@ -260,21 +259,23 @@ void addInterfaceFileToAPIs(APIs &apis, const InterfaceFile *interface) {
         linkage = APILinkage::Exported;
 
       switch (sym->getKind()) {
-      case SymbolKind::GlobalSymbol:
+      case EncodeKind::GlobalSymbol:
         (*api)->addGlobal(sym->getName(), sym->getFlags(), APILoc(), avail,
                           access, nullptr, GVKind::Unknown, linkage);
         continue;
-      case SymbolKind::ObjectiveCClass:
-        (*api)->addObjCInterface(sym->getName(), APILoc(), avail, access,
-                                 linkage, {}, nullptr);
+      case EncodeKind::ObjectiveCClass:
+        (*api)->addObjCInterface(
+            sym->getName(), APILoc(), avail, access, linkage, {}, nullptr,
+            ObjCIFSymbolKind::Class | ObjCIFSymbolKind::MetaClass);
         continue;
-      case SymbolKind::ObjectiveCClassEHType: {
-        auto *record = (*api)->addObjCInterface(sym->getName(), APILoc(), avail,
-                                                access, linkage, {}, nullptr);
-        record->hasExceptionAttribute = true;
+      case EncodeKind::ObjectiveCClassEHType: {
+        (*api)->addObjCInterface(
+            sym->getName(), APILoc(), avail, access, linkage, {}, nullptr,
+            ObjCIFSymbolKind::Class | ObjCIFSymbolKind::MetaClass |
+                ObjCIFSymbolKind::EHType);
         continue;
       }
-      case SymbolKind::ObjectiveCInstanceVariable: {
+      case EncodeKind::ObjectiveCInstanceVariable: {
         // Attempt to find super class.
         ObjCContainerRecord *container = (*api)->findContainer(sym->getName());
         auto [superClassName, ivar] = sym->getName().split('.');

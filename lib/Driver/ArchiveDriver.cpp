@@ -163,12 +163,7 @@ bool Driver::Archive::run(DiagnosticsEngine &diag, Options &opts) {
     break;
   }
   case ArchiveAction::ListSymbols: {
-    assert(inputs.size() == 1 && "expecting exactly one input file");
-    // Only allow one architecture.
-    if (opts.frontendOptions.targets.size() > 1) {
-      diag.report(diag::err_one_target);
-      return false;
-    }
+    llvm_unreachable("unimplemented");
     break;
   }
   }

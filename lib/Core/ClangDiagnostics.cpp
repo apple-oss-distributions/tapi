@@ -7,6 +7,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "tapi/Core/ClangDiagnostics.h"
+#include "llvm/ADT/SmallString.h"
 #include "llvm/TextAPI/Platform.h"
 
 using clang::DiagnosticBuilder;
